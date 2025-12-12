@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/location.dart';
 import '../services/api_service.dart';
+import '../widgets/location_autocomplete.dart';
 import 'chart_screen.dart';
 
 /// Home screen with birth data input form.
@@ -16,8 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   DateTime _selectedDate = DateTime(1990, 1, 1);
   TimeOfDay _selectedTime = const TimeOfDay(hour: 12, minute: 0);
-  final _latitudeController = TextEditingController(text: '40.7128');
-  final _longitudeController = TextEditingController(text: '-74.0060');
+  Location? _selectedLocation;
 
   bool _isLoading = false;
   bool _isBackendConnected = false;
@@ -92,6 +93,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _calculateChart() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a birth location'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -107,8 +118,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final chart = await _apiService.calculateNatalChart(
         datetime: datetime,
-        latitude: double.parse(_latitudeController.text),
-        longitude: double.parse(_longitudeController.text),
+        latitude: _selectedLocation!.latitude,
+        longitude: _selectedLocation!.longitude,
         timezone: 'UTC',
       );
 
@@ -140,8 +151,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _latitudeController.dispose();
-    _longitudeController.dispose();
     _apiService.dispose();
     super.dispose();
   }
@@ -232,25 +241,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Location inputs
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _latitudeController,
-                                label: 'Latitude',
-                                hint: '40.7128',
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _longitudeController,
-                                label: 'Longitude',
-                                hint: '-74.0060',
-                              ),
-                            ),
-                          ],
+                        // Location Autocomplete
+                        LocationAutocomplete(
+                          initialLocation: _selectedLocation,
+                          onLocationSelected: (location) {
+                            setState(() {
+                              _selectedLocation = location;
+                            });
+                          },
                         ),
                       ],
                     ),
@@ -381,47 +379,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: TextStyle(color: Colors.white.withAlpha(153)),
-        hintStyle: TextStyle(color: Colors.white.withAlpha(77)),
-        filled: true,
-        fillColor: Colors.white.withAlpha(8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withAlpha(26)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withAlpha(26)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFFFEB3B)),
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Required';
-        }
-        if (double.tryParse(value) == null) {
-          return 'Invalid number';
-        }
-        return null;
-      },
     );
   }
 

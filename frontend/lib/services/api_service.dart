@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/natal_chart.dart';
+import '../models/location.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -23,6 +24,35 @@ class ApiService {
       return false;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Search for locations by name.
+  ///
+  /// [query] - Search text (city name, address, etc.)
+  /// [limit] - Maximum number of results (default: 5)
+  Future<List<Location>> searchLocations(String query, {int limit = 5}) async {
+    if (query.length < 2) {
+      return [];
+    }
+
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}${ApiConfig.geocodeSearchEndpoint}',
+      ).replace(queryParameters: {
+        'query': query,
+        'limit': limit.toString(),
+      });
+
+      final response = await _client.get(uri).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Location.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 
