@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/location.dart';
-import '../services/api_service.dart';
-import '../widgets/location_autocomplete.dart';
-import 'chart_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../config/design_tokens.dart';
+import '../widgets/app_header.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/sound_orb.dart';
 
-/// Home screen with birth data input form.
+/// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -13,419 +14,627 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _apiService = ApiService();
+  final todaysReading = {
+    'sign': 'Scorpio',
+    'date': 'December 12, 2025',
+    'energy': 'Transformative',
+    'mood': 'Deep House → Ambient',
+    'bpm': '118-122',
+    'vibe': 'The moon\'s opposition to Pluto invites you to shed old patterns. Your sonic medicine today is hypnotic, pulsing rhythms that mirror your internal metamorphosis.',
+  };
 
-  DateTime _selectedDate = DateTime(1990, 1, 1);
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 12, minute: 0);
-  Location? _selectedLocation;
+  final alignedFriends = [
+    {'name': 'Maya', 'color1': const Color(0xFFFF59D0), 'color2': const Color(0xFF7D67FE)},
+    {'name': 'Jordan', 'color1': const Color(0xFFFAFF0E), 'color2': const Color(0xFFFF59D0)},
+    {'name': 'Alex', 'color1': const Color(0xFF7D67FE), 'color2': const Color(0xFF00D4AA)},
+  ];
 
-  bool _isLoading = false;
-  bool _isBackendConnected = false;
+  final playlist = [
+    {'title': 'Midnight Protocol', 'artist': 'Orbital Dreams', 'duration': '6:42', 'energy': 78},
+    {'title': 'Plutonian Depths', 'artist': 'Modular Witch', 'duration': '5:18', 'energy': 85},
+    {'title': 'Dissolve', 'artist': 'Kiasmos', 'duration': '7:03', 'energy': 62},
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _checkBackendConnection();
-  }
-
-  Future<void> _checkBackendConnection() async {
-    final isConnected = await _apiService.checkHealth();
-    if (mounted) {
-      setState(() {
-        _isBackendConnected = isConnected;
-      });
-    }
-  }
-
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFFFEB3B), // Electric yellow
-              onPrimary: Colors.black,
-              surface: Color(0xFF1E1E2E),
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> _selectTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFFF1493), // Hot pink
-              onPrimary: Colors.white,
-              surface: Color(0xFF1E1E2E),
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedTime) {
-      setState(() {
-        _selectedTime = picked;
-      });
-    }
-  }
-
-  Future<void> _calculateChart() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a birth location'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Build datetime string
-      final datetime =
-          '${_selectedDate.year.toString().padLeft(4, '0')}-'
-          '${_selectedDate.month.toString().padLeft(2, '0')}-'
-          '${_selectedDate.day.toString().padLeft(2, '0')}T'
-          '${_selectedTime.hour.toString().padLeft(2, '0')}:'
-          '${_selectedTime.minute.toString().padLeft(2, '0')}:00';
-
-      final chart = await _apiService.calculateNatalChart(
-        datetime: datetime,
-        latitude: _selectedLocation!.latitude,
-        longitude: _selectedLocation!.longitude,
-        timezone: 'UTC',
-      );
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChartScreen(chart: chart),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _apiService.dispose();
-    super.dispose();
-  }
+  final alignmentScore = 78;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0D0D1A),
-              Color(0xFF1E1E2E),
-              Color(0xFF2D1B4E),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header
-                  const SizedBox(height: 20),
-                  const Text(
-                    'ASTRO.FM',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 8,
-                      color: Color(0xFFFFEB3B),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Your Cosmic Sound Profile',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withAlpha(179),
-                      letterSpacing: 2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Connection Status
-                  _buildConnectionStatus(),
-                  const SizedBox(height: 40),
-
-                  // Birth Data Section
-                  _buildGlassmorphicCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'BIRTH DATA',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                            color: Color(0xFFFF1493),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Date Picker
-                        _buildInputTile(
-                          icon: Icons.calendar_today,
-                          label: 'Birth Date',
-                          value:
-                              '${_selectedDate.month}/${_selectedDate.day}/${_selectedDate.year}',
-                          onTap: _selectDate,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Time Picker
-                        _buildInputTile(
-                          icon: Icons.access_time,
-                          label: 'Birth Time',
-                          value: _selectedTime.format(context),
-                          onTap: _selectTime,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Location Autocomplete
-                        LocationAutocomplete(
-                          initialLocation: _selectedLocation,
-                          onLocationSelected: (location) {
-                            setState(() {
-                              _selectedLocation = location;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Calculate Button
-                  _buildCalculateButton(),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectionStatus() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color:
-            _isBackendConnected
-                ? Colors.green.withAlpha(51)
-                : Colors.red.withAlpha(51),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color:
-              _isBackendConnected
-                  ? Colors.green.withAlpha(128)
-                  : Colors.red.withAlpha(128),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _isBackendConnected ? Colors.green : Colors.red,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _isBackendConnected ? 'Backend Connected' : 'Backend Offline',
-            style: TextStyle(
-              color: _isBackendConnected ? Colors.green : Colors.red,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGlassmorphicCard({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(13),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withAlpha(26),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(64),
-            blurRadius: 32,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildInputTile({
-    required IconData icon,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(8),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withAlpha(26)),
-        ),
-        child: Row(
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(icon, color: const Color(0xFFFFEB3B), size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withAlpha(153),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: Colors.white.withAlpha(102),
-            ),
+            const AppHeader(),
+            const SizedBox(height: 16),
+
+            // Sound Orbs Section
+            _buildSoundOrbsSection(),
+            const SizedBox(height: 20),
+
+            // CTA Buttons
+            _buildCtaButtons(),
+            const SizedBox(height: 24),
+
+            // Today's Resonance
+            _buildTodaysResonance(),
+            const SizedBox(height: 24),
+
+            // Cosmic Queue
+            _buildCosmicQueue(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCalculateButton() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFEB3B), Color(0xFFFF1493)],
+  Widget _buildSoundOrbsSection() {
+    return GlassCard(
+      child: Column(
+        children: [
+          // Orbs row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Your Sound Orb
+              Column(
+                children: [
+                  const SoundOrb(
+                    size: 100,
+                    colors: [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'YOUR SOUND',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: Colors.white.withAlpha(128),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  Text(
+                    'Unique to You',
+                    style: GoogleFonts.syne(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.hotPink,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Connection indicator
+              Column(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 2,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.hotPink, AppColors.electricYellow],
+                      ),
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: 26,
+                          top: -3,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: AppColors.electricYellow,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.electricYellow.withAlpha(179),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Today's Sound Orb
+              Column(
+                children: [
+                  const SoundOrb(
+                    size: 100,
+                    colors: [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'TODAY\'S SOUND',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: Colors.white.withAlpha(128),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  Text(
+                    'Cosmic Frequency',
+                    style: GoogleFonts.syne(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.electricYellow,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Alignment Score Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(13),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(color: Colors.white.withAlpha(26)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildCircularProgress(alignmentScore),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Aligned Today',
+                      style: GoogleFonts.syne(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'High resonance day',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: Colors.white.withAlpha(128),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Friends aligned
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Friends aligned today:',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12,
+                  color: Colors.white.withAlpha(128),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildFriendAvatars(),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircularProgress(int score) {
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Stack(
+        children: [
+          CircularProgressIndicator(
+            value: score / 100,
+            backgroundColor: Colors.white.withAlpha(26),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
+            strokeWidth: 3,
+          ),
+          Center(
+            child: Text(
+              '$score%',
+              style: GoogleFonts.syne(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.electricYellow,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFriendAvatars() {
+    return Row(
+      children: [
+        ...alignedFriends.asMap().entries.map((entry) {
+          final friend = entry.value;
+          return Transform.translate(
+            offset: Offset(-8.0 * entry.key, 0),
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [friend['color1'] as Color, friend['color2'] as Color],
+                ),
+                border: Border.all(color: AppColors.backgroundMid, width: 2),
+              ),
+              child: Center(
+                child: Text(
+                  (friend['name'] as String)[0],
+                  style: GoogleFonts.syne(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+        Transform.translate(
+          offset: Offset(-8.0 * alignedFriends.length, 0),
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withAlpha(26),
+              border: Border.all(color: AppColors.backgroundMid, width: 2),
+            ),
+            child: Center(
+              child: Text(
+                '+5',
+                style: GoogleFonts.syne(
+                  fontSize: 10,
+                  color: Colors.white.withAlpha(153),
+                ),
+              ),
+            ),
+          ),
         ),
-        borderRadius: BorderRadius.circular(30),
+      ],
+    );
+  }
+
+  Widget _buildCtaButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: _CtaButton(
+            label: 'Align Now',
+            icon: Icons.access_time_rounded,
+            gradient: const LinearGradient(
+              colors: [AppColors.cosmicPurple, AppColors.hotPink],
+            ),
+            onPressed: () {},
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _CtaButton(
+            label: 'Generate Playlist',
+            icon: Icons.music_note_rounded,
+            gradient: const LinearGradient(
+              colors: [AppColors.electricYellow, Color(0xFFE5EB0D)],
+            ),
+            textColor: AppColors.background,
+            onPressed: () {},
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTodaysResonance() {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TODAY\'S RESONANCE',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: Colors.white.withAlpha(128),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [AppColors.electricYellow, AppColors.hotPink],
+                    ).createShader(bounds),
+                    child: Text(
+                      todaysReading['sign'] as String,
+                      style: GoogleFonts.syne(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.electricYellow.withAlpha(38),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.electricYellow.withAlpha(77)),
+                ),
+                child: Text(
+                  todaysReading['energy'] as String,
+                  style: GoogleFonts.syne(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.electricYellow,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(13),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MOOD',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10,
+                          color: Colors.white.withAlpha(102),
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        todaysReading['mood'] as String,
+                        style: GoogleFonts.syne(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.hotPink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(13),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BPM',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10,
+                          color: Colors.white.withAlpha(102),
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        todaysReading['bpm'] as String,
+                        style: GoogleFonts.syne(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.cosmicPurple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            todaysReading['vibe'] as String,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 13,
+              height: 1.6,
+              color: Colors.white.withAlpha(179),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCosmicQueue() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Your Cosmic Queue',
+              style: GoogleFonts.syne(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            TextButton(
+              onPressed: () {},
+              child: Text(
+                'See All',
+                style: GoogleFonts.syne(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.hotPink,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        GlassCard(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            children: playlist.asMap().entries.map((entry) {
+              final index = entry.key;
+              final track = entry.value;
+              return _buildPlaylistItem(track, index);
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlaylistItem(Map<String, dynamic> track, int index) {
+    final colors = index % 2 == 0
+        ? [AppColors.hotPink, AppColors.cosmicPurple]
+        : [AppColors.cosmicPurple, AppColors.electricYellow];
+
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              gradient: LinearGradient(colors: colors),
+            ),
+            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track['title'] as String,
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  track['artist'] as String,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    color: Colors.white.withAlpha(128),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: (track['energy'] as int) / 100,
+                  backgroundColor: Colors.white.withAlpha(26),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color.lerp(AppColors.hotPink, AppColors.electricYellow, (track['energy'] as int) / 100)!,
+                  ),
+                  minHeight: 3,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            track['duration'] as String,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              color: Colors.white.withAlpha(102),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CtaButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Gradient gradient;
+  final Color textColor;
+  final VoidCallback onPressed;
+
+  const _CtaButton({
+    required this.label,
+    required this.icon,
+    required this.gradient,
+    this.textColor = Colors.white,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF1493).withAlpha(102),
+            color: (gradient as LinearGradient).colors.first.withAlpha(77),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: _isLoading || !_isBackendConnected ? null : _calculateChart,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-        ),
-        child:
-            _isLoading
-                ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                  ),
-                )
-                : const Text(
-                  'CALCULATE MY CHART',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                    color: Colors.black,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: textColor, size: 20),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

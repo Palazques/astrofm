@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'config/design_tokens.dart';
+import 'screens/main_shell.dart';
+import 'screens/birth_input_screen.dart';
+import 'screens/chart_screen.dart';
 
 void main() {
   runApp(const AstroFmApp());
 }
 
-/// Main application widget for Astro.FM
 class AstroFmApp extends StatelessWidget {
   const AstroFmApp({super.key});
 
@@ -17,61 +20,53 @@ class AstroFmApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0D0D1A),
+        scaffoldBackgroundColor: AppColors.background,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFFEB3B),       // Electric Yellow
-          secondary: Color(0xFFFF1493),     // Hot Pink
-          surface: Color(0xFF1E1E2E),
+          primary: AppColors.electricYellow,
+          secondary: AppColors.hotPink,
+          tertiary: AppColors.cosmicPurple,
+          surface: AppColors.backgroundMid,
           onPrimary: Colors.black,
           onSecondary: Colors.white,
           onSurface: Colors.white,
         ),
-        fontFamily: 'Roboto',
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 4,
+        textTheme: GoogleFonts.syneTextTheme(
+          ThemeData.dark().textTheme,
+        ).copyWith(
+          bodyMedium: GoogleFonts.spaceGrotesk(
+            color: Colors.white,
           ),
-          headlineMedium: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 2,
-          ),
-          bodyLarge: TextStyle(
-            fontSize: 16,
-            letterSpacing: 0.5,
-          ),
-          labelLarge: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 1.5,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white.withAlpha(13),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFFFEB3B)),
+          bodySmall: GoogleFonts.spaceGrotesk(
+            color: Colors.white.withAlpha(179),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFEB3B),
             foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+            backgroundColor: AppColors.electricYellow,
+            textStyle: GoogleFonts.syne(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
             ),
           ),
         ),
       ),
-      home: const HomeScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const MainShell(),
+        '/birth-input': (context) => const BirthInputScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/chart') {
+          final chart = settings.arguments;
+          if (chart != null) {
+            return MaterialPageRoute(
+              builder: (context) => ChartScreen(chart: chart as dynamic),
+            );
+          }
+        }
+        return null;
+      },
     );
   }
 }
