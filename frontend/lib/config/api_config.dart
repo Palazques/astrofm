@@ -8,6 +8,8 @@ class ApiConfig {
   static const String healthEndpoint = '/health';
   static const String natalChartEndpoint = '/api/charts/natal';
   static const String geocodeSearchEndpoint = '/api/geocode/search';
+  static const String userSonificationEndpoint = '/api/sonification/user';
+  static const String dailySonificationEndpoint = '/api/sonification/daily';
   
   /// Timeout duration for API calls
   static const Duration timeout = Duration(seconds: 30);

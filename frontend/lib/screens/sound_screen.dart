@@ -4,6 +4,9 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
+import '../services/audio_service.dart';
+import '../services/api_service.dart';
+import '../models/sonification.dart';
 
 /// Your Sound screen with frequency breakdown.
 class SoundScreen extends StatefulWidget {
@@ -14,7 +17,21 @@ class SoundScreen extends StatefulWidget {
 }
 
 class _SoundScreenState extends State<SoundScreen> {
+  final AudioService _audioService = AudioService();
+  final ApiService _apiService = ApiService();
+  
   bool _isPlaying = false;
+  bool _isLoading = false;
+  ChartSonification? _sonification;
+  String? _errorMessage;
+
+  // Mock birth data - in production, this would come from user profile
+  final _birthData = {
+    'datetime': '1990-07-15T15:42:00',
+    'latitude': 34.0522,
+    'longitude': -118.2437,
+    'timezone': 'America/Los_Angeles',
+  };
 
   final soundProfile = {
     'name': 'Paul',
@@ -24,20 +41,111 @@ class _SoundScreenState extends State<SoundScreen> {
     'element': 'Water',
   };
 
-  final frequencyBreakdown = [
-    {'planet': 'Sun', 'sign': 'Cancer', 'frequency': '528 Hz', 'color': AppColors.electricYellow, 'description': 'Core essence • Nurturing vibration', 'symbol': '☉'},
-    {'planet': 'Moon', 'sign': 'Scorpio', 'frequency': '432 Hz', 'color': AppColors.hotPink, 'description': 'Emotional depth • Transformative pulse', 'symbol': '☽'},
-    {'planet': 'Rising', 'sign': 'Libra', 'frequency': '396 Hz', 'color': AppColors.cosmicPurple, 'description': 'Outer expression • Harmonic balance', 'symbol': '↑'},
-    {'planet': 'Mercury', 'sign': 'Leo', 'frequency': '741 Hz', 'color': AppColors.teal, 'description': 'Communication • Creative expression', 'symbol': '☿'},
-    {'planet': 'Venus', 'sign': 'Gemini', 'frequency': '639 Hz', 'color': AppColors.orange, 'description': 'Love language • Curious connection', 'symbol': '♀'},
-    {'planet': 'Mars', 'sign': 'Taurus', 'frequency': '417 Hz', 'color': AppColors.red, 'description': 'Drive • Steady determination', 'symbol': '♂'},
-  ];
+  List<Map<String, dynamic>> get frequencyBreakdown {
+    if (_sonification == null) {
+      // Return mock data while loading
+      return [
+        {'planet': 'Sun', 'sign': 'Cancer', 'frequency': '126 Hz', 'color': AppColors.electricYellow, 'description': 'Core essence • Nurturing vibration', 'symbol': '☉'},
+        {'planet': 'Moon', 'sign': 'Scorpio', 'frequency': '210 Hz', 'color': AppColors.hotPink, 'description': 'Emotional depth • Transformative pulse', 'symbol': '☽'},
+        {'planet': 'Mercury', 'sign': 'Leo', 'frequency': '141 Hz', 'color': AppColors.teal, 'description': 'Communication • Creative expression', 'symbol': '☿'},
+        {'planet': 'Venus', 'sign': 'Gemini', 'frequency': '221 Hz', 'color': AppColors.orange, 'description': 'Love language • Curious connection', 'symbol': '♀'},
+        {'planet': 'Mars', 'sign': 'Taurus', 'frequency': '145 Hz', 'color': AppColors.red, 'description': 'Drive • Steady determination', 'symbol': '♂'},
+      ];
+    }
+    
+    // Build from actual sonification data
+    final planetColors = {
+      'Sun': AppColors.electricYellow,
+      'Moon': AppColors.hotPink,
+      'Mercury': AppColors.teal,
+      'Venus': AppColors.orange,
+      'Mars': AppColors.red,
+      'Jupiter': AppColors.cosmicPurple,
+      'Saturn': AppColors.glassBorder,
+      'Uranus': AppColors.teal,
+      'Neptune': AppColors.cosmicPurple,
+      'Pluto': AppColors.hotPink,
+    };
+    
+    final planetSymbols = {
+      'Sun': '☉', 'Moon': '☽', 'Mercury': '☿', 'Venus': '♀',
+      'Mars': '♂', 'Jupiter': '♃', 'Saturn': '♄', 'Uranus': '♅',
+      'Neptune': '♆', 'Pluto': '♇',
+    };
+    
+    return _sonification!.planets.map((p) {
+      return {
+        'planet': p.planet,
+        'sign': p.sign,
+        'frequency': '${p.frequency.toStringAsFixed(0)} Hz',
+        'color': planetColors[p.planet] ?? AppColors.electricYellow,
+        'description': 'House ${p.house} • ${(p.intensity * 100).toStringAsFixed(0)}% intensity',
+        'symbol': planetSymbols[p.planet] ?? '★',
+      };
+    }).toList();
+  }
 
   final todaysInfluence = {
     'transit': 'Moon conjunct your natal Pluto',
     'effect': 'Your sound carries extra intensity today. Deep bass frequencies are amplified.',
     'shift': '+12% depth',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSonification();
+    _audioService.playingStream.listen((isPlaying) {
+      if (mounted) {
+        setState(() => _isPlaying = isPlaying);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioService.dispose();
+    _apiService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSonification() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final sonification = await _apiService.getUserSonification(
+        datetime: _birthData['datetime'] as String,
+        latitude: _birthData['latitude'] as double,
+        longitude: _birthData['longitude'] as double,
+        timezone: _birthData['timezone'] as String,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _sonification = sonification;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Could not load sound data';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _togglePlayback() {
+    if (_isPlaying) {
+      _audioService.stop();
+    } else if (_sonification != null) {
+      _audioService.playChartSound(_sonification!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,36 +253,50 @@ class _SoundScreenState extends State<SoundScreen> {
   }
 
   Widget _buildPlayButton() {
+    final isDisabled = _isLoading || _sonification == null;
+    
     return Container(
       decoration: BoxDecoration(
-        gradient: _isPlaying
+        gradient: _isPlaying || isDisabled
             ? null
             : const LinearGradient(colors: [AppColors.hotPink, AppColors.cosmicPurple]),
-        color: _isPlaying ? AppColors.hotPink.withAlpha(51) : null,
+        color: _isPlaying ? AppColors.hotPink.withAlpha(51) : (isDisabled ? Colors.grey.withAlpha(51) : null),
         borderRadius: BorderRadius.circular(16),
         border: _isPlaying ? Border.all(color: AppColors.hotPink, width: 2) : null,
-        boxShadow: _isPlaying
+        boxShadow: _isPlaying || isDisabled
             ? null
             : [BoxShadow(color: AppColors.hotPink.withAlpha(77), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => setState(() => _isPlaying = !_isPlaying),
+          onTap: isDisabled ? null : _togglePlayback,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                if (_isLoading)
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                else
+                  Icon(
+                    _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 const SizedBox(width: 12),
                 Text(
-                  _isPlaying ? 'Pause Your Sound' : 'Play Your Sound',
+                  _isLoading 
+                      ? 'Loading Sound...' 
+                      : (_isPlaying ? 'Pause Your Sound' : 'Play Your Sound'),
                   style: GoogleFonts.syne(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

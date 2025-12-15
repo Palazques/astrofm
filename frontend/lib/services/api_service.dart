@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/natal_chart.dart';
 import '../models/location.dart';
+import '../models/sonification.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -87,6 +88,70 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to calculate chart',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get sonification data for a user's birth chart.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<ChartSonification> getUserSonification({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.userSonificationEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return ChartSonification.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get sonification',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get sonification data for today's planetary transits.
+  ///
+  /// [latitude] - Observer latitude (optional, default: 0)
+  /// [longitude] - Observer longitude (optional, default: 0)
+  Future<ChartSonification> getDailySonification({
+    double latitude = 0.0,
+    double longitude = 0.0,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}${ApiConfig.dailySonificationEndpoint}',
+    ).replace(queryParameters: {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+    });
+
+    final response = await _client.get(uri).timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return ChartSonification.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get daily sonification',
         statusCode: response.statusCode,
       );
     }

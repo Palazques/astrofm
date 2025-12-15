@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes.charts import router as charts_router
 from api.routes.geocoding import router as geocoding_router
+from api.routes.sonification import router as sonification_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
 
@@ -63,6 +64,7 @@ app.add_middleware(
 # Include routers
 app.include_router(charts_router)
 app.include_router(geocoding_router)
+app.include_router(sonification_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

@@ -4,6 +4,9 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
+import '../services/audio_service.dart';
+import '../services/api_service.dart';
+import '../models/sonification.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -14,6 +17,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final AudioService _audioService = AudioService();
+  final ApiService _apiService = ApiService();
+  
+  bool _isPlayingUserSound = false;
+  bool _isPlayingDailySound = false;
+  ChartSonification? _userSonification;
+  ChartSonification? _dailySonification;
+
+  // Mock birth data - in production, this would come from user profile
+  final _birthData = {
+    'datetime': '1990-07-15T15:42:00',
+    'latitude': 34.0522,
+    'longitude': -118.2437,
+    'timezone': 'America/Los_Angeles',
+  };
+
   final todaysReading = {
     'sign': 'Scorpio',
     'date': 'December 12, 2025',
@@ -36,6 +55,82 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   final alignmentScore = 78;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSonificationData();
+    _audioService.playingStream.listen((isPlaying) {
+      if (mounted && !isPlaying) {
+        setState(() {
+          _isPlayingUserSound = false;
+          _isPlayingDailySound = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioService.dispose();
+    _apiService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSonificationData() async {
+    try {
+      // Load user's sound
+      final userSonification = await _apiService.getUserSonification(
+        datetime: _birthData['datetime'] as String,
+        latitude: _birthData['latitude'] as double,
+        longitude: _birthData['longitude'] as double,
+        timezone: _birthData['timezone'] as String,
+      );
+      
+      // Load daily sound
+      final dailySonification = await _apiService.getDailySonification(
+        latitude: _birthData['latitude'] as double,
+        longitude: _birthData['longitude'] as double,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _userSonification = userSonification;
+          _dailySonification = dailySonification;
+        });
+      }
+    } catch (e) {
+      // Silently fail - orbs will just be decorative if API fails
+    }
+  }
+
+  void _playUserSound() {
+    if (_isPlayingUserSound) {
+      _audioService.stop();
+      setState(() => _isPlayingUserSound = false);
+    } else if (_userSonification != null) {
+      _audioService.stop();
+      _audioService.playChartSound(_userSonification!);
+      setState(() {
+        _isPlayingUserSound = true;
+        _isPlayingDailySound = false;
+      });
+    }
+  }
+
+  void _playDailySound() {
+    if (_isPlayingDailySound) {
+      _audioService.stop();
+      setState(() => _isPlayingDailySound = false);
+    } else if (_dailySonification != null) {
+      _audioService.stop();
+      _audioService.playChartSound(_dailySonification!);
+      setState(() {
+        _isPlayingDailySound = true;
+        _isPlayingUserSound = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,30 +172,34 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               // Your Sound Orb
-              Column(
-                children: [
-                  const SoundOrb(
-                    size: 100,
-                    colors: [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'YOUR SOUND',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      color: Colors.white.withAlpha(128),
-                      letterSpacing: 2,
+              GestureDetector(
+                onTap: _playUserSound,
+                child: Column(
+                  children: [
+                    SoundOrb(
+                      size: 100,
+                      colors: const [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
+                      animate: _isPlayingUserSound,
                     ),
-                  ),
-                  Text(
-                    'Unique to You',
-                    style: GoogleFonts.syne(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.hotPink,
+                    const SizedBox(height: 12),
+                    Text(
+                      'YOUR SOUND',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: Colors.white.withAlpha(128),
+                        letterSpacing: 2,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      _isPlayingUserSound ? 'Playing...' : 'Tap to Play',
+                      style: GoogleFonts.syne(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.hotPink,
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // Connection indicator
@@ -142,30 +241,34 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               // Today's Sound Orb
-              Column(
-                children: [
-                  const SoundOrb(
-                    size: 100,
-                    colors: [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'TODAY\'S SOUND',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      color: Colors.white.withAlpha(128),
-                      letterSpacing: 2,
+              GestureDetector(
+                onTap: _playDailySound,
+                child: Column(
+                  children: [
+                    SoundOrb(
+                      size: 100,
+                      colors: const [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
+                      animate: _isPlayingDailySound,
                     ),
-                  ),
-                  Text(
-                    'Cosmic Frequency',
-                    style: GoogleFonts.syne(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.electricYellow,
+                    const SizedBox(height: 12),
+                    Text(
+                      'TODAY\'S SOUND',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: Colors.white.withAlpha(128),
+                        letterSpacing: 2,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      _isPlayingDailySound ? 'Playing...' : 'Tap to Play',
+                      style: GoogleFonts.syne(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.electricYellow,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
