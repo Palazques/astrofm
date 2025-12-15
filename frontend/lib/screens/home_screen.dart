@@ -7,6 +7,7 @@ import '../widgets/sound_orb.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../models/sonification.dart';
+import '../models/ai_responses.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -24,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isPlayingDailySound = false;
   ChartSonification? _userSonification;
   ChartSonification? _dailySonification;
+  DailyReading? _dailyReading;
+  bool _isLoadingReading = false;
 
   // Mock birth data - in production, this would come from user profile
   final _birthData = {
@@ -33,14 +36,22 @@ class _HomeScreenState extends State<HomeScreen> {
     'timezone': 'America/Los_Angeles',
   };
 
-  final todaysReading = {
+  // Fallback data when API is unavailable
+  Map<String, String> get todaysReading => {
     'sign': 'Scorpio',
-    'date': 'December 12, 2025',
-    'energy': 'Transformative',
-    'mood': 'Deep House → Ambient',
-    'bpm': '118-122',
-    'vibe': 'The moon\'s opposition to Pluto invites you to shed old patterns. Your sonic medicine today is hypnotic, pulsing rhythms that mirror your internal metamorphosis.',
+    'date': _formatCurrentDate(),
+    'energy': _dailyReading?.energyLabel ?? 'Transformative',
+    'mood': _dailyReading?.mood ?? 'Loading...',
+    'bpm': _dailyReading?.playlistParams.bpmRange ?? '---',
+    'vibe': _dailyReading?.reading ?? 'Connecting to the cosmos...',
   };
+  
+  String _formatCurrentDate() {
+    final now = DateTime.now();
+    final months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return '${months[now.month - 1]} ${now.day}, ${now.year}';
+  }
 
   final alignedFriends = [
     {'name': 'Maya', 'color1': const Color(0xFFFF59D0), 'color2': const Color(0xFF7D67FE)},
@@ -101,6 +112,36 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       // Silently fail - orbs will just be decorative if API fails
+    }
+    
+    // Load AI-generated daily reading
+    _loadDailyReading();
+  }
+  
+  Future<void> _loadDailyReading() async {
+    if (_isLoadingReading) return;
+    
+    setState(() => _isLoadingReading = true);
+    
+    try {
+      final reading = await _apiService.getDailyReading(
+        datetime: _birthData['datetime'] as String,
+        latitude: _birthData['latitude'] as double,
+        longitude: _birthData['longitude'] as double,
+        timezone: _birthData['timezone'] as String,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _dailyReading = reading;
+          _isLoadingReading = false;
+        });
+      }
+    } catch (e) {
+      // Keep fallback data on error
+      if (mounted) {
+        setState(() => _isLoadingReading = false);
+      }
     }
   }
 

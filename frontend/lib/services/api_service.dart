@@ -4,6 +4,7 @@ import '../config/api_config.dart';
 import '../models/natal_chart.dart';
 import '../models/location.dart';
 import '../models/sonification.dart';
+import '../models/ai_responses.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -152,6 +153,119 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get daily sonification',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get AI-generated daily reading with playlist parameters.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<DailyReading> getDailyReading({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.dailyReadingEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return DailyReading.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get daily reading',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get AI interpretation of alignment between user and target.
+  ///
+  /// If target parameters are null, aligns with today's transits.
+  Future<AlignmentInterpretation> getAlignmentInterpretation({
+    required String userDatetime,
+    required double userLatitude,
+    required double userLongitude,
+    String? targetDatetime,
+    double? targetLatitude,
+    double? targetLongitude,
+  }) async {
+    final body = {
+      'user_datetime': userDatetime,
+      'user_latitude': userLatitude,
+      'user_longitude': userLongitude,
+    };
+    
+    if (targetDatetime != null) {
+      body['target_datetime'] = targetDatetime;
+      body['target_latitude'] = targetLatitude;
+      body['target_longitude'] = targetLongitude;
+    }
+
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.interpretAlignmentEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return AlignmentInterpretation.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get alignment interpretation',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get AI-generated compatibility analysis between two people.
+  Future<CompatibilityResult> getCompatibility({
+    required String userDatetime,
+    required double userLatitude,
+    required double userLongitude,
+    required String friendDatetime,
+    required double friendLatitude,
+    required double friendLongitude,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.compatibilityEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_datetime': userDatetime,
+            'user_latitude': userLatitude,
+            'user_longitude': userLongitude,
+            'friend_datetime': friendDatetime,
+            'friend_latitude': friendLatitude,
+            'friend_longitude': friendLongitude,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return CompatibilityResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get compatibility',
         statusCode: response.statusCode,
       );
     }

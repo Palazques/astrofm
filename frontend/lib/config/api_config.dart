@@ -11,6 +11,11 @@ class ApiConfig {
   static const String userSonificationEndpoint = '/api/sonification/user';
   static const String dailySonificationEndpoint = '/api/sonification/daily';
   
+  // AI endpoints
+  static const String dailyReadingEndpoint = '/api/ai/daily-reading';
+  static const String interpretAlignmentEndpoint = '/api/ai/interpret-alignment';
+  static const String compatibilityEndpoint = '/api/ai/compatibility';
+  
   /// Timeout duration for API calls
   static const Duration timeout = Duration(seconds: 30);
 }
