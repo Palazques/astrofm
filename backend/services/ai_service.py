@@ -89,15 +89,19 @@ For playlist parameters, always include as JSON on a separate line:
         # Configure Gemini if available
         if GEMINI_AVAILABLE and self._gemini_key:
             genai.configure(api_key=self._gemini_key)
-            self._gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+            self._gemini_model = genai.GenerativeModel("gemini-flash-latest")
+            print("[AIService] Configured Gemini provider")
         else:
             self._gemini_model = None
+            print("[AIService] Gemini NOT configured (missing key or library)")
         
         # Configure OpenAI if available
         if OPENAI_AVAILABLE and self._openai_key:
             self._openai_client = OpenAI(api_key=self._openai_key)
+            print("[AIService] Configured OpenAI provider")
         else:
             self._openai_client = None
+            print("[AIService] OpenAI NOT configured (missing key or library)")
     
     def _generate_cache_key(self, prefix: str, data: dict) -> str:
         """Generate a cache key from prefix and data."""
@@ -127,24 +131,36 @@ For playlist parameters, always include as JSON on a separate line:
         if not self._gemini_model:
             raise RuntimeError("Gemini not configured")
         
-        chat = self._gemini_model.start_chat(history=[])
-        response = chat.send_message(f"{self.SYSTEM_PROMPT}\n\n{prompt}")
-        return response.text
+        print(f"[AIService] Calling Gemini...")
+        try:
+            chat = self._gemini_model.start_chat(history=[])
+            response = chat.send_message(f"{self.SYSTEM_PROMPT}\n\n{prompt}")
+            print(f"[AIService] Gemini response received")
+            return response.text
+        except Exception as e:
+            print(f"[AIService] Gemini error: {e}")
+            raise
     
     def _call_openai(self, prompt: str) -> str:
         """Call OpenAI API as fallback."""
         if not self._openai_client:
             raise RuntimeError("OpenAI not configured")
         
-        response = self._openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=1000,
-        )
-        return response.choices[0].message.content
+        print(f"[AIService] Calling OpenAI...")
+        try:
+            response = self._openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": self.SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=1000,
+            )
+            print(f"[AIService] OpenAI response received")
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"[AIService] OpenAI error: {e}")
+            raise
     
     def _generate_response(self, prompt: str) -> str:
         """Generate AI response with fallback."""

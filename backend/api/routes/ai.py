@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
 @router.post("/daily-reading", response_model=DailyReadingResponse)
-async def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse:
+def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse:
     """
     Generate a personalized daily reading with playlist parameters.
     
@@ -58,7 +58,7 @@ async def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingRe
 
 
 @router.post("/interpret-alignment", response_model=AlignmentInterpretation)
-async def interpret_alignment(request: AlignmentRequest) -> AlignmentInterpretation:
+def interpret_alignment(request: AlignmentRequest) -> AlignmentInterpretation:
     """
     Generate an interpretation of alignment between user and target.
     
@@ -99,7 +99,7 @@ async def interpret_alignment(request: AlignmentRequest) -> AlignmentInterpretat
 
 
 @router.post("/compatibility", response_model=CompatibilityResponse)
-async def analyze_compatibility(request: CompatibilityRequest) -> CompatibilityResponse:
+def analyze_compatibility(request: CompatibilityRequest) -> CompatibilityResponse:
     """
     Generate a compatibility analysis between two people.
     """
