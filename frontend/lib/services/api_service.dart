@@ -5,6 +5,7 @@ import '../models/natal_chart.dart';
 import '../models/location.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
+import '../models/playlist.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -205,7 +206,7 @@ class ApiService {
     double? targetLatitude,
     double? targetLongitude,
   }) async {
-    final body = {
+    final Map<String, dynamic> body = {
       'user_datetime': userDatetime,
       'user_latitude': userLatitude,
       'user_longitude': userLongitude,
@@ -266,6 +267,45 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get compatibility',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Generate a personalized playlist based on birth chart data.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  /// [playlistSize] - Number of songs to generate (default: 20)
+  Future<PlaylistResult> generatePlaylist({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+    int playlistSize = 20,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/playlist/generate'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'birth_datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+            'playlist_size': playlistSize,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return PlaylistResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to generate playlist',
         statusCode: response.statusCode,
       );
     }

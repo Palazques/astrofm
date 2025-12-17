@@ -1,0 +1,3644 @@
+[
+  {
+    "id": "song_001",
+    "title": "Skinny Love",
+    "artist": "Bon Iver",
+    "album": "For Emma, Forever Ago",
+    "duration_seconds": 232,
+    "bpm": 76,
+    "energy": 35,
+    "valence": 25,
+    "danceability": 28,
+    "acousticness": 92,
+    "instrumentalness": 5,
+    "genres": [
+      "Folk",
+      "Acoustic"
+    ],
+    "moods": [
+      "Melancholic",
+      "Bittersweet",
+      "Lonely",
+      "Contemplative"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Saturn"
+    ],
+    "intensity": 72,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_002",
+    "title": "Teardrop",
+    "artist": "Massive Attack",
+    "album": "Mezzanine",
+    "duration_seconds": 331,
+    "bpm": 80,
+    "energy": 45,
+    "valence": 35,
+    "danceability": 52,
+    "acousticness": 25,
+    "instrumentalness": 40,
+    "genres": [
+      "Downtempo",
+      "Ambient"
+    ],
+    "moods": [
+      "Mysterious",
+      "Hypnotic",
+      "Melancholic",
+      "Ethereal"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Moon"
+    ],
+    "intensity": 68,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_003",
+    "title": "The Night We Met",
+    "artist": "Lord Huron",
+    "album": "Strange Trails",
+    "duration_seconds": 207,
+    "bpm": 72,
+    "energy": 40,
+    "valence": 40,
+    "danceability": 35,
+    "acousticness": 65,
+    "instrumentalness": 10,
+    "genres": [
+      "Folk",
+      "Alternative"
+    ],
+    "moods": [
+      "Nostalgic",
+      "Melancholic",
+      "Bittersweet",
+      "Lonely"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Neptune"
+    ],
+    "intensity": 75,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_004",
+    "title": "Liability",
+    "artist": "Lorde",
+    "album": "Melodrama",
+    "duration_seconds": 175,
+    "bpm": 60,
+    "energy": 28,
+    "valence": 18,
+    "danceability": 22,
+    "acousticness": 88,
+    "instrumentalness": 2,
+    "genres": [
+      "Pop",
+      "Singer-Songwriter"
+    ],
+    "moods": [
+      "Lonely",
+      "Melancholic",
+      "Contemplative",
+      "Bittersweet"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Saturn"
+    ],
+    "intensity": 70,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_005",
+    "title": "Nude",
+    "artist": "Radiohead",
+    "album": "In Rainbows",
+    "duration_seconds": 255,
+    "bpm": 64,
+    "energy": 32,
+    "valence": 28,
+    "danceability": 18,
+    "acousticness": 45,
+    "instrumentalness": 35,
+    "genres": [
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Ethereal",
+      "Contemplative",
+      "Melancholic",
+      "Transcendent"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Moon",
+      "Uranus"
+    ],
+    "intensity": 65,
+    "modality": "Mutable",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_006",
+    "title": "Pink + White",
+    "artist": "Frank Ocean",
+    "album": "Blonde",
+    "duration_seconds": 183,
+    "bpm": 80,
+    "energy": 42,
+    "valence": 55,
+    "danceability": 48,
+    "acousticness": 35,
+    "instrumentalness": 8,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Nostalgic",
+      "Dreamy",
+      "Bittersweet",
+      "Hopeful"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Neptune"
+    ],
+    "intensity": 58,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_007",
+    "title": "Motion Sickness",
+    "artist": "Phoebe Bridgers",
+    "album": "Stranger in the Alps",
+    "duration_seconds": 266,
+    "bpm": 92,
+    "energy": 48,
+    "valence": 30,
+    "danceability": 42,
+    "acousticness": 55,
+    "instrumentalness": 5,
+    "genres": [
+      "Indie Rock",
+      "Singer-Songwriter"
+    ],
+    "moods": [
+      "Bittersweet",
+      "Melancholic",
+      "Contemplative"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Mercury"
+    ],
+    "intensity": 62,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_008",
+    "title": "Apocalypse",
+    "artist": "Cigarettes After Sex",
+    "album": "Cigarettes After Sex",
+    "duration_seconds": 360,
+    "bpm": 68,
+    "energy": 25,
+    "valence": 38,
+    "danceability": 30,
+    "acousticness": 72,
+    "instrumentalness": 15,
+    "genres": [
+      "Ambient",
+      "Shoegaze"
+    ],
+    "moods": [
+      "Dreamy",
+      "Romantic",
+      "Hypnotic",
+      "Ethereal"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Venus"
+    ],
+    "intensity": 55,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_009",
+    "title": "Sober",
+    "artist": "Childish Gambino",
+    "album": "Awaken, My Love!",
+    "duration_seconds": 313,
+    "bpm": 78,
+    "energy": 38,
+    "valence": 42,
+    "danceability": 55,
+    "acousticness": 40,
+    "instrumentalness": 12,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Sensual",
+      "Contemplative",
+      "Romantic"
+    ],
+    "elements": [
+      "Water",
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon"
+    ],
+    "intensity": 60,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_010",
+    "title": "Outro",
+    "artist": "M83",
+    "album": "Hurry Up, We're Dreaming",
+    "duration_seconds": 312,
+    "bpm": 78,
+    "energy": 65,
+    "valence": 68,
+    "danceability": 35,
+    "acousticness": 20,
+    "instrumentalness": 60,
+    "genres": [
+      "Synthwave",
+      "Post-Rock"
+    ],
+    "moods": [
+      "Euphoric",
+      "Transcendent",
+      "Hopeful",
+      "Ethereal"
+    ],
+    "elements": [
+      "Water",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Jupiter",
+      "Sun"
+    ],
+    "intensity": 85,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_011",
+    "title": "Can't Hold Us",
+    "artist": "Macklemore & Ryan Lewis",
+    "album": "The Heist",
+    "duration_seconds": 258,
+    "bpm": 146,
+    "energy": 95,
+    "valence": 88,
+    "danceability": 82,
+    "acousticness": 2,
+    "instrumentalness": 5,
+    "genres": [
+      "Hip Hop",
+      "Pop"
+    ],
+    "moods": [
+      "Energizing",
+      "Euphoric",
+      "Empowering"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Jupiter",
+      "Sun"
+    ],
+    "intensity": 95,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_012",
+    "title": "Lose Yourself",
+    "artist": "Eminem",
+    "album": "8 Mile Soundtrack",
+    "duration_seconds": 326,
+    "bpm": 86,
+    "energy": 88,
+    "valence": 48,
+    "danceability": 68,
+    "acousticness": 5,
+    "instrumentalness": 2,
+    "genres": [
+      "Hip Hop"
+    ],
+    "moods": [
+      "Empowering",
+      "Aggressive",
+      "Focused"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Pluto",
+      "Sun"
+    ],
+    "intensity": 92,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_013",
+    "title": "Enter Sandman",
+    "artist": "Metallica",
+    "album": "Metallica",
+    "duration_seconds": 332,
+    "bpm": 123,
+    "energy": 92,
+    "valence": 35,
+    "danceability": 45,
+    "acousticness": 2,
+    "instrumentalness": 15,
+    "genres": [
+      "Metal",
+      "Rock"
+    ],
+    "moods": [
+      "Aggressive",
+      "Dark",
+      "Empowering"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Pluto"
+    ],
+    "intensity": 95,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_014",
+    "title": "Blinding Lights",
+    "artist": "The Weeknd",
+    "album": "After Hours",
+    "duration_seconds": 200,
+    "bpm": 171,
+    "energy": 78,
+    "valence": 62,
+    "danceability": 85,
+    "acousticness": 2,
+    "instrumentalness": 8,
+    "genres": [
+      "Synthwave",
+      "Pop",
+      "R&B"
+    ],
+    "moods": [
+      "Energizing",
+      "Nostalgic",
+      "Euphoric"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Venus",
+      "Mars"
+    ],
+    "intensity": 82,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_015",
+    "title": "Strobe",
+    "artist": "deadmau5",
+    "album": "For Lack of a Better Name",
+    "duration_seconds": 637,
+    "bpm": 128,
+    "energy": 75,
+    "valence": 55,
+    "danceability": 62,
+    "acousticness": 2,
+    "instrumentalness": 95,
+    "genres": [
+      "Trance",
+      "Techno"
+    ],
+    "moods": [
+      "Euphoric",
+      "Hypnotic",
+      "Transcendent"
+    ],
+    "elements": [
+      "Fire",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Neptune",
+      "Uranus"
+    ],
+    "intensity": 88,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_016",
+    "title": "Titanium",
+    "artist": "David Guetta ft. Sia",
+    "album": "Nothing but the Beat",
+    "duration_seconds": 245,
+    "bpm": 126,
+    "energy": 85,
+    "valence": 72,
+    "danceability": 78,
+    "acousticness": 5,
+    "instrumentalness": 10,
+    "genres": [
+      "Deep House",
+      "Pop"
+    ],
+    "moods": [
+      "Empowering",
+      "Uplifting",
+      "Euphoric"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Mars",
+      "Jupiter"
+    ],
+    "intensity": 88,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_017",
+    "title": "Seven Nation Army",
+    "artist": "The White Stripes",
+    "album": "Elephant",
+    "duration_seconds": 232,
+    "bpm": 124,
+    "energy": 82,
+    "valence": 45,
+    "danceability": 65,
+    "acousticness": 8,
+    "instrumentalness": 25,
+    "genres": [
+      "Rock",
+      "Alternative"
+    ],
+    "moods": [
+      "Aggressive",
+      "Empowering",
+      "Rebellious"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Sun"
+    ],
+    "intensity": 85,
+    "modality": "Fixed",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_018",
+    "title": "Levels",
+    "artist": "Avicii",
+    "album": "True",
+    "duration_seconds": 203,
+    "bpm": 126,
+    "energy": 90,
+    "valence": 85,
+    "danceability": 88,
+    "acousticness": 5,
+    "instrumentalness": 65,
+    "genres": [
+      "Deep House",
+      "Trance"
+    ],
+    "moods": [
+      "Euphoric",
+      "Energizing",
+      "Uplifting",
+      "Playful"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Jupiter",
+      "Sun",
+      "Venus"
+    ],
+    "intensity": 90,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_019",
+    "title": "Stronger",
+    "artist": "Kanye West",
+    "album": "Graduation",
+    "duration_seconds": 312,
+    "bpm": 104,
+    "energy": 82,
+    "valence": 65,
+    "danceability": 75,
+    "acousticness": 2,
+    "instrumentalness": 15,
+    "genres": [
+      "Hip Hop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Empowering",
+      "Energizing",
+      "Playful"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Mars",
+      "Jupiter"
+    ],
+    "intensity": 85,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_020",
+    "title": "Run the World (Girls)",
+    "artist": "Beyonce",
+    "album": "4",
+    "duration_seconds": 236,
+    "bpm": 127,
+    "energy": 88,
+    "valence": 72,
+    "danceability": 85,
+    "acousticness": 2,
+    "instrumentalness": 5,
+    "genres": [
+      "Pop",
+      "R&B"
+    ],
+    "moods": [
+      "Empowering",
+      "Energizing",
+      "Aggressive"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Sun",
+      "Pluto"
+    ],
+    "intensity": 90,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_021",
+    "title": "Mr. Brightside",
+    "artist": "The Killers",
+    "album": "Hot Fuss",
+    "duration_seconds": 222,
+    "bpm": 148,
+    "energy": 85,
+    "valence": 52,
+    "danceability": 75,
+    "acousticness": 5,
+    "instrumentalness": 8,
+    "genres": [
+      "Indie Rock",
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Energizing",
+      "Anxious",
+      "Bittersweet"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Mercury",
+      "Sun"
+    ],
+    "intensity": 82,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_022",
+    "title": "Uptown Funk",
+    "artist": "Mark Ronson ft. Bruno Mars",
+    "album": "Uptown Special",
+    "duration_seconds": 270,
+    "bpm": 115,
+    "energy": 92,
+    "valence": 95,
+    "danceability": 92,
+    "acousticness": 5,
+    "instrumentalness": 5,
+    "genres": [
+      "Pop",
+      "R&B"
+    ],
+    "moods": [
+      "Playful",
+      "Energizing",
+      "Euphoric",
+      "Uplifting"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Jupiter",
+      "Venus"
+    ],
+    "intensity": 92,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_023",
+    "title": "Born This Way",
+    "artist": "Lady Gaga",
+    "album": "Born This Way",
+    "duration_seconds": 260,
+    "bpm": 124,
+    "energy": 88,
+    "valence": 78,
+    "danceability": 80,
+    "acousticness": 2,
+    "instrumentalness": 5,
+    "genres": [
+      "Pop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Empowering",
+      "Euphoric",
+      "Uplifting"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Jupiter",
+      "Uranus"
+    ],
+    "intensity": 88,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_024",
+    "title": "Sail",
+    "artist": "AWOLNATION",
+    "album": "Megalithic Symphony",
+    "duration_seconds": 259,
+    "bpm": 120,
+    "energy": 78,
+    "valence": 35,
+    "danceability": 62,
+    "acousticness": 5,
+    "instrumentalness": 20,
+    "genres": [
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Dark",
+      "Aggressive",
+      "Rebellious",
+      "Mysterious"
+    ],
+    "elements": [
+      "Fire",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Pluto",
+      "Uranus"
+    ],
+    "intensity": 82,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_025",
+    "title": "Radioactive",
+    "artist": "Imagine Dragons",
+    "album": "Night Visions",
+    "duration_seconds": 187,
+    "bpm": 136,
+    "energy": 85,
+    "valence": 45,
+    "danceability": 52,
+    "acousticness": 5,
+    "instrumentalness": 10,
+    "genres": [
+      "Alternative",
+      "Rock",
+      "Metal"
+    ],
+    "moods": [
+      "Empowering",
+      "Dark",
+      "Rebellious"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Pluto",
+      "Sun"
+    ],
+    "intensity": 88,
+    "modality": "Fixed",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_026",
+    "title": "The Less I Know The Better",
+    "artist": "Tame Impala",
+    "album": "Currents",
+    "duration_seconds": 218,
+    "bpm": 116,
+    "energy": 65,
+    "valence": 58,
+    "danceability": 72,
+    "acousticness": 10,
+    "instrumentalness": 35,
+    "genres": [
+      "Indie Pop",
+      "Alternative"
+    ],
+    "moods": [
+      "Sensual",
+      "Hypnotic",
+      "Bittersweet"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Neptune"
+    ],
+    "intensity": 68,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_027",
+    "title": "Sexual Healing",
+    "artist": "Marvin Gaye",
+    "album": "Midnight Love",
+    "duration_seconds": 239,
+    "bpm": 96,
+    "energy": 55,
+    "valence": 75,
+    "danceability": 78,
+    "acousticness": 35,
+    "instrumentalness": 15,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Sensual",
+      "Romantic",
+      "Peaceful"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon"
+    ],
+    "intensity": 62,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_028",
+    "title": "Electric Feel",
+    "artist": "MGMT",
+    "album": "Oracular Spectacular",
+    "duration_seconds": 229,
+    "bpm": 118,
+    "energy": 72,
+    "valence": 82,
+    "danceability": 85,
+    "acousticness": 15,
+    "instrumentalness": 25,
+    "genres": [
+      "Indie Pop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Playful",
+      "Sensual",
+      "Euphoric"
+    ],
+    "elements": [
+      "Earth",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Jupiter"
+    ],
+    "intensity": 75,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_029",
+    "title": "Let's Stay Together",
+    "artist": "Al Green",
+    "album": "Let's Stay Together",
+    "duration_seconds": 199,
+    "bpm": 98,
+    "energy": 52,
+    "valence": 85,
+    "danceability": 68,
+    "acousticness": 55,
+    "instrumentalness": 10,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Romantic",
+      "Peaceful",
+      "Hopeful",
+      "Uplifting"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon",
+      "Sun"
+    ],
+    "intensity": 58,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_030",
+    "title": "Harvest Moon",
+    "artist": "Neil Young",
+    "album": "Harvest Moon",
+    "duration_seconds": 312,
+    "bpm": 86,
+    "energy": 35,
+    "valence": 72,
+    "danceability": 42,
+    "acousticness": 88,
+    "instrumentalness": 15,
+    "genres": [
+      "Folk",
+      "Acoustic"
+    ],
+    "moods": [
+      "Romantic",
+      "Nostalgic",
+      "Peaceful",
+      "Contemplative"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon",
+      "Saturn"
+    ],
+    "intensity": 48,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_031",
+    "title": "Slow Dancing in a Burning Room",
+    "artist": "John Mayer",
+    "album": "Continuum",
+    "duration_seconds": 280,
+    "bpm": 74,
+    "energy": 45,
+    "valence": 32,
+    "danceability": 48,
+    "acousticness": 45,
+    "instrumentalness": 20,
+    "genres": [
+      "Rock",
+      "Singer-Songwriter"
+    ],
+    "moods": [
+      "Melancholic",
+      "Romantic",
+      "Bittersweet"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Saturn",
+      "Moon"
+    ],
+    "intensity": 68,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_032",
+    "title": "Put It On Me",
+    "artist": "Matt Maeson",
+    "album": "Bank on the Funeral",
+    "duration_seconds": 207,
+    "bpm": 88,
+    "energy": 58,
+    "valence": 38,
+    "danceability": 55,
+    "acousticness": 35,
+    "instrumentalness": 8,
+    "genres": [
+      "Alternative",
+      "Indie Rock"
+    ],
+    "moods": [
+      "Contemplative",
+      "Dark",
+      "Healing"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Saturn",
+      "Pluto"
+    ],
+    "intensity": 72,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_033",
+    "title": "Coffee",
+    "artist": "Beabadoobee",
+    "album": "Space Cadet",
+    "duration_seconds": 183,
+    "bpm": 96,
+    "energy": 45,
+    "valence": 65,
+    "danceability": 55,
+    "acousticness": 78,
+    "instrumentalness": 5,
+    "genres": [
+      "Indie Pop",
+      "Alternative"
+    ],
+    "moods": [
+      "Peaceful",
+      "Dreamy",
+      "Romantic"
+    ],
+    "elements": [
+      "Earth",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Mercury"
+    ],
+    "intensity": 42,
+    "modality": "Mutable",
+    "time_of_day": [
+      "morning"
+    ]
+  },
+  {
+    "id": "song_034",
+    "title": "Budapest",
+    "artist": "George Ezra",
+    "album": "Wanted on Voyage",
+    "duration_seconds": 199,
+    "bpm": 128,
+    "energy": 68,
+    "valence": 78,
+    "danceability": 72,
+    "acousticness": 55,
+    "instrumentalness": 5,
+    "genres": [
+      "Folk",
+      "Pop"
+    ],
+    "moods": [
+      "Romantic",
+      "Playful",
+      "Uplifting",
+      "Hopeful"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Sun",
+      "Jupiter"
+    ],
+    "intensity": 65,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_035",
+    "title": "Thinking Out Loud",
+    "artist": "Ed Sheeran",
+    "album": "X",
+    "duration_seconds": 281,
+    "bpm": 79,
+    "energy": 45,
+    "valence": 72,
+    "danceability": 78,
+    "acousticness": 48,
+    "instrumentalness": 2,
+    "genres": [
+      "Pop",
+      "Singer-Songwriter"
+    ],
+    "moods": [
+      "Romantic",
+      "Hopeful",
+      "Peaceful"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon"
+    ],
+    "intensity": 55,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_036",
+    "title": "Green Eyes",
+    "artist": "Coldplay",
+    "album": "A Rush of Blood to the Head",
+    "duration_seconds": 222,
+    "bpm": 132,
+    "energy": 52,
+    "valence": 45,
+    "danceability": 45,
+    "acousticness": 65,
+    "instrumentalness": 5,
+    "genres": [
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Romantic",
+      "Bittersweet",
+      "Nostalgic"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon"
+    ],
+    "intensity": 58,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_037",
+    "title": "Lovely Day",
+    "artist": "Bill Withers",
+    "album": "Menagerie",
+    "duration_seconds": 254,
+    "bpm": 98,
+    "energy": 62,
+    "valence": 92,
+    "danceability": 72,
+    "acousticness": 45,
+    "instrumentalness": 10,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Uplifting",
+      "Hopeful",
+      "Peaceful",
+      "Playful"
+    ],
+    "elements": [
+      "Earth",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Venus",
+      "Jupiter"
+    ],
+    "intensity": 68,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning"
+    ]
+  },
+  {
+    "id": "song_038",
+    "title": "Fast Car",
+    "artist": "Tracy Chapman",
+    "album": "Tracy Chapman",
+    "duration_seconds": 295,
+    "bpm": 104,
+    "energy": 55,
+    "valence": 42,
+    "danceability": 55,
+    "acousticness": 75,
+    "instrumentalness": 5,
+    "genres": [
+      "Folk",
+      "Singer-Songwriter"
+    ],
+    "moods": [
+      "Hopeful",
+      "Bittersweet",
+      "Contemplative",
+      "Nostalgic"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Saturn",
+      "Jupiter",
+      "Mercury"
+    ],
+    "intensity": 65,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_039",
+    "title": "Ho Hey",
+    "artist": "The Lumineers",
+    "album": "The Lumineers",
+    "duration_seconds": 163,
+    "bpm": 80,
+    "energy": 58,
+    "valence": 75,
+    "danceability": 62,
+    "acousticness": 82,
+    "instrumentalness": 2,
+    "genres": [
+      "Folk",
+      "Indie Rock"
+    ],
+    "moods": [
+      "Romantic",
+      "Hopeful",
+      "Playful"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Sun"
+    ],
+    "intensity": 55,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_040",
+    "title": "Stand By Me",
+    "artist": "Ben E. King",
+    "album": "Don't Play That Song!",
+    "duration_seconds": 178,
+    "bpm": 120,
+    "energy": 48,
+    "valence": 75,
+    "danceability": 68,
+    "acousticness": 62,
+    "instrumentalness": 8,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Romantic",
+      "Hopeful",
+      "Peaceful"
+    ],
+    "elements": [
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon",
+      "Saturn"
+    ],
+    "intensity": 52,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_041",
+    "title": "Feel Good Inc.",
+    "artist": "Gorillaz",
+    "album": "Demon Days",
+    "duration_seconds": 221,
+    "bpm": 138,
+    "energy": 72,
+    "valence": 55,
+    "danceability": 78,
+    "acousticness": 8,
+    "instrumentalness": 25,
+    "genres": [
+      "Alternative",
+      "Hip Hop",
+      "Afrobeat"
+    ],
+    "moods": [
+      "Playful",
+      "Mysterious",
+      "Rebellious"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Uranus"
+    ],
+    "intensity": 75,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_042",
+    "title": "Digital Love",
+    "artist": "Daft Punk",
+    "album": "Discovery",
+    "duration_seconds": 301,
+    "bpm": 124,
+    "energy": 75,
+    "valence": 78,
+    "danceability": 82,
+    "acousticness": 5,
+    "instrumentalness": 55,
+    "genres": [
+      "Deep House",
+      "Synthwave"
+    ],
+    "moods": [
+      "Romantic",
+      "Euphoric",
+      "Playful",
+      "Nostalgic"
+    ],
+    "elements": [
+      "Air",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Mercury",
+      "Uranus"
+    ],
+    "intensity": 78,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_043",
+    "title": "Take On Me",
+    "artist": "a-ha",
+    "album": "Hunting High and Low",
+    "duration_seconds": 225,
+    "bpm": 169,
+    "energy": 82,
+    "valence": 88,
+    "danceability": 75,
+    "acousticness": 8,
+    "instrumentalness": 15,
+    "genres": [
+      "Synthwave",
+      "Pop"
+    ],
+    "moods": [
+      "Playful",
+      "Energizing",
+      "Nostalgic",
+      "Romantic"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Venus",
+      "Sun"
+    ],
+    "intensity": 78,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_044",
+    "title": "Breathe",
+    "artist": "Telepopmusik",
+    "album": "Genetic World",
+    "duration_seconds": 276,
+    "bpm": 95,
+    "energy": 42,
+    "valence": 55,
+    "danceability": 62,
+    "acousticness": 25,
+    "instrumentalness": 35,
+    "genres": [
+      "Downtempo",
+      "Ambient"
+    ],
+    "moods": [
+      "Peaceful",
+      "Dreamy",
+      "Contemplative"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Neptune"
+    ],
+    "intensity": 48,
+    "modality": "Mutable",
+    "time_of_day": [
+      "morning",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_045",
+    "title": "Kids",
+    "artist": "MGMT",
+    "album": "Oracular Spectacular",
+    "duration_seconds": 305,
+    "bpm": 124,
+    "energy": 78,
+    "valence": 75,
+    "danceability": 72,
+    "acousticness": 12,
+    "instrumentalness": 35,
+    "genres": [
+      "Indie Pop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Nostalgic",
+      "Playful",
+      "Euphoric"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Jupiter",
+      "Uranus"
+    ],
+    "intensity": 75,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_046",
+    "title": "Instant Crush",
+    "artist": "Daft Punk ft. Julian Casablancas",
+    "album": "Random Access Memories",
+    "duration_seconds": 337,
+    "bpm": 106,
+    "energy": 55,
+    "valence": 45,
+    "danceability": 65,
+    "acousticness": 15,
+    "instrumentalness": 25,
+    "genres": [
+      "Synthwave",
+      "Indie Pop"
+    ],
+    "moods": [
+      "Nostalgic",
+      "Romantic",
+      "Melancholic",
+      "Dreamy"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Neptune",
+      "Mercury"
+    ],
+    "intensity": 62,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_047",
+    "title": "Once in a Lifetime",
+    "artist": "Talking Heads",
+    "album": "Remain in Light",
+    "duration_seconds": 261,
+    "bpm": 120,
+    "energy": 72,
+    "valence": 65,
+    "danceability": 78,
+    "acousticness": 15,
+    "instrumentalness": 20,
+    "genres": [
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Contemplative",
+      "Anxious",
+      "Playful",
+      "Mysterious"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Uranus",
+      "Saturn"
+    ],
+    "intensity": 72,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_048",
+    "title": "1999",
+    "artist": "Charli XCX ft. Troye Sivan",
+    "album": "Charli",
+    "duration_seconds": 195,
+    "bpm": 100,
+    "energy": 75,
+    "valence": 85,
+    "danceability": 78,
+    "acousticness": 5,
+    "instrumentalness": 5,
+    "genres": [
+      "Pop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Nostalgic",
+      "Playful",
+      "Euphoric",
+      "Uplifting"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Venus",
+      "Jupiter"
+    ],
+    "intensity": 72,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_049",
+    "title": "Tongue Tied",
+    "artist": "Grouplove",
+    "album": "Never Trust a Happy Song",
+    "duration_seconds": 199,
+    "bpm": 150,
+    "energy": 88,
+    "valence": 82,
+    "danceability": 72,
+    "acousticness": 5,
+    "instrumentalness": 8,
+    "genres": [
+      "Indie Rock",
+      "Alternative"
+    ],
+    "moods": [
+      "Energizing",
+      "Playful",
+      "Euphoric"
+    ],
+    "elements": [
+      "Air",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Sun",
+      "Mars"
+    ],
+    "intensity": 85,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_050",
+    "title": "West Coast",
+    "artist": "Lana Del Rey",
+    "album": "Ultraviolence",
+    "duration_seconds": 257,
+    "bpm": 100,
+    "energy": 52,
+    "valence": 42,
+    "danceability": 58,
+    "acousticness": 25,
+    "instrumentalness": 15,
+    "genres": [
+      "Indie Pop",
+      "Alternative"
+    ],
+    "moods": [
+      "Dreamy",
+      "Sensual",
+      "Hypnotic",
+      "Nostalgic"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Neptune"
+    ],
+    "intensity": 62,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_051",
+    "title": "Breezeblocks",
+    "artist": "alt-J",
+    "album": "An Awesome Wave",
+    "duration_seconds": 227,
+    "bpm": 140,
+    "energy": 68,
+    "valence": 45,
+    "danceability": 65,
+    "acousticness": 25,
+    "instrumentalness": 15,
+    "genres": [
+      "Indie Rock",
+      "Alternative"
+    ],
+    "moods": [
+      "Mysterious",
+      "Contemplative",
+      "Dark"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Pluto"
+    ],
+    "intensity": 72,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_052",
+    "title": "Heart to Heart",
+    "artist": "Mac DeMarco",
+    "album": "Salad Days",
+    "duration_seconds": 261,
+    "bpm": 88,
+    "energy": 42,
+    "valence": 62,
+    "danceability": 55,
+    "acousticness": 55,
+    "instrumentalness": 25,
+    "genres": [
+      "Indie Pop",
+      "Lo-fi Hip Hop"
+    ],
+    "moods": [
+      "Peaceful",
+      "Dreamy",
+      "Contemplative"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Mercury"
+    ],
+    "intensity": 45,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_053",
+    "title": "Dissolve Me",
+    "artist": "alt-J",
+    "album": "An Awesome Wave",
+    "duration_seconds": 236,
+    "bpm": 100,
+    "energy": 55,
+    "valence": 52,
+    "danceability": 58,
+    "acousticness": 35,
+    "instrumentalness": 25,
+    "genres": [
+      "Indie Rock",
+      "Alternative"
+    ],
+    "moods": [
+      "Ethereal",
+      "Contemplative",
+      "Romantic"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Mercury"
+    ],
+    "intensity": 58,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_054",
+    "title": "Midnight City",
+    "artist": "M83",
+    "album": "Hurry Up, We're Dreaming",
+    "duration_seconds": 244,
+    "bpm": 105,
+    "energy": 78,
+    "valence": 72,
+    "danceability": 72,
+    "acousticness": 5,
+    "instrumentalness": 45,
+    "genres": [
+      "Synthwave",
+      "Drum & Bass"
+    ],
+    "moods": [
+      "Euphoric",
+      "Nostalgic",
+      "Energizing",
+      "Uplifting"
+    ],
+    "elements": [
+      "Air",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Uranus",
+      "Sun",
+      "Mercury"
+    ],
+    "intensity": 82,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_055",
+    "title": "All Star",
+    "artist": "Smash Mouth",
+    "album": "Astro Lounge",
+    "duration_seconds": 200,
+    "bpm": 104,
+    "energy": 78,
+    "valence": 82,
+    "danceability": 72,
+    "acousticness": 15,
+    "instrumentalness": 5,
+    "genres": [
+      "Pop",
+      "Rock"
+    ],
+    "moods": [
+      "Playful",
+      "Empowering",
+      "Energizing"
+    ],
+    "elements": [
+      "Air",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Mercury",
+      "Jupiter"
+    ],
+    "intensity": 75,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_056",
+    "title": "Redbone",
+    "artist": "Childish Gambino",
+    "album": "Awaken, My Love!",
+    "duration_seconds": 327,
+    "bpm": 82,
+    "energy": 55,
+    "valence": 58,
+    "danceability": 72,
+    "acousticness": 15,
+    "instrumentalness": 25,
+    "genres": [
+      "R&B",
+      "Neo-Soul"
+    ],
+    "moods": [
+      "Sensual",
+      "Hypnotic",
+      "Mysterious"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Neptune",
+      "Mars"
+    ],
+    "intensity": 68,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_057",
+    "title": "Nights",
+    "artist": "Frank Ocean",
+    "album": "Blonde",
+    "duration_seconds": 307,
+    "bpm": 90,
+    "energy": 58,
+    "valence": 35,
+    "danceability": 55,
+    "acousticness": 20,
+    "instrumentalness": 15,
+    "genres": [
+      "R&B",
+      "Neo-Soul",
+      "Hip Hop"
+    ],
+    "moods": [
+      "Contemplative",
+      "Bittersweet",
+      "Nostalgic",
+      "Dark"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Mercury",
+      "Saturn"
+    ],
+    "intensity": 72,
+    "modality": "Mutable",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_058",
+    "title": "Get Lucky",
+    "artist": "Daft Punk ft. Pharrell Williams",
+    "album": "Random Access Memories",
+    "duration_seconds": 369,
+    "bpm": 116,
+    "energy": 72,
+    "valence": 85,
+    "danceability": 88,
+    "acousticness": 8,
+    "instrumentalness": 35,
+    "genres": [
+      "Deep House",
+      "Pop"
+    ],
+    "moods": [
+      "Playful",
+      "Euphoric",
+      "Sensual",
+      "Uplifting"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Jupiter",
+      "Sun"
+    ],
+    "intensity": 78,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_059",
+    "title": "Somebody That I Used to Know",
+    "artist": "Gotye ft. Kimbra",
+    "album": "Making Mirrors",
+    "duration_seconds": 244,
+    "bpm": 129,
+    "energy": 62,
+    "valence": 35,
+    "danceability": 68,
+    "acousticness": 25,
+    "instrumentalness": 12,
+    "genres": [
+      "Indie Pop",
+      "Alternative"
+    ],
+    "moods": [
+      "Bittersweet",
+      "Melancholic",
+      "Contemplative"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Moon",
+      "Saturn"
+    ],
+    "intensity": 68,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_060",
+    "title": "Firework",
+    "artist": "Katy Perry",
+    "album": "Teenage Dream",
+    "duration_seconds": 212,
+    "bpm": 138,
+    "energy": 82,
+    "valence": 78,
+    "danceability": 85,
+    "acousticness": 2,
+    "instrumentalness": 8,
+    "genres": [
+      "Pop"
+    ],
+    "moods": [
+      "Energizing",
+      "Euphoric",
+      "Empowering",
+      "Uplifting"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Jupiter",
+      "Uranus"
+    ],
+    "intensity": 82,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_061",
+    "title": "Pyramids",
+    "artist": "Frank Ocean",
+    "album": "Channel Orange",
+    "duration_seconds": 595,
+    "bpm": 80,
+    "energy": 55,
+    "valence": 42,
+    "danceability": 58,
+    "acousticness": 18,
+    "instrumentalness": 22,
+    "genres": [
+      "R&B",
+      "Hip Hop"
+    ],
+    "moods": [
+      "Hypnotic",
+      "Mysterious",
+      "Sensual",
+      "Contemplative"
+    ],
+    "elements": [
+      "Water",
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Venus",
+      "Pluto"
+    ],
+    "intensity": 75,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_062",
+    "title": "Coming Down",
+    "artist": "Dum Dum Girls",
+    "album": "Only in Dreams",
+    "duration_seconds": 262,
+    "bpm": 118,
+    "energy": 68,
+    "valence": 42,
+    "danceability": 65,
+    "acousticness": 15,
+    "instrumentalness": 18,
+    "genres": [
+      "Indie Rock",
+      "Shoegaze"
+    ],
+    "moods": [
+      "Melancholic",
+      "Dreamy",
+      "Dark"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Neptune"
+    ],
+    "intensity": 65,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_063",
+    "title": "Gooey",
+    "artist": "Glass Animals",
+    "album": "Zaba",
+    "duration_seconds": 312,
+    "bpm": 108,
+    "energy": 55,
+    "valence": 62,
+    "danceability": 72,
+    "acousticness": 15,
+    "instrumentalness": 25,
+    "genres": [
+      "Indie Pop",
+      "Downtempo"
+    ],
+    "moods": [
+      "Hypnotic",
+      "Dreamy",
+      "Sensual",
+      "Playful"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Venus",
+      "Mercury"
+    ],
+    "intensity": 62,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_064",
+    "title": "Take Me to Church",
+    "artist": "Hozier",
+    "album": "Hozier",
+    "duration_seconds": 241,
+    "bpm": 128,
+    "energy": 72,
+    "valence": 35,
+    "danceability": 52,
+    "acousticness": 35,
+    "instrumentalness": 5,
+    "genres": [
+      "Indie Rock",
+      "Folk"
+    ],
+    "moods": [
+      "Dark",
+      "Transcendent",
+      "Romantic",
+      "Rebellious"
+    ],
+    "elements": [
+      "Water",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Pluto",
+      "Venus",
+      "Mars"
+    ],
+    "intensity": 82,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_065",
+    "title": "Video Games",
+    "artist": "Lana Del Rey",
+    "album": "Born to Die",
+    "duration_seconds": 283,
+    "bpm": 63,
+    "energy": 32,
+    "valence": 35,
+    "danceability": 42,
+    "acousticness": 55,
+    "instrumentalness": 12,
+    "genres": [
+      "Indie Pop",
+      "Alternative"
+    ],
+    "moods": [
+      "Melancholic",
+      "Nostalgic",
+      "Romantic",
+      "Dreamy"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Venus",
+      "Moon"
+    ],
+    "intensity": 58,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_066",
+    "title": "Innerbloom",
+    "artist": "RUFUS DU SOL",
+    "album": "Bloom",
+    "duration_seconds": 578,
+    "bpm": 122,
+    "energy": 68,
+    "valence": 55,
+    "danceability": 72,
+    "acousticness": 5,
+    "instrumentalness": 65,
+    "genres": [
+      "Deep House",
+      "Trance"
+    ],
+    "moods": [
+      "Transcendent",
+      "Hypnotic",
+      "Euphoric",
+      "Contemplative"
+    ],
+    "elements": [
+      "Water",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Pluto",
+      "Sun"
+    ],
+    "intensity": 78,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_067",
+    "title": "Breathe Deeper",
+    "artist": "Tame Impala",
+    "album": "The Slow Rush",
+    "duration_seconds": 372,
+    "bpm": 104,
+    "energy": 72,
+    "valence": 68,
+    "danceability": 78,
+    "acousticness": 5,
+    "instrumentalness": 35,
+    "genres": [
+      "Indie Pop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Euphoric",
+      "Energizing",
+      "Hypnotic"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Uranus",
+      "Jupiter"
+    ],
+    "intensity": 78,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_068",
+    "title": "Cherry",
+    "artist": "Harry Styles",
+    "album": "Fine Line",
+    "duration_seconds": 259,
+    "bpm": 105,
+    "energy": 48,
+    "valence": 35,
+    "danceability": 55,
+    "acousticness": 45,
+    "instrumentalness": 8,
+    "genres": [
+      "Pop",
+      "Indie Pop"
+    ],
+    "moods": [
+      "Melancholic",
+      "Nostalgic",
+      "Bittersweet",
+      "Romantic"
+    ],
+    "elements": [
+      "Water",
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon",
+      "Saturn"
+    ],
+    "intensity": 58,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening"
+    ]
+  },
+  {
+    "id": "song_069",
+    "title": "Clair de Lune",
+    "artist": "Debussy",
+    "album": "Suite Bergamasque",
+    "duration_seconds": 302,
+    "bpm": 66,
+    "energy": 18,
+    "valence": 55,
+    "danceability": 12,
+    "acousticness": 98,
+    "instrumentalness": 98,
+    "genres": [
+      "Classical",
+      "Meditation"
+    ],
+    "moods": [
+      "Peaceful",
+      "Ethereal",
+      "Contemplative",
+      "Transcendent"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Neptune"
+    ],
+    "intensity": 45,
+    "modality": null,
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_070",
+    "title": "Dreams",
+    "artist": "Fleetwood Mac",
+    "album": "Rumours",
+    "duration_seconds": 257,
+    "bpm": 120,
+    "energy": 55,
+    "valence": 52,
+    "danceability": 65,
+    "acousticness": 35,
+    "instrumentalness": 15,
+    "genres": [
+      "Rock",
+      "Pop"
+    ],
+    "moods": [
+      "Contemplative",
+      "Bittersweet",
+      "Dreamy",
+      "Nostalgic"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Venus",
+      "Mercury"
+    ],
+    "intensity": 58,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_071",
+    "title": "Exit Music (For a Film)",
+    "artist": "Radiohead",
+    "album": "OK Computer",
+    "duration_seconds": 262,
+    "bpm": 72,
+    "energy": 55,
+    "valence": 15,
+    "danceability": 25,
+    "acousticness": 68,
+    "instrumentalness": 18,
+    "genres": [
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Dark",
+      "Melancholic",
+      "Contemplative",
+      "Transcendent"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Saturn",
+      "Pluto",
+      "Moon"
+    ],
+    "intensity": 85,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_072",
+    "title": "Here Comes the Sun",
+    "artist": "The Beatles",
+    "album": "Abbey Road",
+    "duration_seconds": 185,
+    "bpm": 129,
+    "energy": 58,
+    "valence": 92,
+    "danceability": 55,
+    "acousticness": 75,
+    "instrumentalness": 12,
+    "genres": [
+      "Rock",
+      "Pop"
+    ],
+    "moods": [
+      "Hopeful",
+      "Uplifting",
+      "Peaceful",
+      "Playful"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Jupiter",
+      "Sun",
+      "Venus"
+    ],
+    "intensity": 62,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning"
+    ]
+  },
+  {
+    "id": "song_073",
+    "title": "Breathe Me",
+    "artist": "Sia",
+    "album": "Colour the Small One",
+    "duration_seconds": 277,
+    "bpm": 70,
+    "energy": 35,
+    "valence": 22,
+    "danceability": 28,
+    "acousticness": 72,
+    "instrumentalness": 8,
+    "genres": [
+      "Singer-Songwriter",
+      "Pop"
+    ],
+    "moods": [
+      "Melancholic",
+      "Healing",
+      "Contemplative",
+      "Lonely"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Pluto",
+      "Moon",
+      "Neptune"
+    ],
+    "intensity": 78,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_074",
+    "title": "Everything In Its Right Place",
+    "artist": "Radiohead",
+    "album": "Kid A",
+    "duration_seconds": 251,
+    "bpm": 126,
+    "energy": 58,
+    "valence": 38,
+    "danceability": 52,
+    "acousticness": 12,
+    "instrumentalness": 55,
+    "genres": [
+      "IDM",
+      "Alternative"
+    ],
+    "moods": [
+      "Mysterious",
+      "Contemplative",
+      "Anxious"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Uranus",
+      "Mercury",
+      "Neptune"
+    ],
+    "intensity": 72,
+    "modality": "Mutable",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_075",
+    "title": "Svefn-g-englar",
+    "artist": "Sigur Ros",
+    "album": "Agaetis byrjun",
+    "duration_seconds": 610,
+    "bpm": 72,
+    "energy": 35,
+    "valence": 55,
+    "danceability": 18,
+    "acousticness": 45,
+    "instrumentalness": 65,
+    "genres": [
+      "Post-Rock",
+      "New Age"
+    ],
+    "moods": [
+      "Ethereal",
+      "Transcendent",
+      "Dreamy",
+      "Peaceful"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Moon"
+    ],
+    "intensity": 55,
+    "modality": null,
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_076",
+    "title": "Bohemian Rhapsody",
+    "artist": "Queen",
+    "album": "A Night at the Opera",
+    "duration_seconds": 355,
+    "bpm": 72,
+    "energy": 72,
+    "valence": 42,
+    "danceability": 42,
+    "acousticness": 25,
+    "instrumentalness": 15,
+    "genres": [
+      "Rock"
+    ],
+    "moods": [
+      "Playful",
+      "Dark",
+      "Contemplative",
+      "Euphoric"
+    ],
+    "elements": [
+      "Air",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Sun",
+      "Uranus"
+    ],
+    "intensity": 88,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_077",
+    "title": "Kiss Me",
+    "artist": "Sixpence None the Richer",
+    "album": "Sixpence None the Richer",
+    "duration_seconds": 212,
+    "bpm": 118,
+    "energy": 52,
+    "valence": 82,
+    "danceability": 65,
+    "acousticness": 55,
+    "instrumentalness": 5,
+    "genres": [
+      "Pop",
+      "Folk"
+    ],
+    "moods": [
+      "Romantic",
+      "Hopeful",
+      "Playful",
+      "Peaceful"
+    ],
+    "elements": [
+      "Earth",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon"
+    ],
+    "intensity": 48,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_078",
+    "title": "Till I Collapse",
+    "artist": "Eminem ft. Nate Dogg",
+    "album": "The Eminem Show",
+    "duration_seconds": 297,
+    "bpm": 171,
+    "energy": 92,
+    "valence": 45,
+    "danceability": 65,
+    "acousticness": 2,
+    "instrumentalness": 5,
+    "genres": [
+      "Hip Hop"
+    ],
+    "moods": [
+      "Aggressive",
+      "Empowering",
+      "Energizing"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Pluto",
+      "Sun"
+    ],
+    "intensity": 95,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_079",
+    "title": "Cosmic Love",
+    "artist": "Florence + The Machine",
+    "album": "Lungs",
+    "duration_seconds": 252,
+    "bpm": 150,
+    "energy": 72,
+    "valence": 45,
+    "danceability": 42,
+    "acousticness": 25,
+    "instrumentalness": 15,
+    "genres": [
+      "Indie Rock",
+      "Alternative"
+    ],
+    "moods": [
+      "Ethereal",
+      "Romantic",
+      "Dark",
+      "Transcendent"
+    ],
+    "elements": [
+      "Water",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Neptune",
+      "Pluto"
+    ],
+    "intensity": 82,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_080",
+    "title": "Walking on Sunshine",
+    "artist": "Katrina and the Waves",
+    "album": "Walking on Sunshine",
+    "duration_seconds": 239,
+    "bpm": 108,
+    "energy": 92,
+    "valence": 95,
+    "danceability": 82,
+    "acousticness": 15,
+    "instrumentalness": 8,
+    "genres": [
+      "Pop",
+      "Rock"
+    ],
+    "moods": [
+      "Euphoric",
+      "Energizing",
+      "Uplifting",
+      "Playful"
+    ],
+    "elements": [
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Sun",
+      "Jupiter",
+      "Venus"
+    ],
+    "intensity": 88,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "morning",
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_081",
+    "title": "Space Oddity",
+    "artist": "David Bowie",
+    "album": "David Bowie",
+    "duration_seconds": 315,
+    "bpm": 136,
+    "energy": 52,
+    "valence": 42,
+    "danceability": 42,
+    "acousticness": 55,
+    "instrumentalness": 25,
+    "genres": [
+      "Rock",
+      "Folk"
+    ],
+    "moods": [
+      "Contemplative",
+      "Lonely",
+      "Transcendent",
+      "Mysterious"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Moon",
+      "Neptune",
+      "Uranus"
+    ],
+    "intensity": 68,
+    "modality": "Mutable",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_082",
+    "title": "Wicked Game",
+    "artist": "Chris Isaak",
+    "album": "Heart Shaped World",
+    "duration_seconds": 282,
+    "bpm": 113,
+    "energy": 45,
+    "valence": 32,
+    "danceability": 52,
+    "acousticness": 55,
+    "instrumentalness": 25,
+    "genres": [
+      "Rock",
+      "Alternative"
+    ],
+    "moods": [
+      "Romantic",
+      "Melancholic",
+      "Sensual",
+      "Dark"
+    ],
+    "elements": [
+      "Water",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Mars",
+      "Pluto"
+    ],
+    "intensity": 72,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_083",
+    "title": "Bittersweet Symphony",
+    "artist": "The Verve",
+    "album": "Urban Hymns",
+    "duration_seconds": 358,
+    "bpm": 86,
+    "energy": 65,
+    "valence": 42,
+    "danceability": 52,
+    "acousticness": 35,
+    "instrumentalness": 35,
+    "genres": [
+      "Alternative",
+      "Rock"
+    ],
+    "moods": [
+      "Bittersweet",
+      "Hopeful",
+      "Contemplative",
+      "Transcendent"
+    ],
+    "elements": [
+      "Earth",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Saturn",
+      "Jupiter",
+      "Neptune"
+    ],
+    "intensity": 75,
+    "modality": "Fixed",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_084",
+    "title": "Running Up That Hill",
+    "artist": "Kate Bush",
+    "album": "Hounds of Love",
+    "duration_seconds": 298,
+    "bpm": 108,
+    "energy": 68,
+    "valence": 38,
+    "danceability": 62,
+    "acousticness": 18,
+    "instrumentalness": 25,
+    "genres": [
+      "Pop",
+      "Synthwave"
+    ],
+    "moods": [
+      "Mysterious",
+      "Contemplative",
+      "Dark",
+      "Hopeful"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Neptune",
+      "Pluto"
+    ],
+    "intensity": 78,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_085",
+    "title": "Paranoid Android",
+    "artist": "Radiohead",
+    "album": "OK Computer",
+    "duration_seconds": 383,
+    "bpm": 82,
+    "energy": 72,
+    "valence": 25,
+    "danceability": 35,
+    "acousticness": 25,
+    "instrumentalness": 25,
+    "genres": [
+      "Alternative",
+      "IDM"
+    ],
+    "moods": [
+      "Anxious",
+      "Dark",
+      "Rebellious",
+      "Contemplative"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Uranus",
+      "Pluto",
+      "Mercury"
+    ],
+    "intensity": 88,
+    "modality": "Mutable",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_086",
+    "title": "Affection",
+    "artist": "Jinsang",
+    "album": "Life",
+    "duration_seconds": 158,
+    "bpm": 85,
+    "energy": 35,
+    "valence": 55,
+    "danceability": 62,
+    "acousticness": 35,
+    "instrumentalness": 92,
+    "genres": [
+      "Lo-fi Hip Hop"
+    ],
+    "moods": [
+      "Peaceful",
+      "Contemplative",
+      "Focused"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Moon"
+    ],
+    "intensity": 38,
+    "modality": "Mutable",
+    "time_of_day": [
+      "morning",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_087",
+    "title": "Water No Get Enemy",
+    "artist": "Fela Kuti",
+    "album": "Expensive Shit",
+    "duration_seconds": 612,
+    "bpm": 108,
+    "energy": 72,
+    "valence": 75,
+    "danceability": 85,
+    "acousticness": 55,
+    "instrumentalness": 45,
+    "genres": [
+      "Afrobeat",
+      "World Music"
+    ],
+    "moods": [
+      "Energizing",
+      "Playful",
+      "Hypnotic",
+      "Uplifting"
+    ],
+    "elements": [
+      "Fire",
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Jupiter",
+      "Mars",
+      "Sun"
+    ],
+    "intensity": 75,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_088",
+    "title": "So What",
+    "artist": "Miles Davis",
+    "album": "Kind of Blue",
+    "duration_seconds": 565,
+    "bpm": 136,
+    "energy": 42,
+    "valence": 55,
+    "danceability": 58,
+    "acousticness": 92,
+    "instrumentalness": 95,
+    "genres": [
+      "Jazz"
+    ],
+    "moods": [
+      "Contemplative",
+      "Peaceful",
+      "Focused"
+    ],
+    "elements": [
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Neptune",
+      "Uranus"
+    ],
+    "intensity": 55,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_089",
+    "title": "Weightless",
+    "artist": "Marconi Union",
+    "album": "Weightless",
+    "duration_seconds": 480,
+    "bpm": 60,
+    "energy": 12,
+    "valence": 48,
+    "danceability": 8,
+    "acousticness": 85,
+    "instrumentalness": 98,
+    "genres": [
+      "Ambient",
+      "New Age",
+      "Meditation"
+    ],
+    "moods": [
+      "Peaceful",
+      "Healing",
+      "Ethereal",
+      "Transcendent"
+    ],
+    "elements": [
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Moon"
+    ],
+    "intensity": 25,
+    "modality": null,
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_090",
+    "title": "Your Hand in Mine",
+    "artist": "Explosions in the Sky",
+    "album": "The Earth Is Not a Cold Dead Place",
+    "duration_seconds": 468,
+    "bpm": 102,
+    "energy": 55,
+    "valence": 58,
+    "danceability": 25,
+    "acousticness": 35,
+    "instrumentalness": 95,
+    "genres": [
+      "Post-Rock"
+    ],
+    "moods": [
+      "Hopeful",
+      "Contemplative",
+      "Ethereal",
+      "Bittersweet"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Moon",
+      "Jupiter"
+    ],
+    "intensity": 72,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_091",
+    "title": "Innerspace",
+    "artist": "Netsky",
+    "album": "Netsky",
+    "duration_seconds": 282,
+    "bpm": 174,
+    "energy": 88,
+    "valence": 72,
+    "danceability": 65,
+    "acousticness": 5,
+    "instrumentalness": 55,
+    "genres": [
+      "Drum & Bass",
+      "Trance"
+    ],
+    "moods": [
+      "Energizing",
+      "Euphoric",
+      "Uplifting"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Mars",
+      "Uranus",
+      "Jupiter"
+    ],
+    "intensity": 88,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "afternoon",
+      "night"
+    ]
+  },
+  {
+    "id": "song_092",
+    "title": "When You Sleep",
+    "artist": "My Bloody Valentine",
+    "album": "Loveless",
+    "duration_seconds": 245,
+    "bpm": 100,
+    "energy": 62,
+    "valence": 48,
+    "danceability": 45,
+    "acousticness": 12,
+    "instrumentalness": 55,
+    "genres": [
+      "Shoegaze",
+      "Alternative"
+    ],
+    "moods": [
+      "Dreamy",
+      "Hypnotic",
+      "Ethereal",
+      "Romantic"
+    ],
+    "elements": [
+      "Water",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Venus"
+    ],
+    "intensity": 65,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_093",
+    "title": "O Fortuna",
+    "artist": "Carl Orff",
+    "album": "Carmina Burana",
+    "duration_seconds": 156,
+    "bpm": 144,
+    "energy": 95,
+    "valence": 25,
+    "danceability": 28,
+    "acousticness": 92,
+    "instrumentalness": 85,
+    "genres": [
+      "Classical",
+      "World Music"
+    ],
+    "moods": [
+      "Dark",
+      "Aggressive",
+      "Transcendent",
+      "Empowering"
+    ],
+    "elements": [
+      "Fire",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Pluto",
+      "Mars",
+      "Saturn"
+    ],
+    "intensity": 98,
+    "modality": "Cardinal",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_094",
+    "title": "Holocene",
+    "artist": "Bon Iver",
+    "album": "Bon Iver",
+    "duration_seconds": 337,
+    "bpm": 117,
+    "energy": 42,
+    "valence": 35,
+    "danceability": 32,
+    "acousticness": 65,
+    "instrumentalness": 25,
+    "genres": [
+      "Folk",
+      "Indie Rock"
+    ],
+    "moods": [
+      "Contemplative",
+      "Ethereal",
+      "Melancholic",
+      "Transcendent"
+    ],
+    "elements": [
+      "Earth",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Saturn",
+      "Neptune",
+      "Moon"
+    ],
+    "intensity": 65,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_095",
+    "title": "Intro",
+    "artist": "The xx",
+    "album": "xx",
+    "duration_seconds": 128,
+    "bpm": 95,
+    "energy": 35,
+    "valence": 55,
+    "danceability": 52,
+    "acousticness": 35,
+    "instrumentalness": 95,
+    "genres": [
+      "Indie Pop",
+      "Ambient"
+    ],
+    "moods": [
+      "Peaceful",
+      "Contemplative",
+      "Mysterious"
+    ],
+    "elements": [
+      "Air",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Mercury",
+      "Moon"
+    ],
+    "intensity": 42,
+    "modality": "Fixed",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_096",
+    "title": "Adagio for Strings",
+    "artist": "Tiesto",
+    "album": "Just Be",
+    "duration_seconds": 467,
+    "bpm": 138,
+    "energy": 78,
+    "valence": 35,
+    "danceability": 52,
+    "acousticness": 8,
+    "instrumentalness": 92,
+    "genres": [
+      "Trance",
+      "Techno"
+    ],
+    "moods": [
+      "Euphoric",
+      "Transcendent",
+      "Melancholic",
+      "Hypnotic"
+    ],
+    "elements": [
+      "Water",
+      "Fire"
+    ],
+    "planetary_energy": [
+      "Neptune",
+      "Sun",
+      "Pluto"
+    ],
+    "intensity": 85,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  },
+  {
+    "id": "song_097",
+    "title": "The Weekend",
+    "artist": "SZA",
+    "album": "Ctrl",
+    "duration_seconds": 219,
+    "bpm": 135,
+    "energy": 58,
+    "valence": 52,
+    "danceability": 72,
+    "acousticness": 15,
+    "instrumentalness": 8,
+    "genres": [
+      "R&B",
+      "Neo-Soul",
+      "Alternative"
+    ],
+    "moods": [
+      "Sensual",
+      "Contemplative",
+      "Bittersweet"
+    ],
+    "elements": [
+      "Water",
+      "Earth"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Moon",
+      "Mars"
+    ],
+    "intensity": 65,
+    "modality": "Mutable",
+    "time_of_day": [
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "song_098",
+    "title": "Tame",
+    "artist": "Pixies",
+    "album": "Doolittle",
+    "duration_seconds": 117,
+    "bpm": 172,
+    "energy": 82,
+    "valence": 55,
+    "danceability": 55,
+    "acousticness": 8,
+    "instrumentalness": 15,
+    "genres": [
+      "Alternative",
+      "Indie Rock"
+    ],
+    "moods": [
+      "Rebellious",
+      "Energizing",
+      "Playful"
+    ],
+    "elements": [
+      "Fire",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Uranus",
+      "Mars",
+      "Mercury"
+    ],
+    "intensity": 82,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon"
+    ]
+  },
+  {
+    "id": "song_099",
+    "title": "On & On",
+    "artist": "Erykah Badu",
+    "album": "Baduizm",
+    "duration_seconds": 295,
+    "bpm": 96,
+    "energy": 52,
+    "valence": 68,
+    "danceability": 75,
+    "acousticness": 35,
+    "instrumentalness": 15,
+    "genres": [
+      "Neo-Soul",
+      "R&B",
+      "Jazz"
+    ],
+    "moods": [
+      "Peaceful",
+      "Contemplative",
+      "Uplifting",
+      "Hypnotic"
+    ],
+    "elements": [
+      "Earth",
+      "Air"
+    ],
+    "planetary_energy": [
+      "Venus",
+      "Mercury",
+      "Neptune"
+    ],
+    "intensity": 58,
+    "modality": "Mutable",
+    "time_of_day": [
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "song_100",
+    "title": "Nightcall",
+    "artist": "Kavinsky",
+    "album": "OutRun",
+    "duration_seconds": 258,
+    "bpm": 94,
+    "energy": 65,
+    "valence": 35,
+    "danceability": 72,
+    "acousticness": 5,
+    "instrumentalness": 45,
+    "genres": [
+      "Synthwave",
+      "Deep House"
+    ],
+    "moods": [
+      "Mysterious",
+      "Dark",
+      "Hypnotic",
+      "Nostalgic"
+    ],
+    "elements": [
+      "Fire",
+      "Water"
+    ],
+    "planetary_energy": [
+      "Pluto",
+      "Mars",
+      "Neptune"
+    ],
+    "intensity": 75,
+    "modality": "Fixed",
+    "time_of_day": [
+      "night"
+    ]
+  }
+]

@@ -24,6 +24,7 @@ class _SoundScreenState extends State<SoundScreen> {
   bool _isLoading = false;
   ChartSonification? _sonification;
   String? _errorMessage;
+  final Set<String> _selectedPlanets = {};
 
   // Mock birth data - in production, this would come from user profile
   final _birthData = {
@@ -126,6 +127,9 @@ class _SoundScreenState extends State<SoundScreen> {
       if (mounted) {
         setState(() {
           _sonification = sonification;
+          // Select all planets by default
+          _selectedPlanets.clear();
+          _selectedPlanets.addAll(sonification.planets.map((p) => p.planet));
           _isLoading = false;
         });
       }
@@ -143,7 +147,43 @@ class _SoundScreenState extends State<SoundScreen> {
     if (_isPlaying) {
       _audioService.stop();
     } else if (_sonification != null) {
-      _audioService.playChartSound(_sonification!);
+      _audioService.playChartSound(
+        _sonification!,
+        activePlanets: _selectedPlanets,
+      );
+    }
+  }
+
+  void _togglePlanet(String planet) {
+    setState(() {
+      if (_selectedPlanets.contains(planet)) {
+        _selectedPlanets.remove(planet);
+      } else {
+        _selectedPlanets.add(planet);
+      }
+    });
+
+    if (_isPlaying) {
+      _audioService.updateActivePlanets(_selectedPlanets);
+    }
+  }
+
+  void _selectAll() {
+    if (_sonification == null) return;
+    setState(() {
+      _selectedPlanets.addAll(_sonification!.planets.map((p) => p.planet));
+    });
+    if (_isPlaying) {
+      _audioService.updateActivePlanets(_selectedPlanets);
+    }
+  }
+
+  void _deselectAll() {
+    setState(() {
+      _selectedPlanets.clear();
+    });
+    if (_isPlaying) {
+      _audioService.updateActivePlanets(_selectedPlanets);
     }
   }
 
@@ -399,16 +439,41 @@ class _SoundScreenState extends State<SoundScreen> {
                 color: Colors.white,
               ),
             ),
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                'Full Chart',
-                style: GoogleFonts.syne(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.cosmicPurple,
+            Row(
+              children: [
+                TextButton(
+                  onPressed: _sonification == null ? null : _selectAll,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'All',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.electricYellow,
+                    ),
+                  ),
                 ),
-              ),
+                TextButton(
+                  onPressed: _sonification == null ? null : _deselectAll,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'None',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withAlpha(128),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -425,62 +490,96 @@ class _SoundScreenState extends State<SoundScreen> {
 
   Widget _buildFrequencyItem(Map<String, dynamic> item) {
     final color = item['color'] as Color;
-    return Padding(
-      padding: const EdgeInsets.all(6),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: color.withAlpha(26),
-              border: Border.all(color: color.withAlpha(51)),
-            ),
-            child: Center(
-              child: Text(
-                item['symbol'] as String,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color),
+    final isSelected = _selectedPlanets.contains(item['planet']);
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _togglePlanet(item['planet'] as String),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            children: [
+              // Checkbox indicator
+              Container(
+                width: 20,
+                height: 20,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? item['color'] as Color : Colors.white.withAlpha(51),
+                    width: 2,
+                  ),
+                  color: isSelected ? (item['color'] as Color).withAlpha(51) : null,
+                ),
+                child: isSelected 
+                    ? Icon(Icons.check, size: 14, color: item['color'] as Color)
+                    : null,
               ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      item['planet'] as String,
-                      style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'in ${item['sign']}',
-                      style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(102)),
-                    ),
-                  ],
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: (item['color'] as Color).withAlpha(isSelected ? 26 : 10),
+                  border: Border.all(color: (item['color'] as Color).withAlpha(isSelected ? 51 : 20)),
                 ),
-                Text(
-                  item['description'] as String,
-                  style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128)),
+                child: Center(
+                  child: Text(
+                    item['symbol'] as String,
+                    style: TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.w700, 
+                      color: (item['color'] as Color).withAlpha(isSelected ? 255 : 128),
+                    ),
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Opacity(
+                  opacity: isSelected ? 1.0 : 0.5,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            item['planet'] as String,
+                            style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'in ${item['sign']}',
+                            style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(102)),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        item['description'] as String,
+                        style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withAlpha(26),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item['frequency'] as String,
+                    style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: item['color'] as Color),
+                  ),
+                ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withAlpha(26),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              item['frequency'] as String,
-              style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: color),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
+import '../models/playlist.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -27,6 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ChartSonification? _dailySonification;
   DailyReading? _dailyReading;
   bool _isLoadingReading = false;
+  PlaylistResult? _generatedPlaylist;
+  bool _isGeneratingPlaylist = false;
 
   // Mock birth data - in production, this would come from user profile
   final _birthData = {
@@ -138,9 +141,46 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
+      // Log error for debugging
+      print('Error loading daily reading: $e');
       // Keep fallback data on error
       if (mounted) {
         setState(() => _isLoadingReading = false);
+      }
+    }
+  }
+
+  Future<void> _generatePlaylist() async {
+    if (_isGeneratingPlaylist) return;
+    
+    setState(() => _isGeneratingPlaylist = true);
+    
+    try {
+      final playlist = await _apiService.generatePlaylist(
+        datetime: _birthData['datetime'] as String,
+        latitude: _birthData['latitude'] as double,
+        longitude: _birthData['longitude'] as double,
+        timezone: _birthData['timezone'] as String,
+        playlistSize: 20,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _generatedPlaylist = playlist;
+          _isGeneratingPlaylist = false;
+        });
+      }
+    } catch (e) {
+      print('Error generating playlist: $e');
+      if (mounted) {
+        setState(() => _isGeneratingPlaylist = false);
+        // Show error snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate playlist: ${e.toString()}'),
+            backgroundColor: Colors.red.shade900,
+          ),
+        );
       }
     }
   }
@@ -477,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
               colors: [AppColors.electricYellow, Color(0xFFE5EB0D)],
             ),
             textColor: AppColors.background,
-            onPressed: () {},
+            onPressed: _isGeneratingPlaylist ? null : () { _generatePlaylist(); },
           ),
         ),
       ],
@@ -625,43 +665,104 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Your Cosmic Queue',
-              style: GoogleFonts.syne(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                'See All',
-                style: GoogleFonts.syne(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.hotPink,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Cosmic Queue',
+                  style: GoogleFonts.syne(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
+            if (_generatedPlaylist != null)
+                  Text(
+                    '${_generatedPlaylist!.songCount} songs • ${_generatedPlaylist!.formattedDuration}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: Colors.white.withAlpha(128),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
         const SizedBox(height: 12),
-        GlassCard(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: playlist.asMap().entries.map((entry) {
-              final index = entry.key;
-              final track = entry.value;
-              return _buildPlaylistItem(track, index);
-            }).toList(),
+        if (_isGeneratingPlaylist)
+          GlassCard(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  children: [
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Generating your cosmic playlist...',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        color: Colors.white.withAlpha(179),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else if (_generatedPlaylist == null)
+          GlassCard(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.music_note_rounded,
+                      size: 48,
+                      color: Colors.white.withAlpha(77),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No playlist yet',
+                      style: GoogleFonts.syne(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withAlpha(128),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap "Generate Playlist" to discover\nyour personalized cosmic queue',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        color: Colors.white.withAlpha(102),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          GlassCard(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              children: _generatedPlaylist!.songs.asMap().entries.map((entry) {
+                final index = entry.key;
+                final song = entry.value;
+                return _buildPlaylistItem(song, index);
+              }).toList(),
+            ),
           ),
-        ),
       ],
     );
   }
 
-  Widget _buildPlaylistItem(Map<String, dynamic> track, int index) {
+  Widget _buildPlaylistItem(Song song, int index) {
     final colors = index % 2 == 0
         ? [AppColors.hotPink, AppColors.cosmicPurple]
         : [AppColors.cosmicPurple, AppColors.electricYellow];
@@ -685,26 +786,30 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  track['title'] as String,
+                  song.title,
                   style: GoogleFonts.syne(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  track['artist'] as String,
+                  song.artist,
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 12,
                     color: Colors.white.withAlpha(128),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 LinearProgressIndicator(
-                  value: (track['energy'] as int) / 100,
+                  value: song.energy / 100,
                   backgroundColor: Colors.white.withAlpha(26),
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    Color.lerp(AppColors.hotPink, AppColors.electricYellow, (track['energy'] as int) / 100)!,
+                    Color.lerp(AppColors.hotPink, AppColors.electricYellow, song.energy / 100)!,
                   ),
                   minHeight: 3,
                   borderRadius: BorderRadius.circular(2),
@@ -714,7 +819,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 14),
           Text(
-            track['duration'] as String,
+            song.formattedDuration,
             style: GoogleFonts.spaceGrotesk(
               fontSize: 12,
               color: Colors.white.withAlpha(102),
@@ -731,14 +836,14 @@ class _CtaButton extends StatelessWidget {
   final IconData icon;
   final Gradient gradient;
   final Color textColor;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _CtaButton({
     required this.label,
     required this.icon,
     required this.gradient,
     this.textColor = Colors.white,
-    required this.onPressed,
+    this.onPressed,
   });
 
   @override
