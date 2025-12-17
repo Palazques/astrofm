@@ -6,6 +6,7 @@ import '../models/location.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/playlist.dart';
+import '../models/alignment.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -306,6 +307,107 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to generate playlist',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get daily alignment score based on natal chart vs current transits.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<AlignmentResult> getDailyAlignment({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.dailyAlignmentEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return AlignmentResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get daily alignment',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get synastry alignment between user and friend natal charts.
+  ///
+  /// [userDatetime] - User birth datetime ISO format
+  /// [userLatitude] - User birth latitude
+  /// [userLongitude] - User birth longitude
+  /// [userTimezone] - User timezone
+  /// [friendDatetime] - Friend birth datetime ISO format
+  /// [friendLatitude] - Friend birth latitude
+  /// [friendLongitude] - Friend birth longitude
+  /// [friendTimezone] - Friend timezone
+  Future<FriendAlignmentResult> getFriendAlignment({
+    required String userDatetime,
+    required double userLatitude,
+    required double userLongitude,
+    String userTimezone = 'UTC',
+    required String friendDatetime,
+    required double friendLatitude,
+    required double friendLongitude,
+    String friendTimezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.friendAlignmentEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_datetime': userDatetime,
+            'user_latitude': userLatitude,
+            'user_longitude': userLongitude,
+            'user_timezone': userTimezone,
+            'friend_datetime': friendDatetime,
+            'friend_latitude': friendLatitude,
+            'friend_longitude': friendLongitude,
+            'friend_timezone': friendTimezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return FriendAlignmentResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get friend alignment',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get current planetary transit positions.
+  Future<TransitsResult> getTransits() async {
+    final response = await _client
+        .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.transitsEndpoint}'))
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return TransitsResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get transits',
         statusCode: response.statusCode,
       );
     }

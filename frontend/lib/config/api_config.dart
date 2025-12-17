@@ -16,6 +16,11 @@ class ApiConfig {
   static const String interpretAlignmentEndpoint = '/api/ai/interpret-alignment';
   static const String compatibilityEndpoint = '/api/ai/compatibility';
   
+  // Alignment endpoints
+  static const String dailyAlignmentEndpoint = '/api/alignment/daily';
+  static const String friendAlignmentEndpoint = '/api/alignment/friend';
+  static const String transitsEndpoint = '/api/alignment/transits';
+  
   /// Timeout duration for API calls
   static const Duration timeout = Duration(seconds: 30);
 }

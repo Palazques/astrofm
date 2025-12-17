@@ -4,6 +4,8 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
+import '../services/api_service.dart';
+import '../models/alignment.dart';
 
 /// Align screen for frequency alignment.
 class AlignScreen extends StatefulWidget {
@@ -14,11 +16,23 @@ class AlignScreen extends StatefulWidget {
 }
 
 class _AlignScreenState extends State<AlignScreen> {
+  final ApiService _apiService = ApiService();
+  
   String _alignTarget = 'today';
   bool _isAligning = false;
   double _alignmentProgress = 0;
   int _resonanceScore = 0;
   int? _selectedFriendId;
+  String? _dominantEnergy;
+  String? _alignmentDescription;
+
+  // Test birth data - in production, this would come from user profile
+  final _birthData = {
+    'datetime': '1990-07-15T15:42:00',
+    'latitude': 34.0522,
+    'longitude': -118.2437,
+    'timezone': 'America/Los_Angeles',
+  };
 
   final friends = [
     {'id': 1, 'name': 'Maya', 'color1': AppColors.hotPink, 'color2': AppColors.cosmicPurple, 'compatibility': 87},
@@ -42,22 +56,80 @@ class _AlignScreenState extends State<AlignScreen> {
     _runAlignment();
   }
 
-  void _runAlignment() async {
-    for (int i = 0; i <= 100; i += 2) {
-      if (!mounted || !_isAligning) return;
-      await Future.delayed(const Duration(milliseconds: 50));
-      setState(() => _alignmentProgress = i / 100);
+  Future<void> _runAlignment() async {
+    // Start cosmetic progress animation
+    _animateProgress();
+    
+    try {
+      if (_alignTarget == 'today') {
+        // Make actual API call for daily alignment
+        final result = await _apiService.getDailyAlignment(
+          datetime: _birthData['datetime'] as String,
+          latitude: _birthData['latitude'] as double,
+          longitude: _birthData['longitude'] as double,
+          timezone: _birthData['timezone'] as String,
+        );
+        
+        if (mounted) {
+          setState(() {
+            _alignmentProgress = 1.0;
+            _resonanceScore = result.score;
+            _dominantEnergy = result.dominantEnergy;
+            _alignmentDescription = result.description;
+          });
+        }
+      } else if (_alignTarget == 'friend' && _selectedFriendId != null) {
+        // For friend alignment, use mock data for now (requires friend API)
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (mounted) {
+          setState(() {
+            _alignmentProgress = 1.0;
+            _resonanceScore = friends.firstWhere((f) => f['id'] == _selectedFriendId)['compatibility'] as int;
+            _dominantEnergy = 'Harmonious';
+            _alignmentDescription = 'Your frequencies blend well together.';
+          });
+        }
+      } else {
+        // Transit alignment - use mock for now
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (mounted) {
+          setState(() {
+            _alignmentProgress = 1.0;
+            _resonanceScore = 75;
+            _dominantEnergy = 'Dynamic';
+            _alignmentDescription = 'Transformative energies approaching.';
+          });
+        }
+      }
+      
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Alignment failed: ${e.toString()}'),
+            backgroundColor: Colors.red.shade900,
+          ),
+        );
+        setState(() {
+          _alignmentProgress = 0;
+          _resonanceScore = 0;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAligning = false);
+      }
     }
+  }
 
-    if (mounted) {
-      setState(() {
-        _isAligning = false;
-        _resonanceScore = _alignTarget == 'today'
-            ? 78
-            : (_selectedFriendId != null
-                ? (friends.firstWhere((f) => f['id'] == _selectedFriendId)['compatibility'] as int)
-                : 75);
-      });
+  Future<void> _animateProgress() async {
+    // Cosmetic animation while API loads
+    for (int i = 0; i <= 85; i += 3) {
+      if (!_isAligning || !mounted) break;
+      await Future.delayed(const Duration(milliseconds: 40));
+      setState(() => _alignmentProgress = i / 100);
     }
   }
 
@@ -66,7 +138,15 @@ class _AlignScreenState extends State<AlignScreen> {
       _alignmentProgress = 0;
       _resonanceScore = 0;
       _isAligning = false;
+      _dominantEnergy = null;
+      _alignmentDescription = null;
     });
+  }
+
+  @override
+  void dispose() {
+    _apiService.dispose();
+    super.dispose();
   }
 
   @override
@@ -239,6 +319,40 @@ class _AlignScreenState extends State<AlignScreen> {
               style: GoogleFonts.syne(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
             ),
           ),
+          if (_dominantEnergy != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.electricYellow.withAlpha(26),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.electricYellow.withAlpha(51)),
+              ),
+              child: Text(
+                _dominantEnergy!,
+                style: GoogleFonts.syne(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.electricYellow,
+                ),
+              ),
+            ),
+          ],
+          if (_alignmentDescription != null) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                _alignmentDescription!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: Colors.white.withAlpha(179),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [

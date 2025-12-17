@@ -9,6 +9,8 @@ import '../services/api_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/playlist.dart';
+import '../models/friend_data.dart';
+import '../models/alignment.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -30,6 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingReading = false;
   PlaylistResult? _generatedPlaylist;
   bool _isGeneratingPlaylist = false;
+  
+  // Alignment data
+  int? _alignmentScore;
+  String? _dominantEnergy;
+  bool _isLoadingAlignment = true;
+  String? _alignmentError;
 
   // Mock birth data - in production, this would come from user profile
   final _birthData = {
@@ -43,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, String> get todaysReading => {
     'sign': 'Scorpio',
     'date': _formatCurrentDate(),
-    'energy': _dailyReading?.energyLabel ?? 'Transformative',
+    'energy': _dominantEnergy ?? _dailyReading?.energyLabel ?? 'Loading...',
     'mood': _dailyReading?.mood ?? 'Loading...',
     'bpm': _dailyReading?.playlistParams.bpmRange ?? '---',
     'vibe': _dailyReading?.reading ?? 'Connecting to the cosmos...',
@@ -68,11 +76,12 @@ class _HomeScreenState extends State<HomeScreen> {
     {'title': 'Dissolve', 'artist': 'Kiasmos', 'duration': '7:03', 'energy': 62},
   ];
 
-  final alignmentScore = 78;
+  // alignmentScore is now dynamic from _alignmentScore state variable
 
   @override
   void initState() {
     super.initState();
+    _loadAlignmentScore();
     _loadSonificationData();
     _audioService.playingStream.listen((isPlaying) {
       if (mounted && !isPlaying) {
@@ -82,6 +91,37 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+  }
+
+  Future<void> _loadAlignmentScore() async {
+    try {
+      setState(() {
+        _isLoadingAlignment = true;
+        _alignmentError = null;
+      });
+      
+      final result = await _apiService.getDailyAlignment(
+        datetime: _birthData['datetime'] as String,
+        latitude: _birthData['latitude'] as double,
+        longitude: _birthData['longitude'] as double,
+        timezone: _birthData['timezone'] as String,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _alignmentScore = result.score;
+          _dominantEnergy = result.dominantEnergy;
+          _isLoadingAlignment = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _alignmentError = e.toString();
+          _isLoadingAlignment = false;
+        });
+      }
+    }
   }
 
   @override
@@ -366,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildCircularProgress(alignmentScore),
+                _buildAlignmentScoreWidget(),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,21 +453,59 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCircularProgress(int score) {
+  Widget _buildAlignmentScoreWidget() {
+    if (_isLoadingAlignment) {
+      return const SizedBox(
+        width: 40,
+        height: 40,
+        child: CircularProgressIndicator(
+          strokeWidth: 3,
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
+        ),
+      );
+    }
+    
+    if (_alignmentError != null || _alignmentScore == null) {
+      return SizedBox(
+        width: 40,
+        height: 40,
+        child: Stack(
+          children: [
+            CircularProgressIndicator(
+              value: 0,
+              backgroundColor: Colors.white.withAlpha(26),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.grey),
+              strokeWidth: 3,
+            ),
+            Center(
+              child: Text(
+                '—',
+                style: GoogleFonts.syne(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
     return SizedBox(
       width: 40,
       height: 40,
       child: Stack(
         children: [
           CircularProgressIndicator(
-            value: score / 100,
+            value: _alignmentScore! / 100,
             backgroundColor: Colors.white.withAlpha(26),
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
             strokeWidth: 3,
           ),
           Center(
             child: Text(
-              '$score%',
+              '$_alignmentScore%',
               style: GoogleFonts.syne(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -440,6 +518,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _navigateToFriendProfile(Map<String, dynamic> friend, int index) {
+    final friendData = FriendData(
+      id: index + 1,
+      name: friend['name'] as String,
+      username: '@${(friend['name'] as String).toLowerCase()}',
+      avatarColors: [(friend['color1'] as Color).value, (friend['color2'] as Color).value],
+      sunSign: 'Pisces',
+      moonSign: 'Cancer',
+      risingSign: 'Scorpio',
+      dominantFrequency: '432 Hz',
+      element: 'Water',
+      modality: 'Mutable',
+      compatibilityScore: 85,
+      status: 'online',
+    );
+    Navigator.pushNamed(context, '/friend-profile', arguments: friendData);
+  }
+
   Widget _buildFriendAvatars() {
     return Row(
       children: [
@@ -447,23 +543,26 @@ class _HomeScreenState extends State<HomeScreen> {
           final friend = entry.value;
           return Transform.translate(
             offset: Offset(-8.0 * entry.key, 0),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [friend['color1'] as Color, friend['color2'] as Color],
+            child: GestureDetector(
+              onTap: () => _navigateToFriendProfile(friend, entry.key),
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [friend['color1'] as Color, friend['color2'] as Color],
+                  ),
+                  border: Border.all(color: AppColors.backgroundMid, width: 2),
                 ),
-                border: Border.all(color: AppColors.backgroundMid, width: 2),
-              ),
-              child: Center(
-                child: Text(
-                  (friend['name'] as String)[0],
-                  style: GoogleFonts.syne(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                child: Center(
+                  child: Text(
+                    (friend['name'] as String)[0],
+                    style: GoogleFonts.syne(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -505,7 +604,7 @@ class _HomeScreenState extends State<HomeScreen> {
             gradient: const LinearGradient(
               colors: [AppColors.cosmicPurple, AppColors.hotPink],
             ),
-            onPressed: () {},
+            onPressed: () => Navigator.pushNamed(context, '/align'),
           ),
         ),
         const SizedBox(width: 12),

@@ -4,6 +4,8 @@ import 'config/design_tokens.dart';
 import 'screens/main_shell.dart';
 import 'screens/birth_input_screen.dart';
 import 'screens/chart_screen.dart';
+import 'screens/friend_profile_screen.dart';
+import 'models/friend_data.dart';
 
 void main() {
   runApp(const AstroFmApp());
@@ -64,6 +66,12 @@ class AstroFmApp extends StatelessWidget {
               builder: (context) => ChartScreen(chart: chart as dynamic),
             );
           }
+        }
+        if (settings.name == '/friend-profile') {
+          final friendData = settings.arguments as FriendData;
+          return MaterialPageRoute(
+            builder: (context) => FriendProfileScreen(friend: friendData),
+          );
         }
         return null;
       },

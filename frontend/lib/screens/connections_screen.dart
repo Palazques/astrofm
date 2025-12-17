@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
+import '../models/friend_data.dart';
 
 /// Connections (Friends) screen.
 class ConnectionsScreen extends StatefulWidget {
@@ -52,8 +53,8 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppHeader(
-              showBackButton: true,
-              showMenuButton: false,
+              showBackButton: false,
+              showMenuButton: true,
               title: 'Connections',
               rightAction: Container(
                 decoration: BoxDecoration(
@@ -209,9 +210,31 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     );
   }
 
+  void _navigateToFriendProfile(Map<String, dynamic> connection) {
+    final friendData = FriendData(
+      id: connection['id'] as int,
+      name: connection['name'] as String,
+      username: '@${(connection['name'] as String).toLowerCase().replaceAll(' ', '')}',
+      avatarColors: [(connection['color1'] as Color).value, (connection['color2'] as Color).value],
+      sunSign: connection['sign'] as String,
+      moonSign: 'Cancer',
+      risingSign: 'Scorpio',
+      dominantFrequency: '432 Hz',
+      element: 'Water',
+      modality: 'Mutable',
+      compatibilityScore: connection['compatibility'] as int,
+      status: connection['status'] as String,
+      lastAligned: connection['lastAligned'] as String?,
+      mutualPlanets: (connection['mutualPlanets'] as List).cast<String>(),
+    );
+    Navigator.pushNamed(context, '/friend-profile', arguments: friendData);
+  }
+
   Widget _buildConnectionCard(Map<String, dynamic> connection) {
     final compatColor = _getCompatibilityColor(connection['compatibility'] as int);
-    return GlassCard(
+    return GestureDetector(
+      onTap: () => _navigateToFriendProfile(connection),
+      child: GlassCard(
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
@@ -297,6 +320,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -177,3 +177,121 @@ class CompatibilityResponse(BaseModel):
     challenges: list[str] = Field(..., description="Potential challenges")
     shared_genres: list[str] = Field(..., description="Shared music genre recommendations")
 
+
+# Alignment Calculation Models (Separate from AI interpretation models)
+
+class AspectData(BaseModel):
+    """
+    Data for a single astrological aspect between two planets.
+    """
+    planet1: str = Field(..., description="First planet in the aspect")
+    planet2: str = Field(..., description="Second planet in the aspect")
+    aspect: str = Field(..., description="Aspect type (Conjunction, Trine, Square, etc.)")
+    orb: float = Field(..., description="Orb in degrees (how exact the aspect is)")
+    nature: str = Field(..., description="Aspect nature: harmonious, challenging, or neutral")
+
+
+class TransitPosition(BaseModel):
+    """
+    Position data for a transiting planet.
+    """
+    name: str = Field(..., description="Planet name")
+    sign: str = Field(..., description="Current zodiac sign")
+    degree: float = Field(..., description="Degree within the sign (0-30)")
+    house: Optional[int] = Field(None, ge=1, le=12, description="House placement if natal chart provided")
+    retrograde: bool = Field(default=False, description="Is the planet retrograde")
+
+
+class DailyAlignmentRequest(BaseModel):
+    """
+    Request model for daily alignment calculation.
+    Uses same pattern as BirthDataRequest.
+    """
+    datetime_str: str = Field(
+        ...,
+        alias="datetime",
+        description="Birth date and time in ISO format (YYYY-MM-DDTHH:MM:SS)",
+        examples=["1990-07-15T15:42:00"]
+    )
+    latitude: float = Field(
+        ...,
+        ge=-90.0,
+        le=90.0,
+        description="Birth location latitude (-90 to 90)"
+    )
+    longitude: float = Field(
+        ...,
+        ge=-180.0,
+        le=180.0,
+        description="Birth location longitude (-180 to 180)"
+    )
+    timezone: str = Field(
+        default="UTC",
+        description="Timezone name (e.g., 'America/Los_Angeles', 'UTC')"
+    )
+
+    @field_validator('datetime_str')
+    @classmethod
+    def validate_datetime(cls, v: str) -> str:
+        """Validate datetime string is in proper ISO format."""
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("datetime must be in ISO format: YYYY-MM-DDTHH:MM:SS")
+        return v
+
+
+class DailyAlignmentResponse(BaseModel):
+    """
+    Response model for daily alignment calculation.
+    Contains score, active aspects, and interpretation.
+    """
+    score: int = Field(..., ge=0, le=100, description="Alignment score (0-100)")
+    aspects: list[AspectData] = Field(..., description="List of active transit aspects")
+    dominant_energy: str = Field(..., description="Dominant energy type (e.g., 'Harmonious', 'Transformative')")
+    description: str = Field(..., description="Brief interpretation of current alignment")
+
+
+class FriendAlignmentRequest(BaseModel):
+    """
+    Request model for synastry alignment between two people.
+    """
+    user_datetime: str = Field(..., description="User birth datetime ISO format")
+    user_latitude: float = Field(..., ge=-90.0, le=90.0)
+    user_longitude: float = Field(..., ge=-180.0, le=180.0)
+    user_timezone: str = Field(default="UTC")
+    friend_datetime: str = Field(..., description="Friend birth datetime ISO format")
+    friend_latitude: float = Field(..., ge=-90.0, le=90.0)
+    friend_longitude: float = Field(..., ge=-180.0, le=180.0)
+    friend_timezone: str = Field(default="UTC")
+
+    @field_validator('user_datetime', 'friend_datetime')
+    @classmethod
+    def validate_datetime(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("datetime must be in ISO format: YYYY-MM-DDTHH:MM:SS")
+        return v
+
+
+class FriendAlignmentResponse(BaseModel):
+    """
+    Response model for synastry alignment between two people.
+    """
+    score: int = Field(..., ge=0, le=100, description="Compatibility alignment score")
+    aspects: list[AspectData] = Field(..., description="Synastry aspects between charts")
+    dominant_energy: str = Field(..., description="Dominant relationship energy")
+    description: str = Field(..., description="Brief compatibility interpretation")
+    strengths: list[str] = Field(..., description="Relationship strengths from aspects")
+    challenges: list[str] = Field(..., description="Growth areas from aspects")
+
+
+class TransitsResponse(BaseModel):
+    """
+    Response model for current planetary transits.
+    """
+    planets: list[TransitPosition] = Field(..., description="Current planetary positions")
+    moon_phase: str = Field(..., description="Current moon phase name")
+    retrograde: list[str] = Field(..., description="List of retrograde planets")
+

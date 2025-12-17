@@ -13,6 +13,7 @@ from api.routes.geocoding import router as geocoding_router
 from api.routes.sonification import router as sonification_router
 from api.routes.ai import router as ai_router
 from api.routes.playlist import router as playlist_router
+from api.routes.alignment import router as alignment_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
 
@@ -69,6 +70,7 @@ app.include_router(geocoding_router)
 app.include_router(sonification_router)
 app.include_router(ai_router)
 app.include_router(playlist_router)
+app.include_router(alignment_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
