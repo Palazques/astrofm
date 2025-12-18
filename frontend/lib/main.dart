@@ -5,6 +5,9 @@ import 'screens/main_shell.dart';
 import 'screens/birth_input_screen.dart';
 import 'screens/chart_screen.dart';
 import 'screens/friend_profile_screen.dart';
+import 'screens/sign_in_screen.dart';
+import 'screens/align_screen.dart';
+import 'screens/onboarding/onboarding_flow.dart';
 import 'models/friend_data.dart';
 
 void main() {
@@ -53,10 +56,15 @@ class AstroFmApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/',
+      initialRoute: '/onboarding',
       routes: {
         '/': (context) => const MainShell(),
         '/birth-input': (context) => const BirthInputScreen(),
+        '/sign-in': (context) => const SignInScreen(),
+        '/align': (context) => const _AlignScreenWrapper(),
+        '/onboarding': (context) => OnboardingFlow(
+          onComplete: () => Navigator.pushReplacementNamed(context, '/'),
+        ),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/chart') {
@@ -75,6 +83,23 @@ class AstroFmApp extends StatelessWidget {
         }
         return null;
       },
+    );
+  }
+}
+
+/// Wrapper for AlignScreen when accessed via direct navigation (not through MainShell).
+class _AlignScreenWrapper extends StatelessWidget {
+  const _AlignScreenWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: AppColors.backgroundGradient,
+        ),
+        child: const AlignScreen(),
+      ),
     );
   }
 }

@@ -350,6 +350,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showSignOutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.backgroundMid,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withAlpha(26)),
+        ),
+        title: Text(
+          'Sign Out?',
+          style: GoogleFonts.syne(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to sign out of your account?',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 14,
+            color: Colors.white.withAlpha(179),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.syne(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withAlpha(128),
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.red.withAlpha(26),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.red.withAlpha(51)),
+            ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                // Navigate to sign-in screen, clearing all routes
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/sign-in',
+                  (route) => false,
+                );
+              },
+              child: Text(
+                'Sign Out',
+                style: GoogleFonts.syne(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.red,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSignOutButton() {
     return Container(
       decoration: BoxDecoration(
@@ -360,7 +427,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: _showSignOutDialog,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),

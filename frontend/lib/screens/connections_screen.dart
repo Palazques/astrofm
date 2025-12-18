@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/add_friend_sheet.dart';
 import '../models/friend_data.dart';
 
 /// Connections (Friends) screen.
@@ -15,19 +16,35 @@ class ConnectionsScreen extends StatefulWidget {
 
 class _ConnectionsScreenState extends State<ConnectionsScreen> {
   String _filter = 'all';
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
 
-  final connections = [
-    {'id': 1, 'name': 'Maya Chen', 'sign': 'Pisces', 'color1': AppColors.hotPink, 'color2': AppColors.cosmicPurple, 'compatibility': 91, 'lastAligned': '2 hours ago', 'status': 'online', 'mutualPlanets': ['Moon', 'Venus']},
-    {'id': 2, 'name': 'Jordan Rivera', 'sign': 'Aries', 'color1': AppColors.electricYellow, 'color2': AppColors.hotPink, 'compatibility': 78, 'lastAligned': 'Yesterday', 'status': 'online', 'mutualPlanets': ['Mars', 'Sun']},
-    {'id': 3, 'name': 'Alex Kim', 'sign': 'Scorpio', 'color1': AppColors.cosmicPurple, 'color2': AppColors.teal, 'compatibility': 87, 'lastAligned': '3 days ago', 'status': 'offline', 'mutualPlanets': ['Pluto', 'Moon']},
-    {'id': 4, 'name': 'Sam Taylor', 'sign': 'Leo', 'color1': AppColors.teal, 'color2': AppColors.electricYellow, 'compatibility': 65, 'lastAligned': '1 week ago', 'status': 'offline', 'mutualPlanets': ['Sun']},
-    {'id': 5, 'name': 'Riley Morgan', 'sign': 'Libra', 'color1': AppColors.orange, 'color2': AppColors.hotPink, 'compatibility': 82, 'lastAligned': '4 days ago', 'status': 'online', 'mutualPlanets': ['Venus', 'Mercury']},
-  ];
+  // Mutable lists for connections and requests
+  late List<Map<String, dynamic>> _connections;
+  late List<Map<String, dynamic>> _pendingRequests;
 
-  final pendingRequests = [
-    {'id': 101, 'name': 'Chris Lee', 'sign': 'Capricorn', 'color1': AppColors.cosmicPurple, 'color2': AppColors.electricYellow},
-    {'id': 102, 'name': 'Pat Johnson', 'sign': 'Gemini', 'color1': AppColors.hotPink, 'color2': AppColors.teal},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _connections = [
+      {'id': 1, 'name': 'Maya Chen', 'sign': 'Pisces', 'color1': AppColors.hotPink, 'color2': AppColors.cosmicPurple, 'compatibility': 91, 'lastAligned': '2 hours ago', 'status': 'online', 'mutualPlanets': ['Moon', 'Venus']},
+      {'id': 2, 'name': 'Jordan Rivera', 'sign': 'Aries', 'color1': AppColors.electricYellow, 'color2': AppColors.hotPink, 'compatibility': 78, 'lastAligned': 'Yesterday', 'status': 'online', 'mutualPlanets': ['Mars', 'Sun']},
+      {'id': 3, 'name': 'Alex Kim', 'sign': 'Scorpio', 'color1': AppColors.cosmicPurple, 'color2': AppColors.teal, 'compatibility': 87, 'lastAligned': '3 days ago', 'status': 'offline', 'mutualPlanets': ['Pluto', 'Moon']},
+      {'id': 4, 'name': 'Sam Taylor', 'sign': 'Leo', 'color1': AppColors.teal, 'color2': AppColors.electricYellow, 'compatibility': 65, 'lastAligned': '1 week ago', 'status': 'offline', 'mutualPlanets': ['Sun']},
+      {'id': 5, 'name': 'Riley Morgan', 'sign': 'Libra', 'color1': AppColors.orange, 'color2': AppColors.hotPink, 'compatibility': 82, 'lastAligned': '4 days ago', 'status': 'online', 'mutualPlanets': ['Venus', 'Mercury']},
+    ];
+    
+    _pendingRequests = [
+      {'id': 101, 'name': 'Chris Lee', 'sign': 'Capricorn', 'color1': AppColors.cosmicPurple, 'color2': AppColors.electricYellow},
+      {'id': 102, 'name': 'Pat Johnson', 'sign': 'Gemini', 'color1': AppColors.hotPink, 'color2': AppColors.teal},
+    ];
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Color _getCompatibilityColor(int score) {
     if (score >= 85) return AppColors.teal;
@@ -37,11 +54,128 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   }
 
   List<Map<String, dynamic>> get filteredConnections {
-    final sorted = List<Map<String, dynamic>>.from(connections);
-    if (_filter == 'compatible') {
-      sorted.sort((a, b) => (b['compatibility'] as int).compareTo(a['compatibility'] as int));
+    var list = List<Map<String, dynamic>>.from(_connections);
+    
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      list = list.where((c) {
+        final name = (c['name'] as String).toLowerCase();
+        return name.contains(_searchQuery.toLowerCase());
+      }).toList();
     }
-    return sorted;
+    
+    // Apply sort filter
+    if (_filter == 'compatible') {
+      list.sort((a, b) => (b['compatibility'] as int).compareTo(a['compatibility'] as int));
+    } else if (_filter == 'recent') {
+      // Sort by lastAligned - simplified for mock data
+      final order = ['2 hours ago', 'Yesterday', '3 days ago', '4 days ago', '1 week ago'];
+      list.sort((a, b) => order.indexOf(a['lastAligned'] as String).compareTo(order.indexOf(b['lastAligned'] as String)));
+    }
+    
+    return list;
+  }
+
+  void _showAddFriendSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (_, controller) => const AddFriendSheet(),
+      ),
+    );
+  }
+
+  void _acceptRequest(Map<String, dynamic> request) {
+    setState(() {
+      _pendingRequests.removeWhere((r) => r['id'] == request['id']);
+      // Add to connections with default values
+      _connections.insert(0, {
+        ...request,
+        'compatibility': 75, // Would be calculated by API
+        'lastAligned': 'Just now',
+        'status': 'online',
+        'mutualPlanets': ['Moon'],
+      });
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: AppColors.teal, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '${request['name']} added to your cosmic circle!',
+                style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.backgroundMid,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _declineRequest(Map<String, dynamic> request) {
+    setState(() {
+      _pendingRequests.removeWhere((r) => r['id'] == request['id']);
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: Colors.white.withAlpha(179), size: 20),
+            const SizedBox(width: 12),
+            Text(
+              'Request declined',
+              style: GoogleFonts.spaceGrotesk(color: Colors.white.withAlpha(179)),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.backgroundMid,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _quickAlign(Map<String, dynamic> connection) {
+    // Navigate to align screen with friend pre-selected
+    // Since AlignScreen uses internal state, we'll navigate and show a snackbar
+    // In a full implementation, you'd pass arguments to pre-select the friend
+    Navigator.pushNamed(context, '/align');
+    
+    // Show feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.access_time_rounded, color: AppColors.cosmicPurple, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Starting alignment with ${connection['name']}...',
+                style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.backgroundMid,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -63,7 +197,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.person_add_rounded, color: Colors.white, size: 20),
-                  onPressed: () {},
+                  onPressed: _showAddFriendSheet,
                 ),
               ),
             ),
@@ -78,7 +212,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             const SizedBox(height: 24),
 
             // Pending Requests
-            if (pendingRequests.isNotEmpty) ...[
+            if (_pendingRequests.isNotEmpty) ...[
               _buildPendingRequests(),
               const SizedBox(height: 24),
             ],
@@ -105,7 +239,9 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: _searchController,
               style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white),
+              onChanged: (value) => setState(() => _searchQuery = value),
               decoration: InputDecoration(
                 hintText: 'Search connections...',
                 hintStyle: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(102)),
@@ -115,6 +251,14 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
               ),
             ),
           ),
+          if (_searchQuery.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+              },
+              child: Icon(Icons.clear_rounded, color: Colors.white.withAlpha(102), size: 18),
+            ),
         ],
       ),
     );
@@ -143,7 +287,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: AppColors.hotPink, borderRadius: BorderRadius.circular(10)),
-              child: Text('${pendingRequests.length}', style: GoogleFonts.syne(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.background)),
+              child: Text('${_pendingRequests.length}', style: GoogleFonts.syne(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.background)),
             ),
           ],
         ),
@@ -152,9 +296,9 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           height: 180,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: pendingRequests.length,
+            itemCount: _pendingRequests.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _buildPendingRequestCard(pendingRequests[index]),
+            itemBuilder: (context, index) => _buildPendingRequestCard(_pendingRequests[index]),
           ),
         ),
       ],
@@ -185,9 +329,17 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _ActionButton(icon: Icons.close_rounded, color: Colors.white.withAlpha(26), onPressed: () {}),
+                _ActionButton(
+                  icon: Icons.close_rounded,
+                  color: Colors.white.withAlpha(26),
+                  onPressed: () => _declineRequest(request),
+                ),
                 const SizedBox(width: 8),
-                _ActionButton(icon: Icons.check_rounded, color: AppColors.teal, onPressed: () {}),
+                _ActionButton(
+                  icon: Icons.check_rounded,
+                  color: AppColors.teal,
+                  onPressed: () => _acceptRequest(request),
+                ),
               ],
             ),
           ],
@@ -197,15 +349,41 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   }
 
   Widget _buildConnectionsList() {
+    final connections = filteredConnections;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Your Cosmic Circle (${connections.length})', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(179))),
+        Text(
+          'Your Cosmic Circle (${connections.length})',
+          style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(179)),
+        ),
         const SizedBox(height: 12),
-        ...filteredConnections.map((connection) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildConnectionCard(connection),
-        )),
+        if (connections.isEmpty)
+          GlassCard(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.search_off_rounded, size: 40, color: Colors.white.withAlpha(51)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No connections found',
+                    style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(102)),
+                  ),
+                  Text(
+                    'Try a different search term',
+                    style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(77)),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...connections.map((connection) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildConnectionCard(connection),
+          )),
       ],
     );
   }
@@ -316,7 +494,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             ),
             child: IconButton(
               icon: const Icon(Icons.access_time_rounded, color: Colors.white, size: 18),
-              onPressed: () {},
+              onPressed: () => _quickAlign(connection),
             ),
           ),
         ],
