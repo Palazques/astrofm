@@ -241,7 +241,7 @@ class _ReferralScreenState extends State<ReferralScreen>
             ),
             const SizedBox(height: 24),
 
-            // Lifetime discount badge with shine
+            // 3-month discount badge with shine
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
@@ -251,7 +251,7 @@ class _ReferralScreenState extends State<ReferralScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                'LIFETIME 50% OFF',
+                '50% OFF FOR 3 MONTHS',
                 style: GoogleFonts.syne(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -272,7 +272,7 @@ class _ReferralScreenState extends State<ReferralScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Unlock Premium features forever',
+              'Unlock 3 months of premium pricing',
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 color: Colors.white.withAlpha(128),

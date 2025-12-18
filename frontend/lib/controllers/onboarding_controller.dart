@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/onboarding_data.dart';
 import '../models/location.dart';
+import '../models/birth_data.dart';
+import '../models/user_profile.dart';
+import '../services/storage_service.dart';
 
 /// State management for the onboarding flow.
 class OnboardingController extends ChangeNotifier {
@@ -16,7 +19,7 @@ class OnboardingController extends ChangeNotifier {
   int get currentStep => _currentStep;
 
   /// Total number of steps.
-  static const int totalSteps = 10;
+  static const int totalSteps = 11;
 
   /// Whether an async operation is in progress.
   bool get isLoading => _isLoading;
@@ -65,8 +68,11 @@ class OnboardingController extends ChangeNotifier {
   }
 
   /// Update favorite genres (Screen 5).
-  void updateGenres(List<String> genres) {
-    _data = _data.copyWith(favoriteGenres: genres);
+  void updateGenres(List<String> genres, {List<String>? subgenres}) {
+    _data = _data.copyWith(
+      favoriteGenres: genres,
+      favoriteSubgenres: subgenres ?? _data.favoriteSubgenres,
+    );
     notifyListeners();
   }
 
@@ -104,9 +110,15 @@ class OnboardingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update notifications permission (Screen 9).
+  /// Update notifications permission (Screen 10).
   void updateNotifications(bool enabled) {
     _data = _data.copyWith(notificationsEnabled: enabled);
+    notifyListeners();
+  }
+
+  /// Update membership selection (Screen 9).
+  void updateMembership(PlanType? plan) {
+    _data = _data.copyWith(selectedPlan: plan?.name);
     notifyListeners();
   }
 
@@ -153,10 +165,41 @@ class OnboardingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mark onboarding as complete.
+  /// Mark onboarding as complete and save data to local storage.
   Future<void> completeOnboarding() async {
     _data = _data.copyWith(completedAt: DateTime.now());
-    // Future: Save to Firebase here
+    
+    // Save birth data to local storage
+    if (_data.birthDate != null && _data.birthLocation != null) {
+      // Build datetime string from date and time
+      final date = _data.birthDate!;
+      final time = _data.birthTime ?? const TimeOfDay(hour: 12, minute: 0);
+      final datetime = DateTime(
+        date.year, date.month, date.day, 
+        time.hour, time.minute,
+      );
+      
+      final birthData = BirthData(
+        name: _data.displayName ?? 'User',
+        datetime: datetime.toIso8601String(),
+        latitude: _data.birthLocation!.latitude,
+        longitude: _data.birthLocation!.longitude,
+        timezone: _data.birthLocation!.timezone ?? 'UTC',
+        locationName: _data.birthLocation!.displayName,
+      );
+      
+      await storageService.saveBirthData(birthData);
+    }
+    
+    // Mark onboarding as complete
+    await storageService.setOnboardingComplete(true);
+    
+    // Save genres
+    await storageService.saveGenres(
+      _data.favoriteGenres, 
+      _data.favoriteSubgenres,
+    );
+    
     notifyListeners();
   }
 

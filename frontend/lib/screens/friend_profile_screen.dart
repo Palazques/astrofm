@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../config/design_tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
@@ -56,6 +57,140 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
       return Color(widget.friend.avatarColors[index]);
     }
     return index == 0 ? AppColors.hotPink : AppColors.cosmicPurple;
+  }
+
+  void _alignWithFriend() {
+    Navigator.pushNamed(
+      context,
+      '/align',
+      arguments: {
+        'targetType': 'friend',
+        'friendId': widget.friend.id,
+        'friendName': widget.friend.name,
+      },
+    );
+  }
+
+  Future<void> _sharePlaylist() async {
+    await Share.share(
+      '🌟 Check out my cosmic playlist! 🎶\n\n'
+      'Created based on my alignment with ${widget.friend.name.split(' ')[0]}\n'
+      'Compatibility: ${widget.friend.compatibilityScore}%\n\n'
+      'Discover your cosmic connection at ASTRO.FM!',
+    );
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature coming soon!'),
+        backgroundColor: AppColors.cosmicPurple,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showRemoveFriendDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.backgroundMid,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withAlpha(26)),
+        ),
+        title: Text(
+          'Remove Friend?',
+          style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to remove ${widget.friend.name.split(' ')[0]} from your connections?',
+          style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(179)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.syne(fontSize: 14, color: Colors.white.withAlpha(128))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showComingSoon('Friend management');
+            },
+            child: Text('Remove', style: GoogleFonts.syne(fontSize: 14, color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBlockDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.backgroundMid,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withAlpha(26)),
+        ),
+        title: Text(
+          'Block User?',
+          style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+        ),
+        content: Text(
+          'Blocking ${widget.friend.name.split(' ')[0]} will prevent them from seeing your profile or contacting you.',
+          style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(179)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.syne(fontSize: 14, color: Colors.white.withAlpha(128))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showComingSoon('Block functionality');
+            },
+            child: Text('Block', style: GoogleFonts.syne(fontSize: 14, color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.backgroundMid,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withAlpha(26)),
+        ),
+        title: Text(
+          'Report User?',
+          style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+        ),
+        content: Text(
+          'Report ${widget.friend.name.split(' ')[0]} for inappropriate behavior?',
+          style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(179)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.syne(fontSize: 14, color: Colors.white.withAlpha(128))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showComingSoon('Report functionality');
+            },
+            child: Text('Report', style: GoogleFonts.syne(fontSize: 14, color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -546,7 +681,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               '$firstName\'s Playlists'.toUpperCase(),
               style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 2),
             ),
-            Text('See All', style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.cosmicPurple)),
+            GestureDetector(
+              onTap: () => _showComingSoon('All playlists'),
+              child: Text('See All', style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.cosmicPurple)),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -573,7 +711,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: () => _showComingSoon('Playlist details'),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -616,7 +754,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
           Icons.access_time_rounded,
           const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
           Colors.white,
-          () {},
+          _alignWithFriend,
         ),
         const SizedBox(height: 12),
         _buildPrimaryButton(
@@ -624,7 +762,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
           Icons.music_note_rounded,
           const LinearGradient(colors: [AppColors.electricYellow, Color(0xFFE5EB0D)]),
           AppColors.background,
-          () {},
+          _sharePlaylist,
         ),
       ],
     );
@@ -674,9 +812,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildMenuItem('Remove Friend', false),
-                    _buildMenuItem('Block', true),
-                    _buildMenuItem('Report', true),
+                    _buildMenuItem('Remove Friend', false, _showRemoveFriendDialog),
+                    _buildMenuItem('Block', true, _showBlockDialog),
+                    _buildMenuItem('Report', true, _showReportDialog),
                   ],
                 ),
               ),
@@ -687,9 +825,12 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     );
   }
 
-  Widget _buildMenuItem(String label, bool isDestructive) {
+  Widget _buildMenuItem(String label, bool isDestructive, VoidCallback onTap) {
     return InkWell(
-      onTap: () => setState(() => _showMenu = false),
+      onTap: () {
+        setState(() => _showMenu = false);
+        onTap();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(

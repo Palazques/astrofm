@@ -137,6 +137,26 @@ class _BirthInputScreenState extends State<BirthInputScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Back Button
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Material(
+                      color: Colors.white.withAlpha(13),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () {
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   Center(
                     child: ShaderMask(

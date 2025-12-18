@@ -29,7 +29,7 @@ class OnboardingScaffold extends StatelessWidget {
   const OnboardingScaffold({
     super.key,
     required this.step,
-    this.totalSteps = 10,
+    this.totalSteps = 11,
     this.showBack = true,
     this.onBack,
     this.showSkip = false,

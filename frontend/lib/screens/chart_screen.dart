@@ -43,6 +43,48 @@ class ChartScreen extends StatelessWidget {
                       _buildSectionTitle('PLANETARY POSITIONS'),
                       const SizedBox(height: 16),
                       ...chart.planets.map((planet) => _buildPlanetCard(planet)),
+                      
+                      // Done Button
+                      const SizedBox(height: 32),
+                      Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFEB3B), Color(0xFFFF1493)],
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF1493).withAlpha(77),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Pop back to Profile screen (through birth-input)
+                            Navigator.of(context).popUntil((route) => route.isFirst || route.settings.name == '/');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                          ),
+                          child: const Text(
+                            'DONE',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

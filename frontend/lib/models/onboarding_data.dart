@@ -20,6 +20,7 @@ class OnboardingData {
 
   // Screen 5: Genres
   List<String> favoriteGenres;
+  List<String> favoriteSubgenres;
 
   // Screen 6: Music Services
   bool spotifyConnected;
@@ -30,7 +31,10 @@ class OnboardingData {
   // Screen 8: Referral
   String? referralCode;
 
-  // Screen 9: Notifications
+  // Screen 9: Premium/Membership
+  String? selectedPlan; // monthly, sixMonth, annual, or null for free
+
+  // Screen 10: Notifications
   bool notificationsEnabled;
 
   // Completion tracking
@@ -49,11 +53,13 @@ class OnboardingData {
     this.birthTimeUnknown = false,
     this.howFoundUs = const [],
     this.favoriteGenres = const [],
+    this.favoriteSubgenres = const [],
     this.spotifyConnected = false,
     this.appleMusicConnected = false,
     this.spotifyUserId,
     this.appleMusicUserId,
     this.referralCode,
+    this.selectedPlan,
     this.notificationsEnabled = false,
     this.lastCompletedStep = 0,
     this.completedAt,
@@ -96,11 +102,13 @@ class OnboardingData {
       'birthTimeUnknown': birthTimeUnknown,
       'howFoundUs': howFoundUs,
       'favoriteGenres': favoriteGenres,
+      'favoriteSubgenres': favoriteSubgenres,
       'spotifyConnected': spotifyConnected,
       'appleMusicConnected': appleMusicConnected,
       'spotifyUserId': spotifyUserId,
       'appleMusicUserId': appleMusicUserId,
       'referralCode': referralCode,
+      'selectedPlan': selectedPlan,
       'notificationsEnabled': notificationsEnabled,
       'lastCompletedStep': lastCompletedStep,
       'completedAt': completedAt?.toIso8601String(),
@@ -131,11 +139,13 @@ class OnboardingData {
       birthTimeUnknown: json['birthTimeUnknown'] ?? false,
       howFoundUs: List<String>.from(json['howFoundUs'] ?? []),
       favoriteGenres: List<String>.from(json['favoriteGenres'] ?? []),
+      favoriteSubgenres: List<String>.from(json['favoriteSubgenres'] ?? []),
       spotifyConnected: json['spotifyConnected'] ?? false,
       appleMusicConnected: json['appleMusicConnected'] ?? false,
       spotifyUserId: json['spotifyUserId'],
       appleMusicUserId: json['appleMusicUserId'],
       referralCode: json['referralCode'],
+      selectedPlan: json['selectedPlan'],
       notificationsEnabled: json['notificationsEnabled'] ?? false,
       lastCompletedStep: json['lastCompletedStep'] ?? 0,
       completedAt: json['completedAt'] != null
@@ -155,11 +165,13 @@ class OnboardingData {
     bool? birthTimeUnknown,
     List<String>? howFoundUs,
     List<String>? favoriteGenres,
+    List<String>? favoriteSubgenres,
     bool? spotifyConnected,
     bool? appleMusicConnected,
     String? spotifyUserId,
     String? appleMusicUserId,
     String? referralCode,
+    String? selectedPlan,
     bool? notificationsEnabled,
     int? lastCompletedStep,
     DateTime? completedAt,
@@ -174,11 +186,13 @@ class OnboardingData {
       birthTimeUnknown: birthTimeUnknown ?? this.birthTimeUnknown,
       howFoundUs: howFoundUs ?? this.howFoundUs,
       favoriteGenres: favoriteGenres ?? this.favoriteGenres,
+      favoriteSubgenres: favoriteSubgenres ?? this.favoriteSubgenres,
       spotifyConnected: spotifyConnected ?? this.spotifyConnected,
       appleMusicConnected: appleMusicConnected ?? this.appleMusicConnected,
       spotifyUserId: spotifyUserId ?? this.spotifyUserId,
       appleMusicUserId: appleMusicUserId ?? this.appleMusicUserId,
       referralCode: referralCode ?? this.referralCode,
+      selectedPlan: selectedPlan ?? this.selectedPlan,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       lastCompletedStep: lastCompletedStep ?? this.lastCompletedStep,
       completedAt: completedAt ?? this.completedAt,

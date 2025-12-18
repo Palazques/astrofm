@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../controllers/onboarding_controller.dart';
 import '../../models/location.dart';
+import '../../models/user_profile.dart';
 import 'welcome_screen.dart';
 import 'name_screen.dart';
 import 'birth_data_screen.dart';
@@ -9,6 +10,7 @@ import 'genres_screen.dart';
 import 'connect_music_screen.dart';
 import 'how_it_works_screen.dart';
 import 'referral_screen.dart';
+import 'premium_screen.dart';
 import 'notifications_screen.dart';
 import 'sound_ready_screen.dart';
 
@@ -27,6 +29,9 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   final _controller = OnboardingController();
   late PageController _pageController;
+  
+  // Track referral discount earned during onboarding
+  bool _hasReferralDiscount = false;
 
   @override
   void initState() {
@@ -55,10 +60,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         );
       }
     }
-  }
-
-  void _goToStep(int step) {
-    _controller.goToStep(step);
   }
 
   void _nextStep() {
@@ -127,11 +128,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onSkip: _nextStep,
             ),
 
-            // Screen 5: Genres
+            // Screen 5: Genres (expanded with subgenres)
             GenresScreen(
               initialGenres: _controller.data.favoriteGenres,
-              onNext: (genres) {
-                _controller.updateGenres(genres);
+              initialSubgenres: _controller.data.favoriteSubgenres,
+              onNext: (genres, subgenres) {
+                _controller.updateGenres(genres, subgenres: subgenres);
                 _nextStep();
               },
               onBack: _previousStep,
@@ -167,13 +169,26 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               initialCode: _controller.data.referralCode,
               onNext: (code) {
                 _controller.updateReferralCode(code);
+                // Check if user shared with 3 friends (would be tracked in real implementation)
+                // For now, we simulate based on share action
                 _nextStep();
               },
               onBack: _previousStep,
               onSkip: _nextStep,
             ),
 
-            // Screen 9: Notifications
+            // Screen 9: Premium (NEW)
+            PremiumScreen(
+              hasReferralDiscount: _hasReferralDiscount,
+              onNext: (selectedPlan) {
+                _controller.updateMembership(selectedPlan);
+                _nextStep();
+              },
+              onBack: _previousStep,
+              onSkip: _nextStep,
+            ),
+
+            // Screen 10: Notifications
             NotificationsScreen(
               initialEnabled: _controller.data.notificationsEnabled,
               onNext: (enabled) {
@@ -184,7 +199,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onSkip: _nextStep,
             ),
 
-            // Screen 10: Sound Ready
+            // Screen 11: Sound Ready
             SoundReadyScreen(
               data: _controller.data,
               onComplete: () async {

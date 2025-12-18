@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/inline_error.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import '../models/sonification.dart';
+import '../models/birth_data.dart';
+import '../data/test_users.dart';
 
 /// Your Sound screen with frequency breakdown.
 class SoundScreen extends StatefulWidget {
@@ -25,19 +31,25 @@ class _SoundScreenState extends State<SoundScreen> {
   ChartSonification? _sonification;
   String? _errorMessage;
   final Set<String> _selectedPlanets = {};
-
-  // Mock birth data - in production, this would come from user profile
-  final _birthData = {
-    'datetime': '1990-07-15T15:42:00',
-    'latitude': 34.0522,
-    'longitude': -118.2437,
-    'timezone': 'America/Los_Angeles',
-  };
-
-  final soundProfile = {
-    'name': 'Paul',
+  
+  // Birth data from storage (or fallback to test data)
+  BirthData? _birthData;
+  
+  Map<String, dynamic> get _birthDataMap => _birthData != null 
+    ? {
+        'datetime': _birthData!.datetime,
+        'latitude': _birthData!.latitude,
+        'longitude': _birthData!.longitude,
+        'timezone': _birthData!.timezone,
+      }
+    : defaultTestBirthData;
+    
+  Map<String, dynamic> get soundProfile => {
+    'name': _birthData?.name ?? 'Paul',
     'sign': 'Cancer',
-    'createdFrom': 'July 15, 1990 • 3:42 PM • Los Angeles, CA',
+    'createdFrom': _birthData != null 
+        ? '${_birthData!.formattedDate} • ${_birthData!.formattedTime} • ${_birthData!.locationName}'
+        : 'July 15, 1990 • 3:42 PM • Los Angeles, CA',
     'dominantFrequency': '528 Hz',
     'element': 'Water',
   };
@@ -95,12 +107,20 @@ class _SoundScreenState extends State<SoundScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSonification();
+    _loadBirthDataAndInit();
     _audioService.playingStream.listen((isPlaying) {
       if (mounted) {
         setState(() => _isPlaying = isPlaying);
       }
     });
+  }
+  
+  Future<void> _loadBirthDataAndInit() async {
+    final stored = await storageService.loadBirthData();
+    if (mounted) {
+      setState(() => _birthData = stored);
+    }
+    _loadSonification();
   }
 
   @override
@@ -118,10 +138,10 @@ class _SoundScreenState extends State<SoundScreen> {
 
     try {
       final sonification = await _apiService.getUserSonification(
-        datetime: _birthData['datetime'] as String,
-        latitude: _birthData['latitude'] as double,
-        longitude: _birthData['longitude'] as double,
-        timezone: _birthData['timezone'] as String,
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
       );
       
       if (mounted) {
@@ -201,7 +221,16 @@ class _SoundScreenState extends State<SoundScreen> {
               title: 'Your Sound',
               rightAction: IconButton(
                 icon: const Icon(Icons.share_rounded, color: Colors.white),
-                onPressed: () {},
+                onPressed: () async {
+                  await Share.share(
+                    '🌌 My Cosmic Sound Profile \u2728\n\n'
+                    '🎵 Dominant Frequency: ${soundProfile['dominantFrequency']}\n'
+                    '⭐ Sign: ${soundProfile['sign']}\n'
+                    '💧 Element: ${soundProfile['element']}\n\n'
+                    'Created from ${soundProfile['createdFrom']}\n\n'
+                    'Discover your cosmic sound at ASTRO.FM!',
+                  );
+                },
               ),
             ),
             const SizedBox(height: 16),
@@ -227,6 +256,54 @@ class _SoundScreenState extends State<SoundScreen> {
   }
 
   Widget _buildMainOrb() {
+    // Show error state with retry
+    if (_errorMessage != null) {
+      return Column(
+        children: [
+          const SkeletonOrb(size: 180),
+          const SizedBox(height: 24),
+          InlineError(
+            message: _errorMessage!,
+            onRetry: _loadSonification,
+          ),
+        ],
+      );
+    }
+    
+    // Show skeleton while loading
+    if (_isLoading && _sonification == null) {
+      return Column(
+        children: [
+          const SkeletonOrb(size: 180),
+          const SizedBox(height: 24),
+          SkeletonLoader(
+            width: 200,
+            height: 28,
+            borderRadius: BorderRadius.circular(4),
+            color: Colors.white.withAlpha(25),
+          ),
+          const SizedBox(height: 8),
+          SkeletonLoader(
+            width: 250,
+            height: 13,
+            borderRadius: BorderRadius.circular(4),
+            color: Colors.white.withAlpha(15),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SkeletonLoader(width: 70, height: 28, borderRadius: BorderRadius.circular(20), color: Colors.white.withAlpha(15)),
+              const SizedBox(width: 12),
+              SkeletonLoader(width: 60, height: 28, borderRadius: BorderRadius.circular(20), color: Colors.white.withAlpha(15)),
+              const SizedBox(width: 12),
+              SkeletonLoader(width: 65, height: 28, borderRadius: BorderRadius.circular(20), color: Colors.white.withAlpha(15)),
+            ],
+          ),
+        ],
+      );
+    }
+    
     return Column(
       children: [
         SoundOrb(

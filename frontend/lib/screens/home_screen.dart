@@ -4,13 +4,17 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/inline_error.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/playlist.dart';
 import '../models/friend_data.dart';
-import '../models/alignment.dart';
+import '../models/birth_data.dart';
+import '../data/test_users.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -30,22 +34,29 @@ class _HomeScreenState extends State<HomeScreen> {
   ChartSonification? _dailySonification;
   DailyReading? _dailyReading;
   bool _isLoadingReading = false;
+  String? _readingError;
   PlaylistResult? _generatedPlaylist;
   bool _isGeneratingPlaylist = false;
+  String? _playlistError;
+  bool _isLoadingSonification = true;
   
   // Alignment data
   int? _alignmentScore;
   String? _dominantEnergy;
   bool _isLoadingAlignment = true;
   String? _alignmentError;
-
-  // Mock birth data - in production, this would come from user profile
-  final _birthData = {
-    'datetime': '1990-07-15T15:42:00',
-    'latitude': 34.0522,
-    'longitude': -118.2437,
-    'timezone': 'America/Los_Angeles',
-  };
+  
+  // Birth data from storage (or fallback to test data)
+  BirthData? _birthData;
+  
+  Map<String, dynamic> get _birthDataMap => _birthData != null 
+    ? {
+        'datetime': _birthData!.datetime,
+        'latitude': _birthData!.latitude,
+        'longitude': _birthData!.longitude,
+        'timezone': _birthData!.timezone,
+      }
+    : defaultTestBirthData;
 
   // Fallback data when API is unavailable
   Map<String, String> get todaysReading => {
@@ -81,8 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAlignmentScore();
-    _loadSonificationData();
+    _loadBirthDataAndInit();
     _audioService.playingStream.listen((isPlaying) {
       if (mounted && !isPlaying) {
         setState(() {
@@ -91,6 +101,18 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+  }
+  
+  Future<void> _loadBirthDataAndInit() async {
+    // Load birth data from storage
+    final stored = await storageService.loadBirthData();
+    if (mounted) {
+      setState(() => _birthData = stored);
+    }
+    
+    // Now load API data using birth data
+    _loadAlignmentScore();
+    _loadSonificationData();
   }
 
   Future<void> _loadAlignmentScore() async {
@@ -101,10 +123,10 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       
       final result = await _apiService.getDailyAlignment(
-        datetime: _birthData['datetime'] as String,
-        latitude: _birthData['latitude'] as double,
-        longitude: _birthData['longitude'] as double,
-        timezone: _birthData['timezone'] as String,
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
       );
       
       if (mounted) {
@@ -132,29 +154,35 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadSonificationData() async {
+    setState(() => _isLoadingSonification = true);
+    
     try {
       // Load user's sound
       final userSonification = await _apiService.getUserSonification(
-        datetime: _birthData['datetime'] as String,
-        latitude: _birthData['latitude'] as double,
-        longitude: _birthData['longitude'] as double,
-        timezone: _birthData['timezone'] as String,
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
       );
       
       // Load daily sound
       final dailySonification = await _apiService.getDailySonification(
-        latitude: _birthData['latitude'] as double,
-        longitude: _birthData['longitude'] as double,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
       );
       
       if (mounted) {
         setState(() {
           _userSonification = userSonification;
           _dailySonification = dailySonification;
+          _isLoadingSonification = false;
         });
       }
     } catch (e) {
-      // Silently fail - orbs will just be decorative if API fails
+      // Sonification failed - orbs will show skeletons
+      if (mounted) {
+        setState(() => _isLoadingSonification = false);
+      }
     }
     
     // Load AI-generated daily reading
@@ -164,14 +192,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDailyReading() async {
     if (_isLoadingReading) return;
     
-    setState(() => _isLoadingReading = true);
+    setState(() {
+      _isLoadingReading = true;
+      _readingError = null;
+    });
     
     try {
       final reading = await _apiService.getDailyReading(
-        datetime: _birthData['datetime'] as String,
-        latitude: _birthData['latitude'] as double,
-        longitude: _birthData['longitude'] as double,
-        timezone: _birthData['timezone'] as String,
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
       );
       
       if (mounted) {
@@ -181,11 +212,11 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      // Log error for debugging
-      print('Error loading daily reading: $e');
-      // Keep fallback data on error
       if (mounted) {
-        setState(() => _isLoadingReading = false);
+        setState(() {
+          _readingError = 'Could not load reading';
+          _isLoadingReading = false;
+        });
       }
     }
   }
@@ -197,10 +228,10 @@ class _HomeScreenState extends State<HomeScreen> {
     
     try {
       final playlist = await _apiService.generatePlaylist(
-        datetime: _birthData['datetime'] as String,
-        latitude: _birthData['latitude'] as double,
-        longitude: _birthData['longitude'] as double,
-        timezone: _birthData['timezone'] as String,
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
         playlistSize: 20,
       );
       
@@ -211,16 +242,11 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      print('Error generating playlist: $e');
       if (mounted) {
-        setState(() => _isGeneratingPlaylist = false);
-        // Show error snackbar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate playlist: ${e.toString()}'),
-            backgroundColor: Colors.red.shade900,
-          ),
-        );
+        setState(() {
+          _isGeneratingPlaylist = false;
+          _playlistError = 'Failed to generate playlist';
+        });
       }
     }
   }
@@ -261,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const AppHeader(),
+            const AppHeader(showSettingsButton: true),
             const SizedBox(height: 16),
 
             // Sound Orbs Section
@@ -294,14 +320,17 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Your Sound Orb
               GestureDetector(
-                onTap: _playUserSound,
+                onTap: _userSonification != null ? _playUserSound : null,
                 child: Column(
                   children: [
-                    SoundOrb(
-                      size: 100,
-                      colors: const [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
-                      animate: _isPlayingUserSound,
-                    ),
+                    if (_isLoadingSonification)
+                      const SkeletonOrb(size: 100)
+                    else
+                      SoundOrb(
+                        size: 100,
+                        colors: const [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
+                        animate: _isPlayingUserSound,
+                      ),
                     const SizedBox(height: 12),
                     Text(
                       'YOUR SOUND',
@@ -312,7 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      _isPlayingUserSound ? 'Playing...' : 'Tap to Play',
+                      _isLoadingSonification 
+                        ? 'Loading...'
+                        : (_isPlayingUserSound ? 'Playing...' : 'Tap to Play'),
                       style: GoogleFonts.syne(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -363,14 +394,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Today's Sound Orb
               GestureDetector(
-                onTap: _playDailySound,
+                onTap: _dailySonification != null ? _playDailySound : null,
                 child: Column(
                   children: [
-                    SoundOrb(
-                      size: 100,
-                      colors: const [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
-                      animate: _isPlayingDailySound,
-                    ),
+                    if (_isLoadingSonification)
+                      const SkeletonOrb(size: 100)
+                    else
+                      SoundOrb(
+                        size: 100,
+                        colors: const [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
+                        animate: _isPlayingDailySound,
+                      ),
                     const SizedBox(height: 12),
                     Text(
                       'TODAY\'S SOUND',
@@ -381,7 +415,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      _isPlayingDailySound ? 'Playing...' : 'Tap to Play',
+                      _isLoadingSonification 
+                        ? 'Loading...'
+                        : (_isPlayingDailySound ? 'Playing...' : 'Tap to Play'),
                       style: GoogleFonts.syne(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -624,6 +660,96 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTodaysResonance() {
+    // Show error state with retry
+    if (_readingError != null) {
+      return GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'TODAY\'S RESONANCE',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: Colors.white.withAlpha(128),
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            InlineError(
+              message: _readingError!,
+              onRetry: _loadDailyReading,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Show skeleton while loading
+    if (_isLoadingReading && _dailyReading == null) {
+      return GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TODAY\'S RESONANCE',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: Colors.white.withAlpha(128),
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SkeletonLoader(
+                      width: 100,
+                      height: 24,
+                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.white.withAlpha(25),
+                    ),
+                  ],
+                ),
+                SkeletonLoader(
+                  width: 70,
+                  height: 24,
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withAlpha(25),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: SkeletonLoader(
+                    width: double.infinity,
+                    height: 50,
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withAlpha(15),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SkeletonLoader(
+                    width: double.infinity,
+                    height: 50,
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withAlpha(15),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SkeletonText(lines: 2, lastLineWidth: 150),
+          ],
+        ),
+      );
+    }
+    
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,29 +914,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 12),
+        // Show skeleton cards while generating
         if (_isGeneratingPlaylist)
           GlassCard(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  children: [
-                    const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Generating your cosmic playlist...',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13,
-                        color: Colors.white.withAlpha(179),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              children: List.generate(3, (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SkeletonCard(height: 64),
+              )),
             ),
           )
+        // Show error with retry button
+        else if (_playlistError != null)
+          GlassCard(
+            child: Column(
+              children: [
+                InlineError(
+                  message: _playlistError!,
+                  onRetry: () {
+                    setState(() => _playlistError = null);
+                    _generatePlaylist();
+                  },
+                ),
+              ],
+            ),
+          )
+        // Show empty state
         else if (_generatedPlaylist == null)
           GlassCard(
             child: Center(
@@ -846,6 +976,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           )
+        // Show actual playlist
         else
           GlassCard(
             padding: const EdgeInsets.all(8),

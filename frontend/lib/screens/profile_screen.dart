@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
+import '../services/storage_service.dart';
+import '../models/birth_data.dart';
 
 /// Profile screen with user info, stats, and settings.
 class ProfileScreen extends StatefulWidget {
@@ -16,14 +18,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _notificationsEnabled = true;
   bool _dailyAlignReminder = true;
   bool _shareActivity = false;
-
-  final user = {
-    'name': 'Paul',
-    'username': '@cosmicpaul',
+  
+  // Birth data from storage
+  BirthData? _birthData;
+  
+  Map<String, dynamic> get user => {
+    'name': _birthData?.name ?? 'Paul',
+    'username': '@cosmic${(_birthData?.name ?? 'paul').toLowerCase()}',
     'avatarColors': [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
-    'birthDate': 'July 15, 1990',
-    'birthTime': '3:42 PM',
-    'birthLocation': 'Los Angeles, CA',
+    'birthDate': _birthData?.formattedDate ?? 'July 15, 1990',
+    'birthTime': _birthData?.formattedTime ?? '3:42 PM',
+    'birthLocation': _birthData?.locationName ?? 'Los Angeles, CA',
     'sign': 'Cancer',
     'rising': 'Libra',
     'moon': 'Scorpio',
@@ -52,6 +57,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     {'id': 'privacy', 'label': 'Privacy & Security', 'icon': Icons.lock_rounded},
     {'id': 'help', 'label': 'Help & Support', 'icon': Icons.help_outline_rounded},
   ];
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadBirthData();
+  }
+  
+  Future<void> _loadBirthData() async {
+    final stored = await storageService.loadBirthData();
+    if (mounted && stored != null) {
+      setState(() => _birthData = stored);
+    }
+  }
+
+  void _handleMenuTap(String menuId) {
+    switch (menuId) {
+      case 'edit-birth':
+        Navigator.pushNamed(context, '/birth-input').then((_) {
+          // Reload birth data after returning from edit screen
+          _loadBirthData();
+        });
+        break;
+      case 'sound-settings':
+        // Navigate to main shell with sound tab selected
+        Navigator.pushNamed(context, '/sound');
+        break;
+      case 'connected-apps':
+      case 'privacy':
+      case 'help':
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Coming soon!'),
+            backgroundColor: AppColors.cosmicPurple,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        break;
+    }
+  }
+
+  void _showAllAchievements() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Achievements screen coming soon!'),
+        backgroundColor: AppColors.cosmicPurple,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text('Recent Achievements', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             TextButton(
-              onPressed: () {},
+              onPressed: _showAllAchievements,
               child: Text('View All', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.cosmicPurple)),
             ),
           ],
@@ -322,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () {},
+                  onTap: () => _handleMenuTap(item['id'] as String),
                   borderRadius: BorderRadius.circular(14),
                   child: Padding(
                     padding: const EdgeInsets.all(16),

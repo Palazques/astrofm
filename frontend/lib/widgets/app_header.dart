@@ -77,9 +77,11 @@ class AppHeader extends StatelessWidget {
     if (rightAction != null) {
       return rightAction!;
     } else if (showSettingsButton) {
-      return _HeaderButton(
-        icon: Icons.settings_rounded,
-        onPressed: onSettingsPressed,
+      return Builder(
+        builder: (context) => _HeaderButton(
+          icon: Icons.settings_rounded,
+          onPressed: onSettingsPressed ?? () => Navigator.pushNamed(context, '/settings'),
+        ),
       );
     } else if (showNotificationButton) {
       return _HeaderButton(

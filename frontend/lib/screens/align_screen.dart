@@ -1,11 +1,18 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/inline_error.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import '../models/alignment.dart';
+import '../models/birth_data.dart';
+import '../data/test_users.dart';
 
 /// Align screen for frequency alignment.
 class AlignScreen extends StatefulWidget {
@@ -25,14 +32,23 @@ class _AlignScreenState extends State<AlignScreen> {
   int? _selectedFriendId;
   String? _dominantEnergy;
   String? _alignmentDescription;
-
-  // Test birth data - in production, this would come from user profile
-  final _birthData = {
-    'datetime': '1990-07-15T15:42:00',
-    'latitude': 34.0522,
-    'longitude': -118.2437,
-    'timezone': 'America/Los_Angeles',
-  };
+  
+  // Transit data from API
+  TransitsResult? _transitsData;
+  bool _isLoadingTransits = false;
+  String? _transitsError;
+  
+  // Birth data from storage (or fallback to test data)
+  BirthData? _birthData;
+  
+  Map<String, dynamic> get _birthDataMap => _birthData != null 
+    ? {
+        'datetime': _birthData!.datetime,
+        'latitude': _birthData!.latitude,
+        'longitude': _birthData!.longitude,
+        'timezone': _birthData!.timezone,
+      }
+    : defaultTestBirthData;
 
   final friends = [
     {'id': 1, 'name': 'Maya', 'color1': AppColors.hotPink, 'color2': AppColors.cosmicPurple, 'compatibility': 87},
@@ -41,10 +57,50 @@ class _AlignScreenState extends State<AlignScreen> {
     {'id': 4, 'name': 'Sam', 'color1': AppColors.teal, 'color2': AppColors.electricYellow, 'compatibility': 65},
   ];
 
-  final upcomingTransits = [
-    {'id': 1, 'name': 'Full Moon in Cancer', 'date': 'Dec 15', 'energy': 'Emotional Release'},
-    {'id': 2, 'name': 'Mercury enters Capricorn', 'date': 'Dec 18', 'energy': 'Structured Thinking'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadBirthDataAndInit();
+  }
+  
+  Future<void> _loadBirthDataAndInit() async {
+    final stored = await storageService.loadBirthData();
+    if (mounted) {
+      setState(() => _birthData = stored);
+    }
+    
+    // Also restore last selected friend
+    final lastFriendId = await storageService.getLastSelectedFriendId();
+    if (mounted && lastFriendId != null) {
+      setState(() => _selectedFriendId = lastFriendId);
+    }
+    
+    _loadTransits();
+  }
+
+  Future<void> _loadTransits() async {
+    setState(() {
+      _isLoadingTransits = true;
+      _transitsError = null;
+    });
+    
+    try {
+      final result = await _apiService.getTransits();
+      if (mounted) {
+        setState(() {
+          _transitsData = result;
+          _isLoadingTransits = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _transitsError = e.toString();
+          _isLoadingTransits = false;
+        });
+      }
+    }
+  }
 
   void _startAlignment() {
     setState(() {
@@ -64,10 +120,10 @@ class _AlignScreenState extends State<AlignScreen> {
       if (_alignTarget == 'today') {
         // Make actual API call for daily alignment
         final result = await _apiService.getDailyAlignment(
-          datetime: _birthData['datetime'] as String,
-          latitude: _birthData['latitude'] as double,
-          longitude: _birthData['longitude'] as double,
-          timezone: _birthData['timezone'] as String,
+          datetime: _birthDataMap['datetime'] as String,
+          latitude: _birthDataMap['latitude'] as double,
+          longitude: _birthDataMap['longitude'] as double,
+          timezone: _birthDataMap['timezone'] as String,
         );
         
         if (mounted) {
@@ -143,6 +199,54 @@ class _AlignScreenState extends State<AlignScreen> {
     });
   }
 
+  void _playBlend() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('🎵 Audio blend coming soon!'),
+        backgroundColor: AppColors.cosmicPurple,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _saveMoment() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedMoments = prefs.getStringList('saved_moments') ?? [];
+      savedMoments.add(jsonEncode({
+        'date': DateTime.now().toIso8601String(),
+        'score': _resonanceScore,
+        'target': _alignTarget,
+        'targetName': _getTargetLabel(),
+        'dominantEnergy': _dominantEnergy,
+      }));
+      await prefs.setStringList('saved_moments', savedMoments);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✨ Moment saved!'),
+            backgroundColor: AppColors.electricYellow,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+
   @override
   void dispose() {
     _apiService.dispose();
@@ -160,6 +264,7 @@ class _AlignScreenState extends State<AlignScreen> {
             const AppHeader(
               showBackButton: true,
               showMenuButton: false,
+              showSettingsButton: true,
               title: 'Align',
             ),
             const SizedBox(height: 16),
@@ -361,7 +466,7 @@ class _AlignScreenState extends State<AlignScreen> {
                   label: 'Play Blend',
                   icon: Icons.play_arrow_rounded,
                   outlined: true,
-                  onPressed: () {},
+                  onPressed: _playBlend,
                 ),
               ),
               const SizedBox(width: 12),
@@ -369,7 +474,7 @@ class _AlignScreenState extends State<AlignScreen> {
                 child: _ResultButton(
                   label: 'Save Moment',
                   icon: Icons.save_rounded,
-                  onPressed: () {},
+                  onPressed: _saveMoment,
                 ),
               ),
             ],
@@ -486,45 +591,141 @@ class _AlignScreenState extends State<AlignScreen> {
   }
 
   Widget _buildTransitContent() {
+    // Show skeleton while loading
+    if (_isLoadingTransits) {
+      return Column(
+        children: List.generate(3, (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SkeletonCard(height: 70),
+        )),
+      );
+    }
+    
+    // Show error state
+    if (_transitsError != null) {
+      return GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: InlineError(
+          message: 'Could not load transits',
+          onRetry: _loadTransits,
+        ),
+      );
+    }
+    
+    // Show transit data
+    if (_transitsData == null || _transitsData!.planets.isEmpty) {
+      return GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Text('No transit data available', style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(128))),
+      );
+    }
+    
+    // Build transit list from real API data
     return Column(
-      children: upcomingTransits.map((transit) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: GlassCard(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
+      children: [
+        // Moon phase card
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: GlassCard(
+            padding: const EdgeInsets.all(16),
+            borderColor: AppColors.electricYellow.withAlpha(51),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(colors: [AppColors.electricYellow, AppColors.hotPink]),
+                  ),
+                  child: const Icon(Icons.nights_stay_rounded, color: AppColors.background, size: 24),
                 ),
-                child: const Icon(Icons.access_time_rounded, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(transit['name'] as String, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                    Text('${transit['date']} • ${transit['energy']}', style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(128))),
-                  ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Moon Phase', style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 1)),
+                      Text(_transitsData!.moonPhase, style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ],
+                  ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.cosmicPurple.withAlpha(38),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text('Preview', style: GoogleFonts.syne(fontSize: 11, color: AppColors.cosmicPurple)),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      )).toList(),
+        
+        // Planet positions
+        ...(_transitsData!.planets.take(6).map((planet) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: GlassCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getPlanetSymbol(planet.name),
+                      style: const TextStyle(fontSize: 22, color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(planet.name, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                      Text('${planet.sign} ${planet.degree.toStringAsFixed(1)}°', style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(128))),
+                    ],
+                  ),
+                ),
+                if (_transitsData!.isRetrograde(planet.name))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.hotPink.withAlpha(38),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('℞ Rx', style: GoogleFonts.syne(fontSize: 11, color: AppColors.hotPink)),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.teal.withAlpha(38),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('Direct', style: GoogleFonts.syne(fontSize: 11, color: AppColors.teal)),
+                  ),
+              ],
+            ),
+          ),
+        ))),
+      ],
     );
+  }
+  
+  String _getPlanetSymbol(String name) {
+    const symbols = {
+      'Sun': '☉',
+      'Moon': '☽',
+      'Mercury': '☿',
+      'Venus': '♀',
+      'Mars': '♂',
+      'Jupiter': '♃',
+      'Saturn': '♄',
+      'Uranus': '♅',
+      'Neptune': '♆',
+      'Pluto': '♇',
+    };
+    return symbols[name] ?? '✦';
   }
 
   Widget _buildAlignButton() {

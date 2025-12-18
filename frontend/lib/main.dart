@@ -7,6 +7,7 @@ import 'screens/chart_screen.dart';
 import 'screens/friend_profile_screen.dart';
 import 'screens/sign_in_screen.dart';
 import 'screens/align_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/onboarding/onboarding_flow.dart';
 import 'models/friend_data.dart';
 
@@ -62,6 +63,7 @@ class AstroFmApp extends StatelessWidget {
         '/birth-input': (context) => const BirthInputScreen(),
         '/sign-in': (context) => const SignInScreen(),
         '/align': (context) => const _AlignScreenWrapper(),
+        '/settings': (context) => const SettingsScreen(),
         '/onboarding': (context) => OnboardingFlow(
           onComplete: () => Navigator.pushReplacementNamed(context, '/'),
         ),

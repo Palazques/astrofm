@@ -9,6 +9,7 @@ class Location {
   final String countryCode;
   final double latitude;
   final double longitude;
+  final String? timezone;  // IANA timezone identifier
 
   Location({
     required this.displayName,
@@ -18,6 +19,7 @@ class Location {
     required this.countryCode,
     required this.latitude,
     required this.longitude,
+    this.timezone,
   });
 
   factory Location.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class Location {
       countryCode: json['country_code'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
+      timezone: json['timezone'] as String?,
     );
   }
 
@@ -41,9 +44,11 @@ class Location {
       'country_code': countryCode,
       'latitude': latitude,
       'longitude': longitude,
+      'timezone': timezone,
     };
   }
 
   @override
   String toString() => displayName;
 }
+

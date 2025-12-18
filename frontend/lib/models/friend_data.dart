@@ -14,6 +14,12 @@ class FriendData {
   final String status; // 'online' or 'offline'
   final String? lastAligned;
   final List<String>? mutualPlanets;
+  
+  // Birth data for API synastry calculations
+  final String? birthDatetime;    // ISO format
+  final double? birthLatitude;
+  final double? birthLongitude;
+  final String? birthTimezone;
 
   const FriendData({
     required this.id,
@@ -27,10 +33,21 @@ class FriendData {
     required this.element,
     required this.modality,
     required this.compatibilityScore,
-    required this.status,
+    this.status = 'online',
     this.lastAligned,
     this.mutualPlanets,
+    this.birthDatetime,
+    this.birthLatitude,
+    this.birthLongitude,
+    this.birthTimezone,
   });
+  
+  /// Check if friend has complete birth data for API calls.
+  bool get hasBirthData => 
+    birthDatetime != null && 
+    birthLatitude != null && 
+    birthLongitude != null && 
+    birthTimezone != null;
 
   /// Get Color objects from hex values
   List<dynamic> get gradientColors {
@@ -55,6 +72,10 @@ class FriendData {
       status: json['status'] as String? ?? 'offline',
       lastAligned: json['last_aligned'] as String?,
       mutualPlanets: (json['mutual_planets'] as List?)?.cast<String>(),
+      birthDatetime: json['birth_datetime'] as String?,
+      birthLatitude: (json['birth_latitude'] as num?)?.toDouble(),
+      birthLongitude: (json['birth_longitude'] as num?)?.toDouble(),
+      birthTimezone: json['birth_timezone'] as String?,
     );
   }
 
@@ -74,6 +95,10 @@ class FriendData {
     'status': status,
     'last_aligned': lastAligned,
     'mutual_planets': mutualPlanets,
+    'birth_datetime': birthDatetime,
+    'birth_latitude': birthLatitude,
+    'birth_longitude': birthLongitude,
+    'birth_timezone': birthTimezone,
   };
 
   /// Create mock data for testing (temporary until backend is ready)
