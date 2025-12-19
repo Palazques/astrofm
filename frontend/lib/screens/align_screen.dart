@@ -11,6 +11,7 @@ import '../widgets/inline_error.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../models/alignment.dart';
+import '../models/ai_responses.dart';
 import '../models/birth_data.dart';
 import '../data/test_users.dart';
 
@@ -32,6 +33,10 @@ class _AlignScreenState extends State<AlignScreen> {
   int? _selectedFriendId;
   String? _dominantEnergy;
   String? _alignmentDescription;
+  
+  // AI Interpretation data
+  AlignmentInterpretation? _aiInterpretation;
+  List<String> _harmoniousAspects = [];
   
   // Transit data from API
   TransitsResult? _transitsData;
@@ -118,42 +123,79 @@ class _AlignScreenState extends State<AlignScreen> {
     
     try {
       if (_alignTarget == 'today') {
-        // Make actual API call for daily alignment
-        final result = await _apiService.getDailyAlignment(
-          datetime: _birthDataMap['datetime'] as String,
-          latitude: _birthDataMap['latitude'] as double,
-          longitude: _birthDataMap['longitude'] as double,
-          timezone: _birthDataMap['timezone'] as String,
+        // Make parallel API calls for alignment score AND AI interpretation
+        final results = await Future.wait([
+          _apiService.getDailyAlignment(
+            datetime: _birthDataMap['datetime'] as String,
+            latitude: _birthDataMap['latitude'] as double,
+            longitude: _birthDataMap['longitude'] as double,
+            timezone: _birthDataMap['timezone'] as String,
+          ),
+          _apiService.getAlignmentInterpretation(
+            userDatetime: _birthDataMap['datetime'] as String,
+            userLatitude: _birthDataMap['latitude'] as double,
+            userLongitude: _birthDataMap['longitude'] as double,
+            // No target params = align with today's transits
+          ),
+        ]);
+        
+        final alignResult = results[0] as AlignmentResult;
+        final aiResult = results[1] as AlignmentInterpretation;
+        
+        if (mounted) {
+          setState(() {
+            _alignmentProgress = 1.0;
+            _resonanceScore = alignResult.score;
+            _dominantEnergy = alignResult.dominantEnergy;
+            // Use AI-generated interpretation instead of basic description
+            _alignmentDescription = aiResult.interpretation;
+            _aiInterpretation = aiResult;
+            _harmoniousAspects = aiResult.harmoniousAspects;
+          });
+        }
+      } else if (_alignTarget == 'friend' && _selectedFriendId != null) {
+        // Get friend data for API call
+        final friend = testFriends.firstWhere(
+          (f) => f.id == _selectedFriendId,
+          orElse: () => testFriends.first,
+        );
+        
+        // Call AI interpretation with friend's birth data
+        final aiResult = await _apiService.getAlignmentInterpretation(
+          userDatetime: _birthDataMap['datetime'] as String,
+          userLatitude: _birthDataMap['latitude'] as double,
+          userLongitude: _birthDataMap['longitude'] as double,
+          targetDatetime: friend.birthDatetime ?? '1992-03-21T14:30:00',
+          targetLatitude: friend.birthLatitude ?? 40.7128,
+          targetLongitude: friend.birthLongitude ?? -74.0060,
         );
         
         if (mounted) {
           setState(() {
             _alignmentProgress = 1.0;
-            _resonanceScore = result.score;
-            _dominantEnergy = result.dominantEnergy;
-            _alignmentDescription = result.description;
-          });
-        }
-      } else if (_alignTarget == 'friend' && _selectedFriendId != null) {
-        // For friend alignment, use mock data for now (requires friend API)
-        await Future.delayed(const Duration(milliseconds: 1500));
-        if (mounted) {
-          setState(() {
-            _alignmentProgress = 1.0;
-            _resonanceScore = friends.firstWhere((f) => f['id'] == _selectedFriendId)['compatibility'] as int;
-            _dominantEnergy = 'Harmonious';
-            _alignmentDescription = 'Your frequencies blend well together.';
+            _resonanceScore = aiResult.resonanceScore;
+            _dominantEnergy = aiResult.isHarmonious ? 'Harmonious' : 'Dynamic';
+            _alignmentDescription = aiResult.interpretation;
+            _aiInterpretation = aiResult;
+            _harmoniousAspects = aiResult.harmoniousAspects;
           });
         }
       } else {
-        // Transit alignment - use mock for now
-        await Future.delayed(const Duration(milliseconds: 1500));
+        // Transit alignment - call AI with no target (uses today's transits)
+        final aiResult = await _apiService.getAlignmentInterpretation(
+          userDatetime: _birthDataMap['datetime'] as String,
+          userLatitude: _birthDataMap['latitude'] as double,
+          userLongitude: _birthDataMap['longitude'] as double,
+        );
+        
         if (mounted) {
           setState(() {
             _alignmentProgress = 1.0;
-            _resonanceScore = 75;
-            _dominantEnergy = 'Dynamic';
-            _alignmentDescription = 'Transformative energies approaching.';
+            _resonanceScore = aiResult.resonanceScore;
+            _dominantEnergy = 'Cosmic';
+            _alignmentDescription = aiResult.interpretation;
+            _aiInterpretation = aiResult;
+            _harmoniousAspects = aiResult.harmoniousAspects;
           });
         }
       }
@@ -196,6 +238,8 @@ class _AlignScreenState extends State<AlignScreen> {
       _isAligning = false;
       _dominantEnergy = null;
       _alignmentDescription = null;
+      _aiInterpretation = null;
+      _harmoniousAspects = [];
     });
   }
 
@@ -410,6 +454,37 @@ class _AlignScreenState extends State<AlignScreen> {
     return GlassCard(
       child: Column(
         children: [
+          // AI Badge
+          if (_aiInterpretation != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      'AI ANALYSIS',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          
           Text(
             'Your frequencies are',
             style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(153)),
@@ -443,16 +518,46 @@ class _AlignScreenState extends State<AlignScreen> {
               ),
             ),
           ],
-          if (_alignmentDescription != null) ...[
+          
+          // Harmonious Aspects Pills
+          if (_harmoniousAspects.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              alignment: WrapAlignment.center,
+              children: _harmoniousAspects.map((aspect) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.cosmicPurple.withAlpha(26),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.cosmicPurple.withAlpha(51)),
+                ),
+                child: Text(
+                  aspect,
+                  style: GoogleFonts.spaceGrotesk(fontSize: 11, color: AppColors.cosmicPurple),
+                ),
+              )).toList(),
+            ),
+          ],
+          
+          if (_alignmentDescription != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(8),
+                borderRadius: BorderRadius.circular(12),
+                border: const Border(
+                  left: BorderSide(color: AppColors.hotPink, width: 3),
+                ),
+              ),
               child: Text(
                 _alignmentDescription!,
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.left,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
-                  height: 1.5,
+                  height: 1.6,
                   color: Colors.white.withAlpha(179),
                 ),
               ),

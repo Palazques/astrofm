@@ -8,7 +8,7 @@ import '../../widgets/onboarding/onboarding_heading.dart';
 import '../../widgets/onboarding/onboarding_cta.dart';
 
 /// Screen 5: Genre preferences selection with solar system layout.
-/// Main genres are "suns" with orbiting subgenre "planets".
+/// Main genres are "suns" with orbiting subgenre "planets" in a starfield pattern.
 class GenresScreen extends StatefulWidget {
   final List<String> initialGenres;
   final List<String> initialSubgenres;
@@ -32,12 +32,22 @@ class GenresScreen extends StatefulWidget {
 class _GenresScreenState extends State<GenresScreen> {
   late List<String> _selectedGenres;
   late List<String> _selectedSubgenres;
+  
+  // Random offsets for starfield effect (seeded for consistency)
+  late List<double> _horizontalOffsets;
+  final math.Random _random = math.Random(42); // Fixed seed for consistent layout
 
   @override
   void initState() {
     super.initState();
     _selectedGenres = List.from(widget.initialGenres);
     _selectedSubgenres = List.from(widget.initialSubgenres);
+    
+    // Generate random horizontal offsets for each genre (±80px from center)
+    _horizontalOffsets = List.generate(
+      genreData.length,
+      (_) => (_random.nextDouble() - 0.5) * 160, // Range: -80 to +80
+    );
   }
 
   void _toggleGenre(String genre) {
@@ -65,23 +75,6 @@ class _GenresScreenState extends State<GenresScreen> {
 
   int get _totalSelected => _selectedGenres.length + _selectedSubgenres.length;
 
-  // Get alignment for alternating pattern: Left, Center, Right, Center
-  CrossAxisAlignment _getAlignment(int index) {
-    final pattern = index % 4;
-    switch (pattern) {
-      case 0:
-        return CrossAxisAlignment.start; // Left
-      case 1:
-        return CrossAxisAlignment.center; // Center
-      case 2:
-        return CrossAxisAlignment.end; // Right
-      case 3:
-        return CrossAxisAlignment.center; // Center
-      default:
-        return CrossAxisAlignment.center;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return OnboardingScaffold(
@@ -103,11 +96,10 @@ class _GenresScreenState extends State<GenresScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Genre solar systems
+            // Genre solar systems (starfield layout)
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ...genreData.asMap().entries.map((entry) {
                       final index = entry.key;
@@ -116,7 +108,7 @@ class _GenresScreenState extends State<GenresScreen> {
                       return _SolarSystemGenre(
                         genre: genre,
                         isSelected: isSelected,
-                        alignment: _getAlignment(index),
+                        horizontalOffset: _horizontalOffsets[index],
                         selectedSubgenres: _selectedSubgenres,
                         onGenreTap: () => _toggleGenre(genre.name),
                         onSubgenreTap: _toggleSubgenre,
@@ -176,7 +168,7 @@ class _GenresScreenState extends State<GenresScreen> {
 class _SolarSystemGenre extends StatefulWidget {
   final GenreData genre;
   final bool isSelected;
-  final CrossAxisAlignment alignment;
+  final double horizontalOffset;
   final List<String> selectedSubgenres;
   final VoidCallback onGenreTap;
   final Function(String) onSubgenreTap;
@@ -184,7 +176,7 @@ class _SolarSystemGenre extends StatefulWidget {
   const _SolarSystemGenre({
     required this.genre,
     required this.isSelected,
-    required this.alignment,
+    required this.horizontalOffset,
     required this.selectedSubgenres,
     required this.onGenreTap,
     required this.onSubgenreTap,
@@ -200,16 +192,16 @@ class _SolarSystemGenreState extends State<_SolarSystemGenre>
 
   // Size constants
   static const double sunSize = 80.0;
-  static const double planetSize = 40.0;
-  static const double orbitRadius = 70.0;
+  static const double planetSize = 48.0; // Slightly larger for better text fit
+  static const double orbitRadius = 85.0; // Larger radius to prevent overlap with 7 planets
   static const double containerSize = sunSize + (orbitRadius * 2) + planetSize;
 
   @override
   void initState() {
     super.initState();
-    // 12 second rotation for moderate orbital speed
+    // 18 second rotation for slightly slower orbital speed
     _orbitController = AnimationController(
-      duration: const Duration(seconds: 12),
+      duration: const Duration(seconds: 18),
       vsync: this,
     )..repeat();
   }
@@ -230,10 +222,10 @@ class _SolarSystemGenreState extends State<_SolarSystemGenre>
       curve: Curves.easeInOut,
       height: containerHeight,
       margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: widget.alignment,
-        children: [
-          SizedBox(
+      child: Center(
+        child: Transform.translate(
+          offset: Offset(widget.horizontalOffset, 0),
+          child: SizedBox(
             width: widget.isSelected ? containerSize : sunSize,
             height: widget.isSelected ? containerSize : sunSize,
             child: Stack(
@@ -266,7 +258,7 @@ class _SolarSystemGenreState extends State<_SolarSystemGenre>
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -334,7 +326,7 @@ class _GenreSun extends StatelessWidget {
               name,
               textAlign: TextAlign.center,
               style: GoogleFonts.syne(
-                fontSize: 12,
+                fontSize: 11, // Reduced from 12px
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: Colors.white,
               ),
@@ -417,12 +409,12 @@ class _OrbitingPlanet extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Text(
-                _abbreviate(label),
+                label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 7,
+                  fontSize: 9, // Increased from 7px
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   color: isSelected
                       ? AppColors.cosmicPurple
@@ -434,44 +426,5 @@ class _OrbitingPlanet extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Abbreviate long subgenre names to fit in small circles.
-  String _abbreviate(String name) {
-    // Already short enough
-    if (name.length <= 10) return name;
-    
-    // Common abbreviations
-    final abbreviations = {
-      'Contemporary R&B': 'Contemp\nR&B',
-      'Alternative R&B': 'Alt\nR&B',
-      'Quiet Storm': 'Quiet\nStorm',
-      'New Jack Swing': 'New Jack',
-      'Lo-Fi Hip-Hop': 'Lo-Fi\nHip-Hop',
-      'Conscious': 'Conscious',
-      'Drum & Bass': 'D&B',
-      'Psychedelic': 'Psych',
-      'Singer-Songwriter': 'Singer\nS/W',
-      'Appalachian': 'Appalach',
-      'Space Ambient': 'Space\nAmb',
-      'Dark Ambient': 'Dark\nAmb',
-      'Progressive': 'Prog',
-      'Northern Soul': 'Northern',
-      'Philly Soul': 'Philly',
-    };
-    
-    if (abbreviations.containsKey(name)) {
-      return abbreviations[name]!;
-    }
-    
-    // Split long names
-    if (name.contains(' ')) {
-      final parts = name.split(' ');
-      if (parts.length == 2) {
-        return '${parts[0]}\n${parts[1]}';
-      }
-    }
-    
-    return name;
   }
 }

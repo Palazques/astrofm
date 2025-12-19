@@ -3,8 +3,16 @@ Astro.FM Backend API
 FastAPI application for astrological calculations using Swiss Ephemeris.
 """
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+
+# CRITICAL: Load environment variables BEFORE importing routes
+# Routes import AIService which reads keys at instantiation time
+# Use explicit path to ensure .env is found regardless of working directory
+env_path = Path(__file__).parent / ".env"
+load_dotenv(env_path)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,9 +24,6 @@ from api.routes.playlist import router as playlist_router
 from api.routes.alignment import router as alignment_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
-
-# Load environment variables
-load_dotenv()
 
 # API version
 API_VERSION = "0.1.0"
