@@ -8,7 +8,8 @@ C3: Least Privilege - API keys loaded via environment variables.
 """
 import os
 from typing import Optional, Dict, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 import base64
 import hashlib
@@ -29,6 +30,9 @@ SPOTIFY_SCOPES = [
     "user-library-read",  # Access user's saved tracks
 ]
 
+# Refresh token 5 minutes before expiry to avoid race conditions
+TOKEN_REFRESH_BUFFER_SECONDS = 300
+
 
 @dataclass
 class SpotifyTokens:
@@ -37,6 +41,26 @@ class SpotifyTokens:
     refresh_token: str
     expires_in: int
     token_type: str = "Bearer"
+    expires_at: Optional[datetime] = field(default=None)
+    
+    def __post_init__(self):
+        """Calculate expiry timestamp if not provided."""
+        if self.expires_at is None:
+            self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.expires_in)
+    
+    def is_expired(self) -> bool:
+        """Check if the token is expired or about to expire."""
+        if self.expires_at is None:
+            return True
+        # Consider expired if within buffer time of expiry
+        buffer = timedelta(seconds=TOKEN_REFRESH_BUFFER_SECONDS)
+        return datetime.now(timezone.utc) >= (self.expires_at - buffer)
+    
+    def time_until_expiry(self) -> timedelta:
+        """Get time remaining until token expires."""
+        if self.expires_at is None:
+            return timedelta(seconds=0)
+        return self.expires_at - datetime.now(timezone.utc)
 
 
 @dataclass
@@ -250,6 +274,41 @@ class SpotifyService:
             expires_in=token_data["expires_in"],
             token_type=token_data.get("token_type", "Bearer"),
         )
+    
+    async def get_valid_access_token(self, session_id: str) -> Optional[str]:
+        """
+        Get a valid access token for the session, refreshing if expired.
+        
+        This is the preferred method for getting an access token as it
+        automatically handles token refresh.
+        
+        Args:
+            session_id: Session ID to get tokens for
+            
+        Returns:
+            Valid access token, or None if no tokens exist for session
+        """
+        tokens = self._token_store.get(session_id)
+        if not tokens:
+            return None
+        
+        # Check if token is expired or about to expire
+        if tokens.is_expired():
+            print(f"[SpotifyService] Token expired for session {session_id[:8]}..., refreshing...")
+            try:
+                new_tokens = await self.refresh_access_token(tokens.refresh_token)
+                # Update stored tokens
+                self._token_store[session_id] = new_tokens
+                print(f"[SpotifyService] Token refreshed successfully, expires in {new_tokens.expires_in}s")
+                return new_tokens.access_token
+            except Exception as e:
+                print(f"[SpotifyService] Failed to refresh token: {e}")
+                # Remove invalid tokens
+                self._token_store.pop(session_id, None)
+                self._user_store.pop(session_id, None)
+                return None
+        
+        return tokens.access_token
     
     async def get_current_user(self, access_token: str) -> SpotifyUser:
         """

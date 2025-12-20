@@ -166,22 +166,30 @@ class ApiService {
   /// [latitude] - Birth location latitude
   /// [longitude] - Birth location longitude
   /// [timezone] - Timezone name (default: UTC)
+  /// [subjectName] - Optional name for third-person horoscope (e.g., friend's name)
   Future<DailyReading> getDailyReading({
     required String datetime,
     required double latitude,
     required double longitude,
     String timezone = 'UTC',
+    String? subjectName,
   }) async {
+    final Map<String, dynamic> body = {
+      'datetime': datetime,
+      'latitude': latitude,
+      'longitude': longitude,
+      'timezone': timezone,
+    };
+    
+    if (subjectName != null) {
+      body['subject_name'] = subjectName;
+    }
+    
     final response = await _client
         .post(
           Uri.parse('${ApiConfig.baseUrl}${ApiConfig.dailyReadingEndpoint}'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'datetime': datetime,
-            'latitude': latitude,
-            'longitude': longitude,
-            'timezone': timezone,
-          }),
+          body: jsonEncode(body),
         )
         .timeout(ApiConfig.timeout);
 
@@ -246,19 +254,26 @@ class ApiService {
     required String friendDatetime,
     required double friendLatitude,
     required double friendLongitude,
+    String? friendName,
   }) async {
+    final Map<String, dynamic> body = {
+      'user_datetime': userDatetime,
+      'user_latitude': userLatitude,
+      'user_longitude': userLongitude,
+      'friend_datetime': friendDatetime,
+      'friend_latitude': friendLatitude,
+      'friend_longitude': friendLongitude,
+    };
+    
+    if (friendName != null) {
+      body['friend_name'] = friendName;
+    }
+    
     final response = await _client
         .post(
           Uri.parse('${ApiConfig.baseUrl}${ApiConfig.compatibilityEndpoint}'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_datetime': userDatetime,
-            'user_latitude': userLatitude,
-            'user_longitude': userLongitude,
-            'friend_datetime': friendDatetime,
-            'friend_latitude': friendLatitude,
-            'friend_longitude': friendLongitude,
-          }),
+          body: jsonEncode(body),
         )
         .timeout(ApiConfig.timeout);
 

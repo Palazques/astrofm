@@ -41,7 +41,7 @@ def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse
         
         # Generate AI reading
         ai_service = get_ai_service()
-        result = ai_service.generate_daily_reading(birth_chart, current_transits)
+        result = ai_service.generate_daily_reading(birth_chart, current_transits, request.subject_name)
         
         return DailyReadingResponse(
             reading=result["reading"],
@@ -114,7 +114,7 @@ def analyze_compatibility(request: CompatibilityRequest) -> CompatibilityRespons
         
         # Generate compatibility narrative
         ai_service = get_ai_service()
-        result = ai_service.generate_compatibility_narrative(user_chart, friend_chart)
+        result = ai_service.generate_compatibility_narrative(user_chart, friend_chart, request.friend_name)
         
         return CompatibilityResponse(
             narrative=result["narrative"],

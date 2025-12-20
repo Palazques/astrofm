@@ -523,7 +523,7 @@ class _SoundScreenState extends State<SoundScreen> {
                           const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
                           const SizedBox(width: 4),
                           Text(
-                            'AI INSIGHT',
+                            'INSIGHT',
                             style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 1),
                           ),
                         ],

@@ -27,6 +27,15 @@ class StorageKeys {
   
   // Referral
   static const String referral = 'user_referral';
+  
+  // Daily Playlist Cache
+  static const String dailyPlaylistTracks = 'daily_playlist_tracks';
+  static const String dailyPlaylistUrl = 'daily_playlist_url';
+  static const String dailyPlaylistDate = 'daily_playlist_date';
+  
+  // Monthly Zodiac Playlist Cache
+  static const String monthlyZodiacPlaylist = 'monthly_zodiac_playlist';
+  static const String monthlyZodiacMonth = 'monthly_zodiac_month'; // Format: "YYYY-MM"
 }
 
 /// Service for managing local storage operations.
@@ -249,6 +258,109 @@ class StorageService {
     await prefs.remove(StorageKeys.subgenres);
     await prefs.remove(StorageKeys.membership);
     await prefs.remove(StorageKeys.referral);
+  }
+
+  // ================================
+  // Daily Playlist Cache
+  // ================================
+
+  /// Save daily playlist to cache with today's date.
+  Future<void> saveDailyPlaylist({
+    required List<Map<String, dynamic>> tracks,
+    String? playlistUrl,
+  }) async {
+    final prefs = await _getPrefs();
+    final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
+    
+    await prefs.setString(StorageKeys.dailyPlaylistTracks, jsonEncode(tracks));
+    await prefs.setString(StorageKeys.dailyPlaylistDate, today);
+    if (playlistUrl != null) {
+      await prefs.setString(StorageKeys.dailyPlaylistUrl, playlistUrl);
+    }
+  }
+
+  /// Load cached daily playlist if it's from today.
+  /// Returns null if no cache or cache is from a different day.
+  Future<({List<Map<String, dynamic>> tracks, String? playlistUrl})?> loadDailyPlaylist() async {
+    final prefs = await _getPrefs();
+    
+    // Check if cache is from today
+    final cachedDate = prefs.getString(StorageKeys.dailyPlaylistDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    if (cachedDate != today) {
+      return null; // Cache is stale (different day)
+    }
+    
+    // Load cached tracks
+    final tracksJson = prefs.getString(StorageKeys.dailyPlaylistTracks);
+    if (tracksJson == null) return null;
+    
+    try {
+      final tracks = (jsonDecode(tracksJson) as List)
+          .map((t) => t as Map<String, dynamic>)
+          .toList();
+      final playlistUrl = prefs.getString(StorageKeys.dailyPlaylistUrl);
+      return (tracks: tracks, playlistUrl: playlistUrl);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Check if we have a valid playlist cached for today.
+  Future<bool> hasTodaysPlaylist() async {
+    final prefs = await _getPrefs();
+    final cachedDate = prefs.getString(StorageKeys.dailyPlaylistDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    return cachedDate == today && prefs.containsKey(StorageKeys.dailyPlaylistTracks);
+  }
+
+  // ================================
+  // Monthly Zodiac Playlist Cache
+  // ================================
+
+  /// Save monthly zodiac playlist to cache with current month.
+  Future<void> saveMonthlyZodiacPlaylist(Map<String, dynamic> playlistData) async {
+    final prefs = await _getPrefs();
+    final now = DateTime.now();
+    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}'; // YYYY-MM
+    
+    await prefs.setString(StorageKeys.monthlyZodiacPlaylist, jsonEncode(playlistData));
+    await prefs.setString(StorageKeys.monthlyZodiacMonth, currentMonth);
+  }
+
+  /// Load cached monthly zodiac playlist if it's from the current month.
+  /// Returns null if no cache or cache is from a different month.
+  Future<Map<String, dynamic>?> loadMonthlyZodiacPlaylist() async {
+    final prefs = await _getPrefs();
+    
+    // Check if cache is from current month
+    final cachedMonth = prefs.getString(StorageKeys.monthlyZodiacMonth);
+    final now = DateTime.now();
+    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    
+    if (cachedMonth != currentMonth) {
+      return null; // Cache is stale (different month)
+    }
+    
+    // Load cached playlist data
+    final playlistJson = prefs.getString(StorageKeys.monthlyZodiacPlaylist);
+    if (playlistJson == null) return null;
+    
+    try {
+      return jsonDecode(playlistJson) as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Check if we have a valid monthly zodiac playlist cached for current month.
+  Future<bool> hasCurrentMonthPlaylist() async {
+    final prefs = await _getPrefs();
+    final cachedMonth = prefs.getString(StorageKeys.monthlyZodiacMonth);
+    final now = DateTime.now();
+    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    return cachedMonth == currentMonth && prefs.containsKey(StorageKeys.monthlyZodiacPlaylist);
   }
 }
 

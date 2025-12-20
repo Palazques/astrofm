@@ -106,6 +106,19 @@ class SpotifyTrack {
   
   /// Get artist name as a single string
   String get artistName => artists.isNotEmpty ? artists.first : 'Unknown Artist';
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'artists': artists,
+      'uri': uri,
+      'url': url,
+      'energy': energy,
+      'valence': valence,
+      'tempo': tempo,
+    };
+  }
 }
 
 
@@ -333,6 +346,46 @@ class SpotifyService {
   
   void dispose() {
     _client.close();
+  }
+
+  /// Get monthly zodiac playlist generated from user's library.
+  /// 
+  /// Generates a playlist based on the current zodiac season's element
+  /// (Fire/Earth/Air/Water) with an AI-generated horoscope.
+  Future<Map<String, dynamic>> getMonthlyZodiacPlaylist() async {
+    final sessionId = await getStoredSessionId();
+    
+    if (sessionId == null) {
+      throw SpotifyException(
+        message: 'Not connected to Spotify. Please connect first.',
+        statusCode: 401,
+      );
+    }
+    
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.spotifyMonthlyZodiacEndpoint}')
+          .replace(queryParameters: {'session_id': sessionId});
+      
+      final response = await _client
+          .post(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 90)); // Long timeout for horoscope + playlist generation
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw SpotifyException(
+          message: error['detail'] ?? 'Failed to generate monthly zodiac playlist',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is SpotifyException) rethrow;
+      throw SpotifyException(
+        message: 'Failed to generate monthly zodiac playlist: $e',
+        statusCode: 0,
+      );
+    }
   }
 }
 

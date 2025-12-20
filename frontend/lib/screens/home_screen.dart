@@ -16,6 +16,8 @@ import '../models/ai_responses.dart';
 import '../models/playlist.dart';
 import '../models/friend_data.dart';
 import '../models/birth_data.dart';
+import '../models/monthly_zodiac.dart';
+import '../widgets/zodiac_playlist_card.dart';
 import '../data/test_users.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
@@ -57,6 +59,11 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingAlignment = true;
   String? _alignmentError;
   
+  // Monthly zodiac playlist data
+  MonthlyZodiacPlaylist? _monthlyZodiacPlaylist;
+  bool _isLoadingMonthlyZodiac = false;
+  String? _monthlyZodiacError;
+  
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
   
@@ -71,13 +78,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Fallback data when API is unavailable
   Map<String, String> get todaysReading => {
-    'sign': 'Scorpio',
+    'sign': _getCurrentZodiacSign(),
     'date': _formatCurrentDate(),
     'energy': _dominantEnergy ?? _dailyReading?.energyLabel ?? 'Loading...',
     'mood': _dailyReading?.mood ?? 'Loading...',
     'bpm': _dailyReading?.playlistParams.bpmRange ?? '---',
     'vibe': _dailyReading?.reading ?? 'Connecting to the cosmos...',
   };
+  
+  /// Get the current zodiac sign based on today's date
+  String _getCurrentZodiacSign() {
+    final now = DateTime.now();
+    final month = now.month;
+    final day = now.day;
+    
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 'Aries';
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 'Taurus';
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 'Gemini';
+    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 'Cancer';
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 'Leo';
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 'Virgo';
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 'Libra';
+    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 'Scorpio';
+    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return 'Sagittarius';
+    if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return 'Capricorn';
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquarius';
+    return 'Pisces'; // Feb 19 - Mar 20
+  }
   
   String _formatCurrentDate() {
     final now = DateTime.now();
@@ -121,12 +148,29 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _birthData = stored);
     }
     
-    // Check Spotify connection status
-    _checkSpotifyConnection();
+    // Check Spotify connection status FIRST (must complete before loading playlist)
+    await _checkSpotifyConnection();
+    
+    // Load cached daily playlist (persists when navigating between screens)
+    await _loadCachedPlaylist();
     
     // Now load API data using birth data
     _loadAlignmentScore();
     _loadSonificationData();
+    _loadMonthlyZodiacPlaylist();
+  }
+  
+  /// Load cached daily playlist if available for today.
+  Future<void> _loadCachedPlaylist() async {
+    final cached = await storageService.loadDailyPlaylist();
+    if (cached != null && mounted) {
+      setState(() {
+        _spotifyLibraryTracks = cached.tracks
+            .map((t) => SpotifyTrack.fromJson(t))
+            .toList();
+        _spotifyPlaylistUrl = cached.playlistUrl;
+      });
+    }
   }
   
   Future<void> _checkSpotifyConnection() async {
@@ -164,6 +208,70 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoadingAlignment = false;
         });
       }
+    }
+  }
+
+  /// Load monthly zodiac playlist from user's Spotify library.
+  /// Uses cache to avoid reloading every time user navigates.
+  /// Only regenerates once per month.
+  Future<void> _loadMonthlyZodiacPlaylist() async {
+    if (_isLoadingMonthlyZodiac) return;
+    
+    // If we already have the playlist loaded in memory, skip
+    if (_monthlyZodiacPlaylist != null) return;
+    
+    // Check for cached playlist from current month
+    final cached = await storageService.loadMonthlyZodiacPlaylist();
+    if (cached != null && mounted) {
+      setState(() {
+        _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(cached);
+        _monthlyZodiacError = null;
+      });
+      return; // Use cached version
+    }
+    
+    // Check if Spotify is connected first
+    if (!_isSpotifyConnected) {
+      setState(() {
+        _monthlyZodiacError = 'Connect Spotify to see your monthly playlist';
+      });
+      return;
+    }
+    
+    setState(() {
+      _isLoadingMonthlyZodiac = true;
+      _monthlyZodiacError = null;
+    });
+    
+    try {
+      final data = await _spotifyService.getMonthlyZodiacPlaylist();
+      if (mounted) {
+        setState(() {
+          _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(data);
+          _isLoadingMonthlyZodiac = false;
+        });
+        
+        // Save to cache for the month
+        await storageService.saveMonthlyZodiacPlaylist(data);
+      }
+    } catch (e) {
+      if (mounted) {
+        String error = 'Failed to load zodiac playlist';
+        if (e is SpotifyException) {
+          error = e.message;
+        }
+        setState(() {
+          _monthlyZodiacError = error;
+          _isLoadingMonthlyZodiac = false;
+        });
+      }
+    }
+  }
+
+  /// Open the monthly zodiac playlist in Spotify.
+  Future<void> _openMonthlyZodiacPlaylist() async {
+    if (_monthlyZodiacPlaylist?.playlistUrl != null) {
+      await _spotifyService.openPlaylist(_monthlyZodiacPlaylist!.playlistUrl!);
     }
   }
 
@@ -299,17 +407,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _isGeneratingPlaylist = false;
         });
         
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Created playlist with ${result.tracksAdded} tracks from your library!'),
-            backgroundColor: const Color(0xFF1DB954),
-            action: SnackBarAction(
-              label: 'Open',
-              textColor: Colors.white,
-              onPressed: _openSpotifyPlaylist,
-            ),
-          ),
+        // Save to cache so it persists when navigating between screens
+        await storageService.saveDailyPlaylist(
+          tracks: result.tracks.map((t) => t.toJson()).toList(),
+          playlistUrl: result.playlistUrl,
         );
       } else {
         setState(() {
@@ -385,19 +486,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _spotifyLibraryTracks = result.tracks;  // Store the tracks for display
           _isCreatingSpotifyPlaylist = false;
         });
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Created playlist from your library with ${result.tracksAdded} tracks!'),
-            backgroundColor: const Color(0xFF1DB954),
-            action: SnackBarAction(
-              label: 'Open',
-              textColor: Colors.white,
-              onPressed: _openSpotifyPlaylist,
-            ),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -519,6 +607,16 @@ Generated by Astro.FM''';
             _buildSoundOrbsSection(),
             const SizedBox(height: 20),
 
+            // Monthly Zodiac Playlist Card
+            ZodiacPlaylistCard(
+              playlist: _monthlyZodiacPlaylist,
+              isLoading: _isLoadingMonthlyZodiac,
+              errorMessage: _monthlyZodiacError,
+              onRetry: _loadMonthlyZodiacPlaylist,
+              onOpenSpotify: _openMonthlyZodiacPlaylist,
+            ),
+            const SizedBox(height: 20),
+
             // CTA Buttons
             _buildCtaButtons(),
             const SizedBox(height: 24),
@@ -539,175 +637,41 @@ Generated by Astro.FM''';
     return GlassCard(
       child: Column(
         children: [
-          // Orbs row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Your Sound Orb
-              GestureDetector(
-                onTap: _userSonification != null ? _playUserSound : null,
-                child: Column(
-                  children: [
-                    if (_isLoadingSonification)
-                      const SkeletonOrb(size: 100)
-                    else
-                      SoundOrb(
-                        size: 100,
-                        colors: const [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
-                        animate: _isPlayingUserSound,
-                      ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'YOUR SOUND',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        color: Colors.white.withAlpha(128),
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    Text(
-                      _isLoadingSonification 
-                        ? 'Loading...'
-                        : (_isPlayingUserSound ? 'Playing...' : 'Tap to Play'),
-                      style: GoogleFonts.syne(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.hotPink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Connection indicator
-              Column(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 2,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.hotPink, AppColors.electricYellow],
-                      ),
-                    ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          left: 26,
-                          top: -3,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: AppColors.electricYellow,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.electricYellow.withAlpha(179),
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              // Today's Sound Orb
-              GestureDetector(
-                onTap: _dailySonification != null ? _playDailySound : null,
-                child: Column(
-                  children: [
-                    if (_isLoadingSonification)
-                      const SkeletonOrb(size: 100)
-                    else
-                      SoundOrb(
-                        size: 100,
-                        colors: const [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
-                        animate: _isPlayingDailySound,
-                      ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'TODAY\'S SOUND',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        color: Colors.white.withAlpha(128),
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    Text(
-                      _isLoadingSonification 
-                        ? 'Loading...'
-                        : (_isPlayingDailySound ? 'Playing...' : 'Tap to Play'),
-                      style: GoogleFonts.syne(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.electricYellow,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Alignment Score Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(13),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: Colors.white.withAlpha(26)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+          // Today's Sound Orb - centered
+          GestureDetector(
+            onTap: _dailySonification != null ? _playDailySound : null,
+            child: Column(
               children: [
-                _buildAlignmentScoreWidget(),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Aligned Today',
-                      style: GoogleFonts.syne(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'High resonance day',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        color: Colors.white.withAlpha(128),
-                      ),
-                    ),
-                  ],
+                if (_isLoadingSonification)
+                  const SkeletonOrb(size: 120)
+                else
+                  SoundOrb(
+                    size: 120,
+                    colors: const [AppColors.electricYellow, AppColors.hotPink, AppColors.cosmicPurple],
+                    animate: _isPlayingDailySound,
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  'TODAY\'S SOUND',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    color: Colors.white.withAlpha(128),
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isLoadingSonification 
+                    ? 'Loading...'
+                    : (_isPlayingDailySound ? 'Playing...' : 'Tap to Play'),
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.electricYellow,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // Friends aligned
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Friends aligned today:',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  color: Colors.white.withAlpha(128),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _buildFriendAvatars(),
-            ],
           ),
         ],
       ),
@@ -1287,7 +1251,7 @@ Generated by Astro.FM''';
                                   const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'AI INSIGHT',
+                                    'INSIGHT',
                                     style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 1),
                                   ),
                                 ],

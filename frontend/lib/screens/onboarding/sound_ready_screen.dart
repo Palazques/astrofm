@@ -41,14 +41,21 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
   WelcomeMessage? _welcomeMessage;
   bool _isLoadingWelcome = false;
 
-  final _soundStats = [
-    {'label': 'Dominant', 'value': '528 Hz', 'color': AppColors.electricYellow, 'icon': Icons.radio_button_checked},
-    {'label': 'Planets', 'value': '7', 'color': AppColors.hotPink, 'icon': Icons.auto_awesome},
-    {'label': 'Match', 'value': '94%', 'color': AppColors.teal, 'icon': Icons.check_circle_outline},
-  ];
+  // Natal chart data for dynamic stats
+  String _sunSign = '...';
+  String _element = '...';
+  int _genreCount = 0;
+  bool _isLoadingChart = true;
 
   // Waveform bar heights
   final _barHeights = [0.4, 0.7, 0.5, 1.0, 0.8, 0.6, 0.9, 0.5, 0.7, 0.4, 0.8, 0.6];
+
+  // Dynamic stats based on user data
+  List<Map<String, dynamic>> get _soundStats => [
+    {'label': 'Sun Sign', 'value': _sunSign, 'color': AppColors.electricYellow, 'icon': Icons.wb_sunny_outlined},
+    {'label': 'Element', 'value': _element, 'color': AppColors.hotPink, 'icon': Icons.auto_awesome},
+    {'label': 'Genres', 'value': '$_genreCount', 'color': AppColors.teal, 'icon': Icons.library_music_outlined},
+  ];
 
   @override
   void initState() {
@@ -81,8 +88,62 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
     _contentController.forward();
     Future.delayed(const Duration(milliseconds: 500), () => _statsController.forward());
     
-    // Load AI welcome message
+    // Load user-specific data
+    _loadUserData();
     _loadWelcomeMessage();
+  }
+
+  /// Load natal chart and calculate dynamic stats
+  Future<void> _loadUserData() async {
+    if (widget.data.formattedBirthDatetime == null || widget.data.birthLocation == null) {
+      setState(() => _isLoadingChart = false);
+      return;
+    }
+
+    try {
+      final apiService = ApiService();
+      final chart = await apiService.calculateNatalChart(
+        datetime: widget.data.formattedBirthDatetime!,
+        latitude: widget.data.birthLocation!.latitude,
+        longitude: widget.data.birthLocation!.longitude,
+        timezone: 'UTC',
+      );
+      apiService.dispose();
+
+      if (mounted) {
+        // Find sun sign from planets
+        String sunSign = 'Cosmic';
+        for (final planet in chart.planets) {
+          if (planet.name == 'Sun') {
+            sunSign = planet.sign;
+            break;
+          }
+        }
+
+        // Determine dominant element based on sun sign
+        final elementMap = {
+          'Aries': 'Fire', 'Leo': 'Fire', 'Sagittarius': 'Fire',
+          'Taurus': 'Earth', 'Virgo': 'Earth', 'Capricorn': 'Earth',
+          'Gemini': 'Air', 'Libra': 'Air', 'Aquarius': 'Air',
+          'Cancer': 'Water', 'Scorpio': 'Water', 'Pisces': 'Water',
+        };
+        final element = elementMap[sunSign] ?? 'Cosmic';
+
+        // Get genre count from user selections
+        final genreCount = widget.data.favoriteGenres.length + widget.data.favoriteSubgenres.length;
+
+        setState(() {
+          _sunSign = sunSign;
+          _element = element;
+          _genreCount = genreCount > 0 ? genreCount : 3;
+          _isLoadingChart = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingChart = false);
+      }
+    }
   }
 
   Future<void> _loadWelcomeMessage() async {

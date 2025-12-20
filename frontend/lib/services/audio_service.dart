@@ -54,6 +54,7 @@ class AudioService {
   ///
   /// Creates layered oscillators for each planet and plays them
   /// with the calculated frequencies, intensities, and panning.
+  /// Loops continuously until stop() is called.
   Future<void> playChartSound(ChartSonification sonification, {Set<String>? activePlanets}) async {
     // Stop any existing playback
     stop();
@@ -69,10 +70,30 @@ class AudioService {
     _isPlaying = true;
     _playingController.add(true);
 
-    final now = ctx.currentTime;
-    
     // Default to all active if not specified
     final currentlyActive = activePlanets ?? sonification.planets.map((p) => p.planet).toSet();
+
+    // Store the sonification for looping
+    _currentSonification = sonification;
+    _currentActivePlanets = currentlyActive;
+
+    // Start the looped playback
+    _startLoopedPlayback(sonification, currentlyActive);
+  }
+
+  ChartSonification? _currentSonification;
+  Set<String>? _currentActivePlanets;
+  Timer? _loopTimer;
+
+  /// Start looped playback of the sonification
+  void _startLoopedPlayback(ChartSonification sonification, Set<String> currentlyActive) {
+    if (!_isPlaying || _audioContext == null) return;
+
+    final ctx = _audioContext!;
+    final now = ctx.currentTime;
+    
+    // Use a longer loop duration for smoother ambient playback
+    const loopDuration = 30.0; // 30 second loops
 
     // Create a node chain for each planet
     for (final planet in sonification.planets) {
@@ -85,28 +106,18 @@ class AudioService {
       oscillator.type = 'sine';
       oscillator.frequency.value = planet.frequency;
 
-      // 2. Envelope Gain (Dynamics)
+      // 2. Envelope Gain (Dynamics) - seamless looping envelope
       final envelopeGain = ctx.createGain();
       final baseVolume = planet.intensity * 0.25;
 
-      // Envelope: attack -> sustain -> decay
+      // Smooth fade in, sustain, smooth fade out for seamless loop
       envelopeGain.gain.setValueAtTime(0.0, now);
-      envelopeGain.gain.linearRampToValueAtTime(
-        baseVolume,
-        now + planet.attack,
-      );
-      envelopeGain.gain.setValueAtTime(
-        baseVolume,
-        now + sonification.totalDuration - planet.decay,
-      );
-      envelopeGain.gain.linearRampToValueAtTime(
-        0.0,
-        now + sonification.totalDuration,
-      );
+      envelopeGain.gain.linearRampToValueAtTime(baseVolume, now + 2.0); // 2s fade in
+      envelopeGain.gain.setValueAtTime(baseVolume, now + loopDuration - 2.0);
+      envelopeGain.gain.linearRampToValueAtTime(0.0, now + loopDuration); // 2s fade out
       
       // 3. Mute Gain (Toggling)
       final muteGain = ctx.createGain();
-      // Initialize based on whether it's currently selected
       final initialMuteGain = currentlyActive.contains(planetName) ? 1.0 : 0.0;
       muteGain.gain.setValueAtTime(initialMuteGain, now);
 
@@ -122,7 +133,7 @@ class AudioService {
 
       // Start
       oscillator.start(now);
-      oscillator.stop(now + sonification.totalDuration);
+      oscillator.stop(now + loopDuration);
 
       // Store references
       _activeOscillators[planetName] = oscillator;
@@ -130,14 +141,14 @@ class AudioService {
       _planetMuteNodes[planetName] = muteGain;
     }
 
-    // Schedule cleanup after playback completes
-    Future.delayed(
-      Duration(milliseconds: (sonification.totalDuration * 1000).toInt()),
+    // Schedule the next loop iteration (with crossfade overlap)
+    _loopTimer?.cancel();
+    _loopTimer = Timer(
+      Duration(milliseconds: ((loopDuration - 2.0) * 1000).toInt()), // Start next loop 2s before current ends
       () {
-        if (_isPlaying) {
+        if (_isPlaying && _currentSonification != null) {
           _cleanup();
-          _isPlaying = false;
-          _playingController.add(false);
+          _startLoopedPlayback(_currentSonification!, _currentActivePlanets ?? {});
         }
       },
     );
@@ -195,6 +206,12 @@ class AudioService {
   /// Stop all playback immediately.
   void stop() {
     if (!_isPlaying) return;
+
+    // Cancel the loop timer to prevent re-triggering
+    _loopTimer?.cancel();
+    _loopTimer = null;
+    _currentSonification = null;
+    _currentActivePlanets = null;
 
     final ctx = _audioContext;
     if (ctx != null) {

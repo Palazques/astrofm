@@ -89,6 +89,22 @@ class LibraryPlaylistResponse(BaseModel):
     avg_energy: Optional[float] = None
     avg_valence: Optional[float] = None
 
+
+class MonthlyZodiacPlaylistResponse(BaseModel):
+    """Response for monthly zodiac playlist generation."""
+    success: bool
+    zodiac_sign: str
+    symbol: str
+    element: str
+    date_range: str
+    horoscope: str
+    vibe_summary: str
+    energy_level: int
+    playlist_id: Optional[str] = None
+    playlist_url: Optional[str] = None
+    tracks: List[LibraryTrack] = []
+    cached_until: str  # ISO datetime of next zodiac period
+
 # =============================================================================
 # OAuth Endpoints
 # =============================================================================
@@ -280,18 +296,15 @@ async def create_spotify_playlist(request: CreatePlaylistRequest):
     """
     spotify = get_spotify_service()
     
-    # Validate session
-    tokens = spotify.get_stored_tokens(request.session_id)
+    # Get valid access token (auto-refreshes if expired)
+    access_token = await spotify.get_valid_access_token(request.session_id)
     user = spotify.get_stored_user(request.session_id)
     
-    if not tokens or not user:
+    if not access_token or not user:
         raise HTTPException(
             status_code=401,
-            detail="Not connected to Spotify. Please connect first."
+            detail="Not connected to Spotify. Please connect or reconnect."
         )
-    
-    # Try to refresh token if it might be expired
-    # (In production, track expiry time and refresh proactively)
     try:
         # Search for each song and collect URIs
         track_uris = []
@@ -306,7 +319,7 @@ async def create_spotify_playlist(request: CreatePlaylistRequest):
             
             # Search Spotify for the track
             results = await spotify.search_track(
-                access_token=tokens.access_token,
+                access_token=access_token,
                 query=title,
                 artist=artist,
                 limit=1
@@ -325,7 +338,7 @@ async def create_spotify_playlist(request: CreatePlaylistRequest):
         
         # Create the playlist
         playlist = await spotify.create_playlist(
-            access_token=tokens.access_token,
+            access_token=access_token,
             user_id=user.id,
             name=request.name,
             description=request.description or "Created by Astro.FM 🌟",
@@ -372,20 +385,20 @@ async def generate_playlist_from_library(request: GenerateFromLibraryRequest):
     spotify = get_spotify_service()
     audio_service = get_audio_features_service()
     
-    # Validate session
-    tokens = spotify.get_stored_tokens(request.session_id)
+    # Get valid access token (auto-refreshes if expired)
+    access_token = await spotify.get_valid_access_token(request.session_id)
     user = spotify.get_stored_user(request.session_id)
     
-    if not tokens or not user:
+    if not access_token or not user:
         raise HTTPException(
             status_code=401,
-            detail="Not connected to Spotify. Please connect first."
+            detail="Not connected to Spotify. Please connect or reconnect."
         )
     
     try:
         # Fetch user's saved tracks
         tracks = await spotify.get_user_saved_tracks(
-            access_token=tokens.access_token,
+            access_token=access_token,
             max_tracks=100  # Get recent 100 tracks
         )
         
@@ -456,7 +469,7 @@ async def generate_playlist_from_library(request: GenerateFromLibraryRequest):
         print(f"Creating playlist: {len(selected)} tracks, avg energy={avg_energy:.2f}, avg valence={avg_valence:.2f}")
         
         playlist = await spotify.create_playlist(
-            access_token=tokens.access_token,
+            access_token=access_token,
             user_id=user.id,
             name=request.name,
             description=request.description or f"Cosmic playlist from your library by Astro.FM 🌟 (Energy: {avg_energy:.0%}, Mood: {avg_valence:.0%})",
@@ -639,3 +652,209 @@ async def get_audio_features_cache_stats():
         cached_tracks=stats["cached_tracks"],
         api_configured=stats["api_configured"]
     )
+
+
+# =============================================================================
+# Monthly Zodiac Playlist Endpoint
+# =============================================================================
+
+@router.post("/monthly-zodiac", response_model=MonthlyZodiacPlaylistResponse)
+async def generate_monthly_zodiac_playlist(session_id: str = Query(...)):
+    """
+    Generate a monthly zodiac playlist from user's Spotify library.
+    
+    Filters tracks by the current zodiac's element audio profile and
+    includes an AI-generated horoscope for the zodiac season.
+    
+    Args:
+        session_id: Session ID from OAuth callback
+        
+    Returns:
+        MonthlyZodiacPlaylistResponse with zodiac info, horoscope, and tracks
+    """
+    from datetime import datetime
+    from services.audio_features_service import get_audio_features_service
+    from services.ai_service import get_ai_service
+    from services.zodiac_utils import (
+        get_current_zodiac,
+        get_element_audio_profile,
+        get_next_zodiac_change_date,
+    )
+    from models.audio_features import TrackInfo
+    
+    spotify = get_spotify_service()
+    audio_service = get_audio_features_service()
+    ai_service = get_ai_service()
+    
+    # Get valid access token (auto-refreshes if expired)
+    access_token = await spotify.get_valid_access_token(session_id)
+    user = spotify.get_stored_user(session_id)
+    
+    if not access_token or not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Not connected to Spotify. Please connect or reconnect."
+        )
+    
+    try:
+        # Get current zodiac info
+        zodiac_sign, element, date_range, symbol = get_current_zodiac()
+        audio_profile = get_element_audio_profile(element)
+        
+        # Get month/year for horoscope
+        now = datetime.now()
+        month_year = now.strftime("%B %Y")
+        
+        # Generate AI horoscope for the zodiac season
+        horoscope_data = ai_service.generate_monthly_horoscope(
+            zodiac_sign=zodiac_sign,
+            element=element,
+            date_range=date_range,
+            month_year=month_year,
+        )
+        
+        # Fetch user's saved tracks
+        tracks = await spotify.get_user_saved_tracks(
+            access_token=access_token,
+            max_tracks=150  # Get more for better filtering
+        )
+        
+        if not tracks:
+            raise HTTPException(
+                status_code=404,
+                detail="No saved tracks found in your Spotify library"
+            )
+        
+        # Build TrackInfo list for audio features lookup
+        track_infos = [
+            TrackInfo(
+                track_id=t.id,
+                name=t.name,
+                artist=t.artists[0] if t.artists else ""
+            )
+            for t in tracks
+        ]
+        
+        # Get audio features for all tracks
+        print(f"[Monthly Zodiac] Fetching audio features for {len(track_infos)} tracks...")
+        features_map = await audio_service.get_batch_features(track_infos)
+        
+        # Filter and score tracks based on element's audio profile
+        scored_tracks = []
+        energy_range = audio_profile.get("energy", (0.4, 0.7))
+        valence_range = audio_profile.get("valence", (0.4, 0.7))
+        tempo_range = audio_profile.get("tempo", (100.0, 130.0))
+        danceability_range = audio_profile.get("danceability", (0.4, 0.7))
+        
+        for track in tracks:
+            features = features_map.get(track.id)
+            if not features:
+                continue
+            
+            # Score based on how well track matches element profile
+            score = 0
+            
+            # Energy match (0-2 points)
+            if energy_range[0] <= features.energy <= energy_range[1]:
+                score += 2
+            elif abs(features.energy - sum(energy_range)/2) < 0.2:
+                score += 1
+            
+            # Valence match (0-2 points)
+            if valence_range[0] <= features.valence <= valence_range[1]:
+                score += 2
+            elif abs(features.valence - sum(valence_range)/2) < 0.2:
+                score += 1
+            
+            # Tempo match (0-2 points)
+            if tempo_range[0] <= features.tempo <= tempo_range[1]:
+                score += 2
+            elif abs(features.tempo - sum(tempo_range)/2) < 30:
+                score += 1
+            
+            # Danceability match (0-1 point)
+            if danceability_range[0] <= features.danceability <= danceability_range[1]:
+                score += 1
+            
+            scored_tracks.append({
+                "track": track,
+                "features": features,
+                "score": score
+            })
+        
+        # Sort by score (best matches first) and take top 20
+        scored_tracks.sort(key=lambda x: x["score"], reverse=True)
+        selected = scored_tracks[:20]
+        
+        # Fallback if not enough tracks matched well
+        if len(selected) < 10:
+            import random
+            remaining = [t for t in scored_tracks if t not in selected]
+            random.shuffle(remaining)
+            selected.extend(remaining[:20 - len(selected)])
+        
+        if not selected:
+            raise HTTPException(
+                status_code=404,
+                detail="Could not find tracks matching this zodiac's energy"
+            )
+        
+        # Create the playlist
+        track_uris = [s["track"].uri for s in selected]
+        
+        playlist_name = f"{symbol} {zodiac_sign} Season Vibes"
+        playlist_description = f"Your {element} energy playlist for {zodiac_sign} season ({date_range}). Generated by Astro.FM 🌟"
+        
+        print(f"[Monthly Zodiac] Creating playlist: {playlist_name} with {len(selected)} tracks")
+        
+        playlist = await spotify.create_playlist(
+            access_token=access_token,
+            user_id=user.id,
+            name=playlist_name,
+            description=playlist_description,
+            public=True,
+            track_uris=track_uris
+        )
+        
+        # Build track list for response
+        response_tracks = [
+            LibraryTrack(
+                id=s["track"].id,
+                name=s["track"].name,
+                artists=s["track"].artists,
+                uri=s["track"].uri,
+                url=s["track"].external_url,
+                energy=s["features"].energy if s["features"] else None,
+                valence=s["features"].valence if s["features"] else None,
+                tempo=s["features"].tempo if s["features"] else None,
+            )
+            for s in selected
+        ]
+        
+        # Calculate cache expiry (end of zodiac period)
+        cached_until = get_next_zodiac_change_date()
+        
+        return MonthlyZodiacPlaylistResponse(
+            success=True,
+            zodiac_sign=zodiac_sign,
+            symbol=symbol,
+            element=element,
+            date_range=date_range,
+            horoscope=horoscope_data["horoscope"],
+            vibe_summary=horoscope_data["vibe_summary"],
+            energy_level=horoscope_data["energy_level"],
+            playlist_id=playlist["id"],
+            playlist_url=playlist["url"],
+            tracks=response_tracks,
+            cached_until=cached_until.isoformat(),
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating monthly zodiac playlist: {str(e)}"
+        )

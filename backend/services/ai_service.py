@@ -234,6 +234,7 @@ For playlist parameters, always include as JSON on a separate line:
         self,
         birth_chart: dict,
         current_transits: dict,
+        subject_name: str = None,
     ) -> dict:
         """
         Generate personalized daily reading with playlist parameters.
@@ -241,6 +242,7 @@ For playlist parameters, always include as JSON on a separate line:
         Args:
             birth_chart: User's natal chart data
             current_transits: Current planetary positions
+            subject_name: Optional name to use for third-person horoscope (e.g., friend's name)
             
         Returns:
             DailyReadingResponse-compatible dict
@@ -249,6 +251,7 @@ For playlist parameters, always include as JSON on a separate line:
         cache_key = self._generate_cache_key("daily", {
             "chart": birth_chart.get("ascendant_sign", ""),
             "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "subject": subject_name or "",
         })
         
         cached = self._get_cached(cache_key)
@@ -259,7 +262,15 @@ For playlist parameters, always include as JSON on a separate line:
         sun_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Sun"), {})
         moon_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Moon"), {})
         
-        prompt = f"""Generate a daily sonic horoscope for this user:
+        # Adjust prompt for third-person (friend) or second-person (user)
+        if subject_name:
+            subject_intro = f"Generate a daily sonic horoscope for {subject_name}:"
+            perspective_note = f"IMPORTANT: Write this horoscope about {subject_name} in third-person perspective. Use \"{subject_name}\" or \"they/their\" pronouns, NOT \"you/your\"."
+        else:
+            subject_intro = "Generate a daily sonic horoscope for this user:"
+            perspective_note = ""
+        
+        prompt = f"""{subject_intro}
 
 Birth Chart Summary:
 - Sun: {sun_planet.get('sign', 'Unknown')} in House {sun_planet.get('house', '?')}
@@ -270,6 +281,8 @@ Today's Transits:
 - Current Moon: {current_transits.get('moon_sign', 'Unknown')}
 - Season: {current_transits.get('season', 'Unknown')}
 - Retrograde Planets: {', '.join(current_transits.get('retrograde_planets', [])) or 'None'}
+
+{perspective_note}
 
 Provide:
 1. A 2-3 sentence personalized reading connecting their chart to today's energy
@@ -363,6 +376,7 @@ Do NOT include JSON parameters for this response."""
         self,
         user_chart: dict,
         friend_chart: dict,
+        friend_name: str = None,
     ) -> dict:
         """
         Generate compatibility narrative between two people.
@@ -370,6 +384,7 @@ Do NOT include JSON parameters for this response."""
         Args:
             user_chart: User's natal chart
             friend_chart: Friend's natal chart
+            friend_name: Optional friend's first name for personalized narrative
             
         Returns:
             CompatibilityResponse-compatible dict
@@ -378,6 +393,7 @@ Do NOT include JSON parameters for this response."""
         cache_key = self._generate_cache_key("compat", {
             "user_asc": user_chart.get("ascendant_sign", ""),
             "friend_asc": friend_chart.get("ascendant_sign", ""),
+            "friend_name": friend_name or "",
         })
         
         cached = self._get_cached(cache_key)
@@ -392,23 +408,28 @@ Do NOT include JSON parameters for this response."""
         friend_moon = next((p for p in friend_chart.get("planets", []) if p["name"] == "Moon"), {})
         friend_venus = next((p for p in friend_chart.get("planets", []) if p["name"] == "Venus"), {})
         
-        prompt = f"""Analyze the sonic compatibility between these two people:
+        # Use friend's name or "your friend" as fallback
+        friend_label = friend_name if friend_name else "your friend"
+        
+        prompt = f"""Analyze the sonic compatibility between you and {friend_label}:
 
-Person A:
+You:
 - Sun: {user_sun.get('sign', 'Unknown')} (identity tone: 126.22 Hz)
 - Moon: {user_moon.get('sign', 'Unknown')} (emotional rhythm)
 - Venus: {user_venus.get('sign', 'Unknown')} (harmony style)
 
-Person B:
+{friend_label}:
 - Sun: {friend_sun.get('sign', 'Unknown')}
 - Moon: {friend_moon.get('sign', 'Unknown')}
 - Venus: {friend_venus.get('sign', 'Unknown')}
 
+IMPORTANT: Write the narrative using "you" for the user and "{friend_label}" for the friend. Do NOT use "Person A" or "Person B".
+
 Provide:
-1. A 2-3 sentence narrative about their sonic compatibility (what music they'd make together)
+1. A 2-3 sentence narrative about your sonic compatibility with {friend_label} (what music you'd make together)
 2. 2-3 strengths of this connection
 3. 1-2 challenges or growth areas
-4. 2-3 shared music genres that would resonate with both
+4. 2-3 shared music genres that would resonate with both of you
 
 Format your response with clear sections:
 NARRATIVE: [your narrative]
@@ -788,6 +809,125 @@ SOUND_TEASER: [1 sentence]"""
             "personality": personality,
             "sound_teaser": sound_teaser,
         }
+
+    # TTL for monthly horoscope cache (until zodiac period ends)
+    MONTHLY_HOROSCOPE_TTL = timedelta(days=30)
+
+    def generate_monthly_horoscope(
+        self,
+        zodiac_sign: str,
+        element: str,
+        date_range: str,
+        month_year: str,
+    ) -> dict:
+        """
+        Generate monthly zodiac horoscope with music-astrology fusion.
+        
+        Args:
+            zodiac_sign: Current zodiac sign (e.g., "Sagittarius")
+            element: Sign's element (e.g., "Fire")
+            date_range: Display date range (e.g., "Nov 22 - Dec 21")
+            month_year: Current month/year (e.g., "December 2024")
+            
+        Returns:
+            dict with horoscope, vibe_summary, energy_level
+        """
+        # Cache key based on zodiac sign and month
+        cache_key = self._generate_cache_key("monthly_horoscope", {
+            "sign": zodiac_sign,
+            "month": month_year,
+        })
+        
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+        
+        # Get element descriptions for context
+        from services.zodiac_utils import get_element_description
+        element_desc = get_element_description(element)
+        
+        prompt = f"""Generate a monthly horoscope for {zodiac_sign} Season ({date_range}) in {month_year}.
+
+This is for Astro.FM, a music app that blends astrology with sound. The horoscope should:
+1. Be relatable and actionable (not vague mysticism)
+2. Naturally blend in musical/sound references
+3. Give advice on how to approach the month
+4. Feel like wisdom from a knowledgeable friend
+
+Context:
+- {zodiac_sign} is a {element} sign
+- {element} element mood: {element_desc['mood']}
+- {element} element sound: {element_desc['sound']}
+- Advice tone: {element_desc['advice_tone']}
+
+Provide:
+1. HOROSCOPE: A short paragraph (~80-100 words) about the month ahead. Include:
+   - What energy this zodiac season brings
+   - How to align with it
+   - Actionable advice for the month
+   - One subtle musical/sonic metaphor
+
+2. VIBE_SUMMARY: A punchy 1-sentence description of the sonic vibe (e.g., "Expect bold anthems and driving beats that match your fearless spirit")
+
+3. ENERGY_LEVEL: A number 1-100 representing the overall energy intensity
+
+IMPORTANT RULES:
+- Do NOT mention AI or that this was generated
+- Write in second person ("you")
+- Be warm, direct, and motivating
+- Sound natural, not mystical or esoteric
+
+Format:
+HOROSCOPE: [paragraph]
+VIBE_SUMMARY: [1 sentence]
+ENERGY_LEVEL: [number]"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        horoscope = ""
+        vibe_summary = ""
+        energy_level = 70  # Default moderate-high
+        
+        current_section = None
+        horoscope_lines = []
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("HOROSCOPE:"):
+                current_section = "horoscope"
+                horoscope_lines.append(line.replace("HOROSCOPE:", "").strip())
+            elif line.startswith("VIBE_SUMMARY:"):
+                current_section = "vibe"
+                vibe_summary = line.replace("VIBE_SUMMARY:", "").strip()
+            elif line.startswith("ENERGY_LEVEL:"):
+                current_section = "energy"
+                try:
+                    energy_level = int(line.replace("ENERGY_LEVEL:", "").strip())
+                    energy_level = max(1, min(100, energy_level))
+                except ValueError:
+                    pass
+            elif current_section == "horoscope" and line:
+                horoscope_lines.append(line)
+        
+        horoscope = " ".join(horoscope_lines)
+        
+        # Fallbacks
+        if not horoscope:
+            horoscope = f"Welcome to {zodiac_sign} season! This month invites you to embrace your inner {element.lower()} energy. {element_desc['advice_tone'].capitalize()}. Let the cosmic rhythms guide your playlist choices as you navigate the weeks ahead with intention and purpose."
+        if not vibe_summary:
+            vibe_summary = f"Your soundtrack is all about {element_desc['sound']}."
+        
+        result = {
+            "horoscope": horoscope,
+            "vibe_summary": vibe_summary,
+            "energy_level": energy_level,
+        }
+        
+        # Cache until zodiac period ends (approximately 30 days)
+        self._set_cached(cache_key, result, self.MONTHLY_HOROSCOPE_TTL)
+        
+        return result
 
 
 # Global singleton instance

@@ -646,6 +646,13 @@ class _AlignScreenState extends State<AlignScreen> {
   }
 
   Widget _buildTodayContent() {
+    // Calculate current date and zodiac season
+    final now = DateTime.now();
+    final months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    final formattedDate = '${months[now.month - 1]} ${now.day}, ${now.year}';
+    final zodiacSeason = _getCurrentZodiacSeason();
+    
     return GlassCard(
       child: Row(
         children: [
@@ -664,13 +671,33 @@ class _AlignScreenState extends State<AlignScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("Today's Cosmic Sound", style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text('December 12, 2025 • Scorpio Season', style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(128))),
+                Text('$formattedDate • $zodiacSeason Season', style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(128))),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+  
+  /// Get the current zodiac season name based on today's date
+  String _getCurrentZodiacSeason() {
+    final now = DateTime.now();
+    final month = now.month;
+    final day = now.day;
+    
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 'Aries';
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 'Taurus';
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 'Gemini';
+    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 'Cancer';
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 'Leo';
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 'Virgo';
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 'Libra';
+    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 'Scorpio';
+    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return 'Sagittarius';
+    if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return 'Capricorn';
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquarius';
+    return 'Pisces'; // Feb 19 - Mar 20
   }
 
   Widget _buildFriendContent() {
@@ -894,7 +921,7 @@ class _AlignScreenState extends State<AlignScreen> {
                       const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
                       const SizedBox(width: 4),
                       Text(
-                        'AI INSIGHT',
+                        'INSIGHT',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,

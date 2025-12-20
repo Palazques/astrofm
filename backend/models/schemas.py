@@ -113,6 +113,10 @@ class DailyReadingRequest(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0)
     longitude: float = Field(..., ge=-180.0, le=180.0)
     timezone: str = Field(default="UTC")
+    subject_name: Optional[str] = Field(
+        default=None,
+        description="Optional name of subject for third-person horoscope (e.g., friend's name)"
+    )
 
     @field_validator('datetime_str')
     @classmethod
@@ -165,6 +169,7 @@ class CompatibilityRequest(BaseModel):
     friend_datetime: str = Field(..., description="Friend birth datetime ISO format")
     friend_latitude: float = Field(..., ge=-90.0, le=90.0)
     friend_longitude: float = Field(..., ge=-180.0, le=180.0)
+    friend_name: Optional[str] = Field(default=None, description="Friend's name for personalized narrative")
 
 
 class CompatibilityResponse(BaseModel):

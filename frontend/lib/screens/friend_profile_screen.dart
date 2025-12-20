@@ -93,7 +93,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         friendLongitude = mockData['longitude'] as double;
       }
 
-      // Call AI compatibility API
+      // Call AI compatibility API with friend's name for personalized narrative
+      final friendFirstName = widget.friend.name.split(' ')[0];
       final result = await _apiService.getCompatibility(
         userDatetime: userDatetime,
         userLatitude: userLatitude,
@@ -101,6 +102,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         friendDatetime: friendDatetime,
         friendLatitude: friendLatitude,
         friendLongitude: friendLongitude,
+        friendName: friendFirstName,
       );
 
       if (mounted) {
@@ -144,11 +146,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         friendLongitude = mockData['longitude'] as double;
       }
 
-      // Call AI daily reading API for friend
+      // Call AI daily reading API for friend with their name for third-person horoscope
+      final friendFirstName = widget.friend.name.split(' ')[0];
       final result = await _apiService.getDailyReading(
         datetime: friendDatetime,
         latitude: friendLatitude,
         longitude: friendLongitude,
+        subjectName: friendFirstName,
       );
 
       if (mounted) {
@@ -656,7 +660,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                         const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
                         const SizedBox(width: 4),
                         Text(
-                          'AI INSIGHT',
+                          'INSIGHT',
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 9,
                             fontWeight: FontWeight.w600,
