@@ -22,6 +22,7 @@ from api.routes.sonification import router as sonification_router
 from api.routes.ai import router as ai_router
 from api.routes.playlist import router as playlist_router
 from api.routes.alignment import router as alignment_router
+from api.routes.spotify import router as spotify_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
 
@@ -76,6 +77,7 @@ app.include_router(sonification_router)
 app.include_router(ai_router)
 app.include_router(playlist_router)
 app.include_router(alignment_router)
+app.include_router(spotify_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

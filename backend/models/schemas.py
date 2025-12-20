@@ -295,3 +295,126 @@ class TransitsResponse(BaseModel):
     moon_phase: str = Field(..., description="Current moon phase name")
     retrograde: list[str] = Field(..., description="List of retrograde planets")
 
+
+class TransitInterpretationResponse(BaseModel):
+    """
+    Response model for AI-generated transit interpretation.
+    """
+    interpretation: str = Field(..., description="AI-generated cosmic weather summary")
+    highlight_planet: str = Field(..., description="Most significant planet to highlight")
+    highlight_reason: str = Field(..., description="Why this planet is significant")
+    energy_description: str = Field(..., description="One-word energy description")
+    moon_phase: str = Field(..., description="Current moon phase")
+    retrograde_planets: list[str] = Field(..., description="Planets currently retrograde")
+
+
+class PlaylistInsightRequest(BaseModel):
+    """
+    Request model for playlist insight generation.
+    """
+    datetime_str: str = Field(
+        ...,
+        alias="datetime",
+        description="Birth date and time in ISO format",
+    )
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    energy_percent: int = Field(..., ge=0, le=100, description="Playlist energy level")
+    dominant_mood: str = Field(..., description="Most common mood in playlist")
+    dominant_element: str = Field(..., description="Most common element (Fire/Earth/Air/Water)")
+    bpm_min: int = Field(..., ge=60, le=200, description="Minimum BPM in playlist")
+    bpm_max: int = Field(..., ge=60, le=200, description="Maximum BPM in playlist")
+
+    @field_validator('datetime_str')
+    @classmethod
+    def validate_datetime(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("datetime must be in ISO format: YYYY-MM-DDTHH:MM:SS")
+        return v
+
+
+class PlaylistInsightResponse(BaseModel):
+    """
+    Response model for AI-generated playlist insight.
+    """
+    insight: str = Field(..., description="Simple, relatable playlist explanation")
+    energy_percent: int = Field(..., ge=0, le=100, description="Playlist energy level")
+    dominant_mood: str = Field(..., description="Dominant mood in playlist")
+    astro_highlight: str = Field(..., description="Key astrological placement")
+
+
+class PlanetSoundData(BaseModel):
+    """Planet data for sound interpretation request."""
+    name: str = Field(..., description="Planet name")
+    sign: str = Field(..., description="Zodiac sign")
+    house: int = Field(..., ge=1, le=12, description="House placement")
+    frequency: float = Field(..., ge=0, description="Frequency in Hz")
+
+
+class SoundInterpretationRequest(BaseModel):
+    """
+    Request model for sound interpretation generation.
+    """
+    datetime_str: str = Field(
+        ...,
+        alias="datetime",
+        description="Birth date and time in ISO format",
+    )
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    dominant_element: str = Field(..., description="Dominant element (Fire/Earth/Air/Water)")
+    planets: list[PlanetSoundData] = Field(..., description="Planet sound data")
+
+    @field_validator('datetime_str')
+    @classmethod
+    def validate_datetime(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("datetime must be in ISO format: YYYY-MM-DDTHH:MM:SS")
+        return v
+
+
+class SoundInterpretationResponse(BaseModel):
+    """
+    Response model for AI-generated sound interpretation.
+    """
+    personality: str = Field(..., description="Overall sonic personality description")
+    today_influence: str = Field(..., description="Today's transit effect on sound")
+    shift: str = Field(..., description="Short label for today's shift")
+    planet_descriptions: dict[str, str] = Field(..., description="Per-planet sound descriptions")
+
+
+class WelcomeMessageRequest(BaseModel):
+    """
+    Request model for personalized welcome message.
+    """
+    datetime_str: str = Field(
+        ...,
+        alias="datetime",
+        description="Birth date and time in ISO format",
+    )
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+
+    @field_validator('datetime_str')
+    @classmethod
+    def validate_datetime(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("datetime must be in ISO format: YYYY-MM-DDTHH:MM:SS")
+        return v
+
+
+class WelcomeMessageResponse(BaseModel):
+    """
+    Response model for AI-generated welcome message for new users.
+    """
+    greeting: str = Field(..., description="Personalized warm welcome")
+    personality: str = Field(..., description="Friendly personality description")
+    sound_teaser: str = Field(..., description="Intriguing hint about their unique sound")
+
+

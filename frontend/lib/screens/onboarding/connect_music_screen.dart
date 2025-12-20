@@ -5,6 +5,7 @@ import '../../widgets/onboarding/onboarding_scaffold.dart';
 import '../../widgets/onboarding/onboarding_heading.dart';
 import '../../widgets/onboarding/onboarding_cta.dart';
 import '../../widgets/onboarding/service_connect_card.dart';
+import '../../services/spotify_service.dart';
 
 /// Screen 6: Connect music streaming services.
 class ConnectMusicScreen extends StatefulWidget {
@@ -35,31 +36,160 @@ class _ConnectMusicScreenState extends State<ConnectMusicScreen> {
   late bool _appleMusicConnected;
   bool _spotifyLoading = false;
   bool _appleMusicLoading = false;
+  String? _spotifyUserName;
+  String? _pendingSpotifyState;
+  
+  final SpotifyService _spotifyService = SpotifyService();
 
   @override
   void initState() {
     super.initState();
     _spotifyConnected = widget.initialSpotifyConnected;
     _appleMusicConnected = widget.initialAppleMusicConnected;
+    
+    // Check if already connected to Spotify
+    _checkSpotifyConnection();
+  }
+  
+  Future<void> _checkSpotifyConnection() async {
+    final status = await _spotifyService.getConnectionStatus();
+    if (mounted && status.connected) {
+      setState(() {
+        _spotifyConnected = true;
+        _spotifyUserName = status.displayName;
+      });
+    }
   }
 
   Future<void> _connectSpotify() async {
+    // If already connected, disconnect
     if (_spotifyConnected) {
-      setState(() => _spotifyConnected = false);
+      await _spotifyService.disconnect();
+      setState(() {
+        _spotifyConnected = false;
+        _spotifyUserName = null;
+      });
       return;
     }
 
     setState(() => _spotifyLoading = true);
 
-    // Simulate OAuth flow (mock for now)
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (mounted) {
-      setState(() {
-        _spotifyConnected = true;
-        _spotifyLoading = false;
-      });
+    try {
+      // Initiate OAuth flow - this opens Spotify in browser
+      final state = await _spotifyService.initiateSpotifyAuth();
+      _pendingSpotifyState = state;
+      
+      // Show dialog explaining next steps
+      if (mounted) {
+        _showSpotifyAuthDialog();
+      }
+    } on SpotifyException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _spotifyLoading = false);
+      }
     }
+  }
+  
+  void _showSpotifyAuthDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Connecting to Spotify',
+          style: GoogleFonts.spaceGrotesk(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'A browser window has opened for you to log in to Spotify.\n\nAfter authorizing, copy the session ID shown and paste it below.',
+              style: GoogleFonts.spaceGrotesk(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Paste session ID here',
+                hintStyle: GoogleFonts.spaceGrotesk(color: Colors.white38),
+                filled: true,
+                fillColor: Colors.white.withAlpha(13),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (value) => _pendingSpotifyState = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() => _spotifyLoading = false);
+            },
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.spaceGrotesk(color: Colors.white54),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1DB954), // Spotify green
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (_pendingSpotifyState != null && _pendingSpotifyState!.isNotEmpty) {
+                // Store the session ID
+                await _spotifyService.storeSessionId(_pendingSpotifyState!);
+                
+                // Check connection status
+                final status = await _spotifyService.getConnectionStatus();
+                
+                if (mounted) {
+                  Navigator.pop(context);
+                  if (status.connected) {
+                    setState(() {
+                      _spotifyConnected = true;
+                      _spotifyUserName = status.displayName;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Connected as ${status.displayName ?? 'Spotify User'}'),
+                        backgroundColor: const Color(0xFF1DB954),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Connection failed. Please try again.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            child: Text('Confirm', style: GoogleFonts.spaceGrotesk()),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _connectAppleMusic() async {

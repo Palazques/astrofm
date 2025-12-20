@@ -11,6 +11,7 @@ import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../models/sonification.dart';
+import '../models/ai_responses.dart';
 import '../models/birth_data.dart';
 import '../data/test_users.dart';
 
@@ -31,6 +32,10 @@ class _SoundScreenState extends State<SoundScreen> {
   ChartSonification? _sonification;
   String? _errorMessage;
   final Set<String> _selectedPlanets = {};
+  
+  // AI Sound interpretation
+  SoundInterpretation? _soundInterpretation;
+  bool _isLoadingSoundInterpretation = false;
   
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
@@ -87,22 +92,40 @@ class _SoundScreenState extends State<SoundScreen> {
     };
     
     return _sonification!.planets.map((p) {
+      // Use AI description if available, otherwise fallback
+      String description = 'House ${p.house} • ${(p.intensity * 100).toStringAsFixed(0)}% intensity';
+      if (_soundInterpretation != null && _soundInterpretation!.planetDescriptions.containsKey(p.planet)) {
+        description = _soundInterpretation!.planetDescriptions[p.planet]!;
+      }
+      
       return {
         'planet': p.planet,
         'sign': p.sign,
         'frequency': '${p.frequency.toStringAsFixed(0)} Hz',
         'color': planetColors[p.planet] ?? AppColors.electricYellow,
-        'description': 'House ${p.house} • ${(p.intensity * 100).toStringAsFixed(0)}% intensity',
+        'description': description,
         'symbol': planetSymbols[p.planet] ?? '★',
       };
     }).toList();
   }
 
-  final todaysInfluence = {
-    'transit': 'Moon conjunct your natal Pluto',
-    'effect': 'Your sound carries extra intensity today. Deep bass frequencies are amplified.',
-    'shift': '+12% depth',
-  };
+  Map<String, dynamic> get todaysInfluence {
+    if (_soundInterpretation != null) {
+      return {
+        'transit': 'Your Sonic Personality',
+        'effect': _soundInterpretation!.todayInfluence,
+        'shift': _soundInterpretation!.shift,
+        'personality': _soundInterpretation!.personality,
+      };
+    }
+    // Fallback while loading
+    return {
+      'transit': 'Loading cosmic insights...',
+      'effect': 'Connecting to the cosmos...',
+      'shift': '...',
+      'personality': '',
+    };
+  }
 
   @override
   void initState() {
@@ -152,6 +175,8 @@ class _SoundScreenState extends State<SoundScreen> {
           _selectedPlanets.addAll(sonification.planets.map((p) => p.planet));
           _isLoading = false;
         });
+        // Load AI interpretation after sonification loads
+        _loadSoundInterpretation();
       }
     } catch (e) {
       if (mounted) {
@@ -159,6 +184,41 @@ class _SoundScreenState extends State<SoundScreen> {
           _errorMessage = 'Could not load sound data';
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _loadSoundInterpretation() async {
+    if (_sonification == null) return;
+    
+    setState(() => _isLoadingSoundInterpretation = true);
+    
+    try {
+      // Build planet data for API
+      final planets = _sonification!.planets.map((p) => {
+        'name': p.planet,
+        'sign': p.sign,
+        'house': p.house,
+        'frequency': p.frequency,
+      }).toList();
+      
+      final interpretation = await _apiService.getSoundInterpretation(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        dominantElement: soundProfile['element'] as String,
+        planets: planets,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _soundInterpretation = interpretation;
+          _isLoadingSoundInterpretation = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingSoundInterpretation = false);
       }
     }
   }
@@ -447,54 +507,103 @@ class _SoundScreenState extends State<SoundScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Text(
-                      'TODAY\'S INFLUENCE',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        color: Colors.white.withAlpha(128),
-                        letterSpacing: 1.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      todaysInfluence['transit'] as String,
-                      style: GoogleFonts.syne(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            'AI INSIGHT',
+                            style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 1),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.hotPink.withAlpha(38),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    todaysInfluence['shift'] as String,
-                    style: GoogleFonts.syne(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.hotPink,
+                if (_soundInterpretation != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.hotPink.withAlpha(38),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      todaysInfluence['shift'] as String,
+                      style: GoogleFonts.syne(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.hotPink,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              todaysInfluence['effect'] as String,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                height: 1.5,
-                color: Colors.white.withAlpha(153),
+            const SizedBox(height: 12),
+            
+            // Personality section
+            if (_isLoadingSoundInterpretation)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(height: 14, width: double.infinity, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(6))),
+                  const SizedBox(height: 8),
+                  Container(height: 14, width: 200, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(6))),
+                  const SizedBox(height: 12),
+                  Container(height: 12, width: 150, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(6))),
+                ],
+              )
+            else if (_soundInterpretation != null) ...[
+              Text(
+                _soundInterpretation!.personality,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: Colors.white.withAlpha(230),
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.electricYellow.withAlpha(15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.electricYellow.withAlpha(40)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.today_rounded, size: 16, color: AppColors.electricYellow),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _soundInterpretation!.todayInfluence,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 12,
+                          color: AppColors.electricYellow,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else
+              Text(
+                'Connecting to the cosmos...',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13,
+                  color: Colors.white.withAlpha(128),
+                ),
+              ),
           ],
         ),
       ),

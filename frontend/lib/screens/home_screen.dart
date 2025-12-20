@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
@@ -9,6 +10,7 @@ import '../widgets/inline_error.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../services/spotify_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/playlist.dart';
@@ -27,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final AudioService _audioService = AudioService();
   final ApiService _apiService = ApiService();
+  final SpotifyService _spotifyService = SpotifyService();
   
   bool _isPlayingUserSound = false;
   bool _isPlayingDailySound = false;
@@ -38,7 +41,15 @@ class _HomeScreenState extends State<HomeScreen> {
   PlaylistResult? _generatedPlaylist;
   bool _isGeneratingPlaylist = false;
   String? _playlistError;
+  PlaylistInsight? _playlistInsight;
+  bool _isLoadingPlaylistInsight = false;
   bool _isLoadingSonification = true;
+  
+  // Spotify playlist data
+  String? _spotifyPlaylistUrl;
+  bool _isCreatingSpotifyPlaylist = false;
+  bool _isSpotifyConnected = false;
+  List<SpotifyTrack> _spotifyLibraryTracks = [];  // Tracks from user's library
   
   // Alignment data
   int? _alignmentScore;
@@ -110,9 +121,19 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _birthData = stored);
     }
     
+    // Check Spotify connection status
+    _checkSpotifyConnection();
+    
     // Now load API data using birth data
     _loadAlignmentScore();
     _loadSonificationData();
+  }
+  
+  Future<void> _checkSpotifyConnection() async {
+    final status = await _spotifyService.getConnectionStatus();
+    if (mounted) {
+      setState(() => _isSpotifyConnected = status.connected);
+    }
   }
 
   Future<void> _loadAlignmentScore() async {
@@ -224,31 +245,235 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _generatePlaylist() async {
     if (_isGeneratingPlaylist) return;
     
-    setState(() => _isGeneratingPlaylist = true);
+    setState(() {
+      _isGeneratingPlaylist = true;
+      _playlistError = null;
+      _spotifyPlaylistUrl = null;
+      _spotifyLibraryTracks = [];
+    });
     
+    // Re-check Spotify connection (user may have connected after page load)
+    await _checkSpotifyConnection();
+    
+    if (!_isSpotifyConnected) {
+      // Not connected to Spotify - show error and prompt to connect
+      setState(() {
+        _isGeneratingPlaylist = false;
+        _playlistError = 'Connect to Spotify to generate your cosmic playlist';
+      });
+      
+      // Show connect prompt
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Connect Spotify to generate playlists from your library'),
+            backgroundColor: const Color(0xFF1DB954),
+            action: SnackBarAction(
+              label: 'Connect',
+              textColor: Colors.white,
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    
+    // Generate playlist directly from Spotify library
     try {
-      final playlist = await _apiService.generatePlaylist(
-        datetime: _birthDataMap['datetime'] as String,
-        latitude: _birthDataMap['latitude'] as double,
-        longitude: _birthDataMap['longitude'] as double,
-        timezone: _birthDataMap['timezone'] as String,
+      // Use default cosmic energy targets (can be customized later)
+      final result = await _spotifyService.generateFromLibrary(
+        name: 'Cosmic Queue - ${DateTime.now().toString().split(' ')[0]}',
+        energyTarget: 0.6,  // Moderate-high energy
+        moodTarget: 0.6,    // Slightly positive mood
+        tempoMin: 90,
+        tempoMax: 150,
         playlistSize: 20,
+        description: 'Personalized from your library by Astro.FM 🌟✨',
       );
       
-      if (mounted) {
+      if (mounted && result.success) {
         setState(() {
-          _generatedPlaylist = playlist;
+          _spotifyPlaylistUrl = result.playlistUrl;
+          _spotifyLibraryTracks = result.tracks;
           _isGeneratingPlaylist = false;
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Created playlist with ${result.tracksAdded} tracks from your library!'),
+            backgroundColor: const Color(0xFF1DB954),
+            action: SnackBarAction(
+              label: 'Open',
+              textColor: Colors.white,
+              onPressed: _openSpotifyPlaylist,
+            ),
+          ),
+        );
+      } else {
+        setState(() {
+          _isGeneratingPlaylist = false;
+          _playlistError = 'Failed to generate playlist';
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isGeneratingPlaylist = false;
-          _playlistError = 'Failed to generate playlist';
+          _playlistError = e is SpotifyException ? e.message : 'Failed to generate playlist';
         });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e is SpotifyException ? e.message : 'Failed to generate playlist'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
       }
     }
+  }
+
+  
+  Future<void> _createSpotifyPlaylist(PlaylistResult playlist) async {
+    if (_isCreatingSpotifyPlaylist) return;
+    
+    setState(() => _isCreatingSpotifyPlaylist = true);
+    
+    try {
+      // Extract cosmic parameters from playlist for filtering
+      // Energy: use vibe match score (0-100 -> 0-1)
+      final energyTarget = (playlist.vibeMatchScore / 100).clamp(0.0, 1.0);
+      
+      // Mood: map dominant mood to valence (0-1 scale)
+      final dominantMood = playlist.moodDistribution.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+      // Map moods to valence: higher = happier
+      final moodToValence = {
+        'energetic': 0.8,
+        'happy': 0.9,
+        'uplifting': 0.85,
+        'calm': 0.5,
+        'peaceful': 0.6,
+        'melancholic': 0.2,
+        'introspective': 0.4,
+        'intense': 0.6,
+        'mysterious': 0.35,
+      };
+      final moodTarget = moodToValence[dominantMood.toLowerCase()] ?? 0.5;
+      
+      // Get BPM range from playlist songs
+      final bpms = playlist.songs.map((s) => s.bpm).toList();
+      final tempoMin = bpms.isNotEmpty ? bpms.reduce((a, b) => a < b ? a : b) : 80;
+      final tempoMax = bpms.isNotEmpty ? bpms.reduce((a, b) => a > b ? a : b) : 160;
+      
+      // Generate playlist from user's library using cosmic parameters
+      final result = await _spotifyService.generateFromLibrary(
+        name: 'Cosmic Queue - ${DateTime.now().toString().split(' ')[0]}',
+        energyTarget: energyTarget,
+        moodTarget: moodTarget,
+        tempoMin: tempoMin,
+        tempoMax: tempoMax,
+        playlistSize: 20,
+        description: 'Personalized from your library by Astro.FM 🌟✨',
+      );
+      
+      if (mounted && result.success && result.playlistUrl != null) {
+        setState(() {
+          _spotifyPlaylistUrl = result.playlistUrl;
+          _spotifyLibraryTracks = result.tracks;  // Store the tracks for display
+          _isCreatingSpotifyPlaylist = false;
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Created playlist from your library with ${result.tracksAdded} tracks!'),
+            backgroundColor: const Color(0xFF1DB954),
+            action: SnackBarAction(
+              label: 'Open',
+              textColor: Colors.white,
+              onPressed: _openSpotifyPlaylist,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCreatingSpotifyPlaylist = false);
+        // Show error for library-based playlists
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e is SpotifyException ? e.message : 'Failed to create playlist'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _openSpotifyPlaylist() async {
+    if (_spotifyPlaylistUrl != null) {
+      await _spotifyService.openPlaylist(_spotifyPlaylistUrl!);
+    }
+  }
+
+  Future<void> _loadPlaylistInsight(PlaylistResult playlist) async {
+    setState(() => _isLoadingPlaylistInsight = true);
+    
+    try {
+      // Extract dominant mood and element from playlist
+      final dominantMood = playlist.moodDistribution.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+      final dominantElement = playlist.elementDistribution.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+      
+      // Get BPM range from songs
+      final bpms = playlist.songs.map((s) => s.bpm).toList();
+      final bpmMin = bpms.isNotEmpty ? bpms.reduce((a, b) => a < b ? a : b) : 100;
+      final bpmMax = bpms.isNotEmpty ? bpms.reduce((a, b) => a > b ? a : b) : 130;
+      
+      final insight = await _apiService.getPlaylistInsight(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        energyPercent: playlist.vibeMatchScore.round(),
+        dominantMood: dominantMood,
+        dominantElement: dominantElement,
+        bpmMin: bpmMin,
+        bpmMax: bpmMax,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _playlistInsight = insight;
+          _isLoadingPlaylistInsight = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingPlaylistInsight = false);
+      }
+    }
+  }
+
+  void _sharePlaylistInsight() {
+    if (_playlistInsight == null) return;
+    
+    final text = '''🎵 My Cosmic Playlist
+
+${_playlistInsight!.insight}
+
+✨ ${_playlistInsight!.astroHighlight}
+⚡ Energy: ${_playlistInsight!.energyPercent}%
+🎭 Mood: ${_playlistInsight!.dominantMood}
+
+Generated by Astro.FM''';
+    
+    Share.share(text);
   }
 
   void _playUserSound() {
@@ -911,6 +1136,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
               ],
             ),
+            // Open in Spotify button
+            if (_spotifyPlaylistUrl != null)
+              GestureDetector(
+                onTap: _openSpotifyPlaylist,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1DB954),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.play_circle_fill, size: 16, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Open in Spotify',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_isCreatingSpotifyPlaylist)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(13),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1DB954)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Creating...',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: Colors.white.withAlpha(128),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 12),
@@ -941,7 +1222,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         // Show empty state
-        else if (_generatedPlaylist == null)
+        else if (_spotifyLibraryTracks.isEmpty && _generatedPlaylist == null)
           GlassCard(
             child: Center(
               child: Padding(
@@ -978,17 +1259,260 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         // Show actual playlist
         else
-          GlassCard(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              children: _generatedPlaylist!.songs.asMap().entries.map((entry) {
-                final index = entry.key;
-                final song = entry.value;
-                return _buildPlaylistItem(song, index);
-              }).toList(),
-            ),
+          Column(
+            children: [
+              // AI Playlist Insight Card
+              if (_isLoadingPlaylistInsight)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(16),
+                    borderColor: AppColors.cosmicPurple.withAlpha(51),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'AI INSIGHT',
+                                    style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(height: 12, width: double.infinity, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(6))),
+                        const SizedBox(height: 8),
+                        Container(height: 12, width: 200, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(6))),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_playlistInsight != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(16),
+                    borderColor: AppColors.cosmicPurple.withAlpha(51),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header with AI badge and share
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'WHY THIS PLAYLIST',
+                                    style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: _sharePlaylistInsight,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha(13),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.share_rounded, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Insight text
+                        Text(
+                          _playlistInsight!.insight,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: Colors.white.withAlpha(230),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Stats row
+                        Row(
+                          children: [
+                            _buildStatPill('\u2728 ${_playlistInsight!.astroHighlight}', AppColors.cosmicPurple),
+                            const SizedBox(width: 8),
+                            _buildStatPill('\u26a1 ${_playlistInsight!.energyPercent}%', AppColors.electricYellow),
+                            const SizedBox(width: 8),
+                            _buildStatPill('\ud83c\udfad ${_playlistInsight!.dominantMood}', AppColors.hotPink),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              
+              // Song list - Show Spotify tracks if available
+              GlassCard(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: _spotifyLibraryTracks.isNotEmpty
+                    ? _spotifyLibraryTracks.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final track = entry.value;
+                        return _buildSpotifyTrackItem(track, index);
+                      }).toList()
+                    : _generatedPlaylist != null 
+                      ? _generatedPlaylist!.songs.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final song = entry.value;
+                          return _buildPlaylistItem(song, index);
+                        }).toList()
+                      : [], // Empty if neither has data (shouldn't happen due to else condition)
+                ),
+              ),
+            ],
           ),
       ],
+    );
+  }
+
+  /// Build a Spotify track item for display in the Cosmic Queue
+  Widget _buildSpotifyTrackItem(SpotifyTrack track, int index) {
+    final energyPercent = (track.energy ?? 0.5) * 100;
+    final moodLabel = (track.valence ?? 0.5) > 0.6 ? 'Upbeat' : (track.valence ?? 0.5) > 0.4 ? 'Neutral' : 'Mellow';
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        border: index > 0 ? Border(top: BorderSide(color: Colors.white.withAlpha(13))) : null,
+      ),
+      child: Row(
+        children: [
+          // Track number
+          SizedBox(
+            width: 24,
+            child: Text(
+              '${index + 1}',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.hotPink,
+              ),
+            ),
+          ),
+          // Track info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track.name,
+                  style: GoogleFonts.syne(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  track.artistName,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    color: Colors.white.withAlpha(153),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Energy & Mood pills
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.electricYellow.withAlpha(26),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${energyPercent.round()}%',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.electricYellow,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.cosmicPurple.withAlpha(26),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  moodLabel,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.cosmicPurple,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatPill(String text, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withAlpha(26),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withAlpha(51)),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
     );
   }
 

@@ -43,6 +43,11 @@ class _AlignScreenState extends State<AlignScreen> {
   bool _isLoadingTransits = false;
   String? _transitsError;
   
+  // Transit AI interpretation
+  TransitInterpretation? _transitInterpretation;
+  bool _isLoadingTransitInterpretation = false;
+  String? _transitInterpretationError;
+  
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
   
@@ -96,12 +101,38 @@ class _AlignScreenState extends State<AlignScreen> {
           _transitsData = result;
           _isLoadingTransits = false;
         });
+        // Load AI interpretation after transits are loaded
+        _loadTransitInterpretation();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _transitsError = e.toString();
           _isLoadingTransits = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadTransitInterpretation() async {
+    setState(() {
+      _isLoadingTransitInterpretation = true;
+      _transitInterpretationError = null;
+    });
+    
+    try {
+      final result = await _apiService.getTransitInterpretation();
+      if (mounted) {
+        setState(() {
+          _transitInterpretation = result;
+          _isLoadingTransitInterpretation = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _transitInterpretationError = e.toString();
+          _isLoadingTransitInterpretation = false;
         });
       }
     }
@@ -728,6 +759,10 @@ class _AlignScreenState extends State<AlignScreen> {
     // Build transit list from real API data
     return Column(
       children: [
+        // AI Cosmic Weather Insight
+        _buildTransitInsightCard(),
+        const SizedBox(height: 12),
+        
         // Moon phase card
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -831,6 +866,219 @@ class _AlignScreenState extends State<AlignScreen> {
       'Pluto': '♇',
     };
     return symbols[name] ?? '✦';
+  }
+
+  /// Build the AI cosmic weather insight card for transits
+  Widget _buildTransitInsightCard() {
+    // Loading state
+    if (_isLoadingTransitInterpretation) {
+      return GlassCard(
+        padding: const EdgeInsets.all(16),
+        borderColor: AppColors.cosmicPurple.withAlpha(51),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        'AI INSIGHT',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Shimmer lines
+            Container(
+              height: 12,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(20),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 12,
+              width: 200,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(20),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Error state
+    if (_transitInterpretationError != null) {
+      return GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: GestureDetector(
+          onTap: _loadTransitInterpretation,
+          child: Row(
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Could not load cosmic weather. Tap to retry.',
+                  style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(179)),
+                ),
+              ),
+              const Icon(Icons.refresh, color: AppColors.red, size: 20),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Success state
+    if (_transitInterpretation == null) {
+      return const SizedBox.shrink();
+    }
+
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      borderColor: AppColors.cosmicPurple.withAlpha(51),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row with AI badge and energy tag
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      'COSMIC WEATHER',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.electricYellow.withAlpha(26),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.electricYellow.withAlpha(51)),
+                ),
+                child: Text(
+                  _transitInterpretation!.energyDescription,
+                  style: GoogleFonts.syne(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.electricYellow),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Interpretation text
+          Text(
+            _transitInterpretation!.interpretation,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 13,
+              height: 1.6,
+              color: Colors.white.withAlpha(230),
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Highlight planet
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(8),
+              borderRadius: BorderRadius.circular(10),
+              border: const Border(
+                left: BorderSide(color: AppColors.hotPink, width: 3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  _getPlanetSymbol(_transitInterpretation!.highlightPlanet),
+                  style: const TextStyle(fontSize: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_transitInterpretation!.highlightPlanet} Highlight',
+                        style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.hotPink),
+                      ),
+                      Text(
+                        _transitInterpretation!.highlightReason,
+                        style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(153)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Retrograde warning if any
+          if (_transitInterpretation!.retrogradePlanets.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: _transitInterpretation!.retrogradePlanets.map((planet) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.hotPink.withAlpha(26),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '℞ $planet Rx',
+                  style: GoogleFonts.spaceGrotesk(fontSize: 10, color: AppColors.hotPink),
+                ),
+              )).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildAlignButton() {

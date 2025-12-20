@@ -4,6 +4,7 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/onboarding/gradient_toggle.dart';
+import '../services/spotify_service.dart';
 
 /// Settings screen with subscription, notifications, account, and app preferences.
 class SettingsScreen extends StatefulWidget {
@@ -16,6 +17,11 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   // Mock subscription state - in real app this would come from backend
   bool _isPremium = false;
+  
+  // Spotify connection state
+  final SpotifyService _spotifyService = SpotifyService();
+  bool _isSpotifyConnected = false;
+  String? _spotifyUserName;
   
   // Notification settings
   final Map<String, bool> _notifications = {
@@ -61,6 +67,265 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
 
   int get _enabledNotificationCount => _notifications.values.where((v) => v).length;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSpotifyConnection();
+  }
+
+  Future<void> _checkSpotifyConnection() async {
+    final status = await _spotifyService.getConnectionStatus();
+    if (mounted) {
+      setState(() {
+        _isSpotifyConnected = status.connected;
+        _spotifyUserName = status.displayName;
+      });
+    }
+  }
+
+  void _showMusicConnectionsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.backgroundMid,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(51),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Music Services',
+                style: GoogleFonts.syne(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Spotify Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(8),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _isSpotifyConnected
+                        ? const Color(0xFF1DB954).withAlpha(77)
+                        : Colors.white.withAlpha(26),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1DB954).withAlpha(26),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.music_note, color: Color(0xFF1DB954), size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Spotify',
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            _isSpotifyConnected
+                                ? 'Connected as ${_spotifyUserName ?? 'User'}'
+                                : 'Not connected',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              color: _isSpotifyConnected
+                                  ? const Color(0xFF1DB954)
+                                  : Colors.white.withAlpha(102),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_isSpotifyConnected)
+                      TextButton(
+                        onPressed: () async {
+                          await _spotifyService.disconnect();
+                          setSheetState(() {});
+                          _checkSpotifyConnection();
+                        },
+                        child: Text(
+                          'Disconnect',
+                          style: GoogleFonts.syne(
+                            fontSize: 13,
+                            color: Colors.red.shade400,
+                          ),
+                        ),
+                      )
+                    else
+                      ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await _spotifyService.initiateSpotifyAuth();
+                          // Show dialog for session ID input
+                          _showSessionIdDialog();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1DB954),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Connect',
+                          style: GoogleFonts.syne(
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Apple Music (Coming Soon)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(8),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withAlpha(13)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(13),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.apple, color: Colors.white.withAlpha(77), size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Apple Music',
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withAlpha(102),
+                            ),
+                          ),
+                          Text(
+                            'Coming soon',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              color: Colors.white.withAlpha(77),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSessionIdDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.backgroundMid,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Enter Session ID',
+          style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Paste the session ID from the Spotify authorization page:',
+              style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(179)),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Session ID...',
+                hintStyle: GoogleFonts.spaceGrotesk(color: Colors.white.withAlpha(77)),
+                filled: true,
+                fillColor: Colors.white.withAlpha(13),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.syne(color: Colors.white.withAlpha(128))),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                await _spotifyService.storeSessionId(controller.text.trim());
+                Navigator.pop(context);
+                _checkSpotifyConnection();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Checking connection...', style: GoogleFonts.spaceGrotesk(color: Colors.white)),
+                    backgroundColor: const Color(0xFF1DB954),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1DB954),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Connect', style: GoogleFonts.syne(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _enableAllNotifications() {
     setState(() {
@@ -633,7 +898,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.music_note_rounded,
                 label: 'Connected Music Services',
                 color: AppColors.teal,
-                onTap: () => _showComingSoon('Music connections'),
+                onTap: _showMusicConnectionsDialog,
+                trailing: _isSpotifyConnected
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1DB954).withAlpha(38),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Spotify',
+                          style: GoogleFonts.spaceGrotesk(fontSize: 11, color: const Color(0xFF1DB954)),
+                        ),
+                      )
+                    : null,
               ),
               const Divider(color: Colors.white12, height: 1, indent: 16, endIndent: 16),
               _buildMenuItem(

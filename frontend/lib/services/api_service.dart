@@ -273,6 +273,124 @@ class ApiService {
     }
   }
 
+  /// Get AI-generated interpretation of current planetary transits.
+  Future<TransitInterpretation> getTransitInterpretation() async {
+    final response = await _client
+        .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.transitInterpretationEndpoint}'))
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return TransitInterpretation.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get transit interpretation',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get AI-generated insight explaining why a playlist was created.
+  Future<PlaylistInsight> getPlaylistInsight({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    required int energyPercent,
+    required String dominantMood,
+    required String dominantElement,
+    required int bpmMin,
+    required int bpmMax,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.playlistInsightEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'energy_percent': energyPercent,
+            'dominant_mood': dominantMood,
+            'dominant_element': dominantElement,
+            'bpm_min': bpmMin,
+            'bpm_max': bpmMax,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return PlaylistInsight.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get playlist insight',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get AI-generated interpretation of user's cosmic sound profile.
+  Future<SoundInterpretation> getSoundInterpretation({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    required String dominantElement,
+    required List<Map<String, dynamic>> planets,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.soundInterpretationEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'dominant_element': dominantElement,
+            'planets': planets,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return SoundInterpretation.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get sound interpretation',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get AI-generated welcome message for new users during onboarding.
+  Future<WelcomeMessage> getWelcomeMessage({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.welcomeEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return WelcomeMessage.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get welcome message',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   /// Generate a personalized playlist based on birth chart data.
   ///
   /// [datetime] - Birth date and time in ISO format

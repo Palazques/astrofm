@@ -469,6 +469,326 @@ GENRES: [comma-separated list]"""
         
         return result
 
+    def generate_transit_interpretation(
+        self,
+        transits: list[dict],
+        moon_phase: str,
+        retrograde_planets: list[str],
+    ) -> dict:
+        """
+        Generate AI interpretation of current planetary transits.
+        
+        Args:
+            transits: List of planet positions [{name, sign, degree, retrograde}, ...]
+            moon_phase: Current moon phase name
+            retrograde_planets: List of planets currently retrograde
+            
+        Returns:
+            TransitInterpretationResponse-compatible dict
+        """
+        # Cache key based on date (transits change slowly)
+        cache_key = self._generate_cache_key("transit", {
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d-%H"),  # Hour granularity
+        })
+        
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+        
+        # Build transit summary for prompt
+        transit_lines = []
+        for t in transits[:8]:  # Main planets
+            rx = " (Retrograde)" if t.get("retrograde") else ""
+            transit_lines.append(f"- {t['name']}: {t['sign']} {t.get('degree', 0):.1f}°{rx}")
+        
+        retrograde_text = ", ".join(retrograde_planets) if retrograde_planets else "None"
+        
+        prompt = f"""Analyze today's cosmic weather based on these planetary transits:
+
+{chr(10).join(transit_lines)}
+
+Moon Phase: {moon_phase}
+Retrograde Planets: {retrograde_text}
+
+Provide:
+1. A 2-3 sentence "cosmic weather" summary describing today's overall energy in sonic/frequency terms
+2. The most significant planet/transit to highlight and why (1 sentence)
+3. An energy description keyword (e.g., "Grounding", "Expansive", "Introspective", "Dynamic")
+
+{"IMPORTANT: " + ", ".join(retrograde_planets) + " in retrograde - emphasize how this affects communication, travel, or introspection." if retrograde_planets else ""}
+
+Format your response:
+SUMMARY: [cosmic weather summary]
+HIGHLIGHT: [planet name] - [why it's significant]
+ENERGY: [one-word energy description]"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        summary = ""
+        highlight_planet = ""
+        highlight_reason = ""
+        energy = "Flowing"
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("SUMMARY:"):
+                summary = line.replace("SUMMARY:", "").strip()
+            elif line.startswith("HIGHLIGHT:"):
+                highlight_text = line.replace("HIGHLIGHT:", "").strip()
+                if " - " in highlight_text:
+                    parts = highlight_text.split(" - ", 1)
+                    highlight_planet = parts[0].strip()
+                    highlight_reason = parts[1].strip() if len(parts) > 1 else ""
+                else:
+                    highlight_planet = highlight_text
+            elif line.startswith("ENERGY:"):
+                energy = line.replace("ENERGY:", "").strip()
+        
+        # Fallback if parsing failed
+        if not summary:
+            summary = f"Today's {moon_phase} brings {energy.lower()} cosmic vibrations."
+        if not highlight_planet:
+            highlight_planet = "Moon"
+            highlight_reason = f"The {moon_phase} sets the emotional tone for today."
+        
+        result = {
+            "interpretation": summary,
+            "highlight_planet": highlight_planet,
+            "highlight_reason": highlight_reason,
+            "energy_description": energy,
+            "moon_phase": moon_phase,
+            "retrograde_planets": retrograde_planets,
+        }
+        
+        # Cache for 3 hours
+        self._set_cached(cache_key, result, timedelta(hours=3))
+        
+        return result
+
+    def generate_playlist_insight(
+        self,
+        sun_sign: str,
+        moon_sign: str,
+        ascendant_sign: str,
+        energy_percent: int,
+        dominant_mood: str,
+        dominant_element: str,
+        bpm_range: tuple[int, int],
+    ) -> dict:
+        """
+        Generate a simple, relatable explanation for why this playlist was created.
+        
+        Args:
+            sun_sign: User's sun sign
+            moon_sign: User's moon sign (or today's moon sign)
+            ascendant_sign: User's rising sign
+            energy_percent: Playlist energy level (0-100)
+            dominant_mood: Most common mood in playlist
+            dominant_element: Most common element (Fire/Earth/Air/Water)
+            bpm_range: Min and max BPM in playlist
+            
+        Returns:
+            PlaylistInsightResponse-compatible dict
+        """
+        prompt = f"""Generate a 1-2 sentence explanation for why this playlist was created for the user. Keep it simple, warm, and relatable - like a friend explaining your vibe.
+
+User's Chart:
+- Sun: {sun_sign}
+- Moon: {moon_sign}  
+- Rising: {ascendant_sign}
+
+Playlist Vibe:
+- Energy: {energy_percent}%
+- Mood: {dominant_mood}
+- Element: {dominant_element}
+- BPM Range: {bpm_range[0]}-{bpm_range[1]}
+
+Rules:
+1. Keep it SHORT (1-2 sentences max)
+2. Make it feel personal and relatable
+3. Blend astrological insight with musical description naturally
+4. Don't be overly mystical - be conversational
+5. Mention the mood or energy naturally
+
+Example style: "With your Scorpio intensity meeting today's dreamy Pisces Moon, we're serving deep, emotional tracks that match your introspective vibe."
+
+Respond ONLY with the insight text, nothing else."""
+
+        response = self._generate_response(prompt)
+        insight = response.strip().strip('"')
+        
+        # Determine astro highlight (most relevant placement)
+        astro_highlight = f"{sun_sign} Sun"
+        
+        return {
+            "insight": insight,
+            "energy_percent": energy_percent,
+            "dominant_mood": dominant_mood,
+            "astro_highlight": astro_highlight,
+        }
+
+    def generate_sound_interpretation(
+        self,
+        sun_sign: str,
+        moon_sign: str,
+        ascendant_sign: str,
+        dominant_element: str,
+        planets: list[dict],
+    ) -> dict:
+        """
+        Generate AI interpretation of user's cosmic sound profile.
+        
+        Args:
+            sun_sign: User's sun sign
+            moon_sign: User's moon sign
+            ascendant_sign: User's rising sign
+            dominant_element: Dominant element (Fire/Earth/Air/Water)
+            planets: List of planet data [{name, sign, house, frequency}, ...]
+            
+        Returns:
+            SoundInterpretationResponse-compatible dict
+        """
+        # Build planet list for prompt
+        planet_lines = []
+        for p in planets[:5]:  # Top 5 planets
+            planet_lines.append(f"- {p['name']} in {p['sign']} (House {p['house']}, {p['frequency']:.0f} Hz)")
+        
+        prompt = f"""Generate a personalized sound interpretation for this user. Keep it simple, warm, and relatable - like explaining someone's unique musical vibe.
+
+User's Chart:
+- Sun: {sun_sign}
+- Moon: {moon_sign}
+- Rising: {ascendant_sign}
+- Dominant Element: {dominant_element}
+
+Key Planets:
+{chr(10).join(planet_lines)}
+
+Provide:
+1. PERSONALITY: A 2-sentence description of their overall "sonic personality" - how their chart translates to sound (e.g., "Your sound is warm and grounding with deep undertones...")
+2. TODAY: A 1-sentence transit effect on their sound today (make something up that sounds insightful)
+3. SHIFT: A short label for today's shift (e.g., "+8% warmth" or "deeper bass")
+4. For each planet listed, a SHORT (5-8 words max) musical description
+
+Rules:
+- Be conversational and warm, not mystical
+- Blend astrology with musical/sonic language naturally
+- Keep planet descriptions punchy and memorable
+
+Format:
+PERSONALITY: [2 sentences]
+TODAY: [1 sentence]
+SHIFT: [short label]
+SUN: [short description]
+MOON: [short description]
+MERCURY: [short description]
+VENUS: [short description]
+MARS: [short description]"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        personality = ""
+        today_influence = ""
+        shift = "+5% cosmic"
+        planet_descriptions = {}
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("PERSONALITY:"):
+                personality = line.replace("PERSONALITY:", "").strip()
+            elif line.startswith("TODAY:"):
+                today_influence = line.replace("TODAY:", "").strip()
+            elif line.startswith("SHIFT:"):
+                shift = line.replace("SHIFT:", "").strip()
+            elif ":" in line:
+                parts = line.split(":", 1)
+                planet_name = parts[0].strip().upper()
+                if planet_name in ["SUN", "MOON", "MERCURY", "VENUS", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"]:
+                    planet_descriptions[planet_name.title()] = parts[1].strip()
+        
+        # Fallbacks
+        if not personality:
+            personality = f"Your {dominant_element} energy creates a rich, layered sound. The blend of your {sun_sign} Sun and {moon_sign} Moon gives your sound both depth and emotional resonance."
+        if not today_influence:
+            today_influence = "Today's cosmic weather amplifies your natural frequencies."
+        
+        return {
+            "personality": personality,
+            "today_influence": today_influence,
+            "shift": shift,
+            "planet_descriptions": planet_descriptions,
+        }
+
+    def generate_welcome_message(
+        self,
+        sun_sign: str,
+        moon_sign: str,
+        ascendant_sign: str,
+    ) -> dict:
+        """
+        Generate a warm, personalized welcome message for new users.
+        
+        Args:
+            sun_sign: User's sun sign
+            moon_sign: User's moon sign
+            ascendant_sign: User's rising sign
+            
+        Returns:
+            WelcomeMessageResponse-compatible dict
+        """
+        prompt = f"""Generate a warm, welcoming first-impression message for a new user of Astro.FM, a music app that creates personalized playlists based on astrology.
+
+User's Chart:
+- Sun: {sun_sign}
+- Moon: {moon_sign}
+- Rising: {ascendant_sign}
+
+Provide:
+1. GREETING: A personalized 1-sentence warm welcome mentioning their sun sign (e.g., "Welcome, creative {sun_sign}!")
+2. PERSONALITY: A friendly 1-2 sentence description of what their chart says about them - blend personality with music/sound naturally
+3. SOUND_TEASER: A short, intriguing 1-sentence hint about their unique sound (e.g., "Your sound carries warm, grounding tones with moments of electric intensity")
+
+Rules:
+- Be WARM and WELCOMING, like greeting a new friend
+- Keep it simple and relatable, not mystical
+- Blend astrology with musical/sonic language naturally
+- Make them excited to explore their cosmic sound
+
+Format:
+GREETING: [1 sentence]
+PERSONALITY: [1-2 sentences]
+SOUND_TEASER: [1 sentence]"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        greeting = f"Welcome, {sun_sign}!"
+        personality = ""
+        sound_teaser = ""
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("GREETING:"):
+                greeting = line.replace("GREETING:", "").strip()
+            elif line.startswith("PERSONALITY:"):
+                personality = line.replace("PERSONALITY:", "").strip()
+            elif line.startswith("SOUND_TEASER:"):
+                sound_teaser = line.replace("SOUND_TEASER:", "").strip()
+        
+        # Fallbacks
+        if not personality:
+            personality = f"Your {sun_sign} Sun brings creative energy, while your {moon_sign} Moon adds emotional depth to everything you do."
+        if not sound_teaser:
+            sound_teaser = "Your unique sound is ready - tap below to experience your cosmic audio signature."
+        
+        return {
+            "greeting": greeting,
+            "personality": personality,
+            "sound_teaser": sound_teaser,
+        }
+
 
 # Global singleton instance
 _ai_service: Optional[AIService] = None

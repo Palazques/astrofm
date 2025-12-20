@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
 import '../../models/onboarding_data.dart';
+import '../../models/ai_responses.dart';
 import '../../services/api_service.dart';
 import '../../widgets/onboarding/onboarding_scaffold.dart';
 import '../../widgets/onboarding/onboarding_cta.dart';
@@ -35,6 +36,10 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
 
   bool _isCalculating = false;
   String? _error;
+
+  // AI Welcome Message
+  WelcomeMessage? _welcomeMessage;
+  bool _isLoadingWelcome = false;
 
   final _soundStats = [
     {'label': 'Dominant', 'value': '528 Hz', 'color': AppColors.electricYellow, 'icon': Icons.radio_button_checked},
@@ -75,6 +80,36 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
 
     _contentController.forward();
     Future.delayed(const Duration(milliseconds: 500), () => _statsController.forward());
+    
+    // Load AI welcome message
+    _loadWelcomeMessage();
+  }
+
+  Future<void> _loadWelcomeMessage() async {
+    if (widget.data.formattedBirthDatetime == null || widget.data.birthLocation == null) return;
+
+    setState(() => _isLoadingWelcome = true);
+
+    try {
+      final apiService = ApiService();
+      final message = await apiService.getWelcomeMessage(
+        datetime: widget.data.formattedBirthDatetime!,
+        latitude: widget.data.birthLocation!.latitude,
+        longitude: widget.data.birthLocation!.longitude,
+      );
+      apiService.dispose();
+
+      if (mounted) {
+        setState(() {
+          _welcomeMessage = message;
+          _isLoadingWelcome = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingWelcome = false);
+      }
+    }
   }
 
   @override
@@ -335,16 +370,71 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
               },
             ),
             const SizedBox(height: 16),
-            Text(
-              'Welcome to Astro.FM',
-              style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your cosmic journey begins now.\nTap below to hear your unique sound signature.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(128), height: 1.5),
-            ),
+            const SizedBox(height: 16),
+            if (_isLoadingWelcome)
+              Column(
+                children: [
+                  Container(height: 24, width: 200, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(4))),
+                  const SizedBox(height: 12),
+                  Container(height: 14, width: 280, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(4))),
+                  const SizedBox(height: 6),
+                  Container(height: 14, width: 200, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(4))),
+                ],
+              )
+            else if (_welcomeMessage != null)
+              Column(
+                children: [
+                  Text(
+                    _welcomeMessage!.greeting,
+                    style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _welcomeMessage!.personality,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(200), height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.hotPink.withAlpha(20),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.hotPink.withAlpha(40)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 14, color: AppColors.hotPink),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _welcomeMessage!.soundTeaser,
+                            style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.hotPink),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else
+              Column(
+                children: [
+                  Text(
+                    'Welcome to Astro.FM',
+                    style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your cosmic journey begins now.\nTap below to hear your unique sound signature.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(128), height: 1.5),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

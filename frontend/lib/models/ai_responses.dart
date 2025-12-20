@@ -140,3 +140,105 @@ class CompatibilityResult {
     );
   }
 }
+
+/// AI-generated interpretation of current planetary transits.
+class TransitInterpretation {
+  final String interpretation;
+  final String highlightPlanet;
+  final String highlightReason;
+  final String energyDescription;
+  final String moonPhase;
+  final List<String> retrogradePlanets;
+
+  TransitInterpretation({
+    required this.interpretation,
+    required this.highlightPlanet,
+    required this.highlightReason,
+    required this.energyDescription,
+    required this.moonPhase,
+    required this.retrogradePlanets,
+  });
+
+  factory TransitInterpretation.fromJson(Map<String, dynamic> json) {
+    return TransitInterpretation(
+      interpretation: json['interpretation'] as String,
+      highlightPlanet: json['highlight_planet'] as String,
+      highlightReason: json['highlight_reason'] as String,
+      energyDescription: json['energy_description'] as String,
+      moonPhase: json['moon_phase'] as String,
+      retrogradePlanets: (json['retrograde_planets'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+    );
+  }
+}
+
+/// AI-generated insight explaining why a playlist was created.
+class PlaylistInsight {
+  final String insight;
+  final int energyPercent;
+  final String dominantMood;
+  final String astroHighlight;
+
+  PlaylistInsight({
+    required this.insight,
+    required this.energyPercent,
+    required this.dominantMood,
+    required this.astroHighlight,
+  });
+
+  factory PlaylistInsight.fromJson(Map<String, dynamic> json) {
+    return PlaylistInsight(
+      insight: json['insight'] as String,
+      energyPercent: json['energy_percent'] as int,
+      dominantMood: json['dominant_mood'] as String,
+      astroHighlight: json['astro_highlight'] as String,
+    );
+  }
+}
+
+/// AI-generated interpretation of user's cosmic sound profile.
+class SoundInterpretation {
+  final String personality;
+  final String todayInfluence;
+  final String shift;
+  final Map<String, String> planetDescriptions;
+
+  SoundInterpretation({
+    required this.personality,
+    required this.todayInfluence,
+    required this.shift,
+    required this.planetDescriptions,
+  });
+
+  factory SoundInterpretation.fromJson(Map<String, dynamic> json) {
+    return SoundInterpretation(
+      personality: json['personality'] as String,
+      todayInfluence: json['today_influence'] as String,
+      shift: json['shift'] as String,
+      planetDescriptions: (json['planet_descriptions'] as Map<String, dynamic>)
+          .map((k, v) => MapEntry(k, v as String)),
+    );
+  }
+}
+
+/// AI-generated welcome message for new users during onboarding.
+class WelcomeMessage {
+  final String greeting;
+  final String personality;
+  final String soundTeaser;
+
+  WelcomeMessage({
+    required this.greeting,
+    required this.personality,
+    required this.soundTeaser,
+  });
+
+  factory WelcomeMessage.fromJson(Map<String, dynamic> json) {
+    return WelcomeMessage(
+      greeting: json['greeting'] as String,
+      personality: json['personality'] as String,
+      soundTeaser: json['sound_teaser'] as String,
+    );
+  }
+}

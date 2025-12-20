@@ -32,10 +32,16 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   bool _isLoadingCompatibility = true;
   String? _compatibilityError;
 
+  // Friend Horoscope State
+  DailyReading? _friendHoroscope;
+  bool _isLoadingHoroscope = true;
+  String? _horoscopeError;
+
   @override
   void initState() {
     super.initState();
     _loadCompatibilityData();
+    _loadFriendHoroscope();
   }
 
   @override
@@ -108,6 +114,54 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         setState(() {
           _compatibilityError = 'Unable to load AI analysis. Tap to retry.';
           _isLoadingCompatibility = false;
+        });
+      }
+    }
+  }
+
+  /// Load AI-generated horoscope for the friend
+  Future<void> _loadFriendHoroscope() async {
+    setState(() {
+      _isLoadingHoroscope = true;
+      _horoscopeError = null;
+    });
+
+    try {
+      // Get friend birth data (from friend object or generate mock from sign)
+      final String friendDatetime;
+      final double friendLatitude;
+      final double friendLongitude;
+
+      if (widget.friend.hasBirthData) {
+        friendDatetime = widget.friend.birthDatetime!;
+        friendLatitude = widget.friend.birthLatitude!;
+        friendLongitude = widget.friend.birthLongitude!;
+      } else {
+        // Generate mock birth data based on their sun sign
+        final mockData = _getMockBirthDataForSign(widget.friend.sunSign);
+        friendDatetime = mockData['datetime'] as String;
+        friendLatitude = mockData['latitude'] as double;
+        friendLongitude = mockData['longitude'] as double;
+      }
+
+      // Call AI daily reading API for friend
+      final result = await _apiService.getDailyReading(
+        datetime: friendDatetime,
+        latitude: friendLatitude,
+        longitude: friendLongitude,
+      );
+
+      if (mounted) {
+        setState(() {
+          _friendHoroscope = result;
+          _isLoadingHoroscope = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _horoscopeError = 'Unable to load horoscope. Tap to retry.';
+          _isLoadingHoroscope = false;
         });
       }
     }
@@ -191,9 +245,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
   Map<String, String> get friendHoroscope => {
     'sign': widget.friend.sunSign,
-    'mood': 'Introspective',
-    'energy': 'Flowing → Mystical',
-    'reading': 'The cosmos invites diving deep into the subconscious. Creative downloads are available if you slow down enough to receive them.',
+    'mood': _friendHoroscope?.mood ?? 'Introspective',
+    'energy': _friendHoroscope?.energyLabel ?? 'Flowing → Mystical',
+    'reading': _friendHoroscope?.reading ?? 'The cosmos invites diving deep into the subconscious. Creative downloads are available if you slow down enough to receive them.',
   };
 
   List<Map<String, dynamic>> get friendPlaylists => [
@@ -923,6 +977,87 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
   Widget _buildTheirHoroscope() {
     final firstName = widget.friend.name.split(' ')[0];
+    
+    // Loading state
+    if (_isLoadingHoroscope) {
+      return GlassCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$firstName\'s Horoscope'.toUpperCase(),
+                      style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 2),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.friend.sunSign,
+                      style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.hotPink),
+                    ),
+                  ],
+                ),
+                _buildShimmerLine(width: 80),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildShimmerLine(width: double.infinity),
+            const SizedBox(height: 8),
+            _buildShimmerLine(width: double.infinity),
+            const SizedBox(height: 8),
+            _buildShimmerLine(width: 200),
+          ],
+        ),
+      );
+    }
+
+    // Error state
+    if (_horoscopeError != null) {
+      return GlassCard(
+        padding: const EdgeInsets.all(20),
+        child: GestureDetector(
+          onTap: _loadFriendHoroscope,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$firstName\'s Horoscope'.toUpperCase(),
+                style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 2),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.red.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.red.withAlpha(51)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: AppColors.red, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _horoscopeError!,
+                        style: GoogleFonts.spaceGrotesk(fontSize: 13, color: AppColors.red),
+                      ),
+                    ),
+                    const Icon(Icons.refresh, color: AppColors.red, size: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Success state - show AI-generated horoscope
     return GlassCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -934,9 +1069,40 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '$firstName\'s Horoscope'.toUpperCase(),
-                    style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 2),
+                  Row(
+                    children: [
+                      Text(
+                        '$firstName\'s Horoscope'.toUpperCase(),
+                        style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 2),
+                      ),
+                      if (_friendHoroscope != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.auto_awesome, size: 10, color: Colors.white),
+                              const SizedBox(width: 3),
+                              Text(
+                                'AI',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
