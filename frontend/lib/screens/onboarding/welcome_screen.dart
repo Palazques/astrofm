@@ -5,12 +5,14 @@ import '../../widgets/sound_orb.dart';
 import '../../widgets/onboarding/onboarding_scaffold.dart';
 import '../../widgets/onboarding/onboarding_cta.dart';
 import '../../widgets/onboarding/shimmer_text.dart';
+import '../../widgets/onboarding/login_modal.dart';
 
 /// Screen 1: Welcome screen with animated orb and introduction.
 class WelcomeScreen extends StatefulWidget {
   final VoidCallback onNext;
+  final VoidCallback? onLoginSuccess;
 
-  const WelcomeScreen({super.key, required this.onNext});
+  const WelcomeScreen({super.key, required this.onNext, this.onLoginSuccess});
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -136,6 +138,37 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 label: 'Get Started',
                 icon: Icons.arrow_forward,
                 onPressed: widget.onNext,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Login link
+            FadeTransition(
+              opacity: _fadeIn,
+              child: GestureDetector(
+                onTap: () => LoginModal.show(
+                  context,
+                  onLoginSuccess: widget.onLoginSuccess ?? () {},
+                ),
+                child: RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      color: Colors.white.withAlpha(153),
+                    ),
+                    children: [
+                      const TextSpan(text: 'Already have an account? '),
+                      TextSpan(
+                        text: 'Login',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.electricYellow,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),

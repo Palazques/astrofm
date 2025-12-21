@@ -82,13 +82,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             // Screen 1: Welcome
             WelcomeScreen(
               onNext: _nextStep,
+              onLoginSuccess: () {
+                // When user logs in, navigate to welcome back screen
+                Navigator.pushReplacementNamed(context, '/welcome-back');
+              },
             ),
 
             // Screen 2: Name
             NameScreen(
               initialName: _controller.data.displayName,
-              onNext: (name) {
+              initialEmail: _controller.data.email,
+              onNext: (name, email) {
                 _controller.updateName(name);
+                _controller.updateEmail(email);
                 _nextStep();
               },
               onBack: _previousStep,

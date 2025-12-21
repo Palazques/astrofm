@@ -89,7 +89,7 @@ For playlist parameters, always include as JSON on a separate line:
         # Configure Gemini if available
         if GEMINI_AVAILABLE and self._gemini_key:
             genai.configure(api_key=self._gemini_key)
-            self._gemini_model = genai.GenerativeModel("gemini-flash-latest")
+            self._gemini_model = genai.GenerativeModel("gemini-2.5-flash")
             print("[AIService] Configured Gemini provider")
         else:
             self._gemini_model = None

@@ -8,11 +8,15 @@ import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/inline_error.dart';
+import '../widgets/attunement_widgets.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../services/audio_service.dart';
 import '../models/alignment.dart';
 import '../models/ai_responses.dart';
 import '../models/birth_data.dart';
+import '../models/attunement.dart';
+import '../models/sonification.dart';
 import '../data/test_users.dart';
 
 /// Align screen for frequency alignment.
@@ -47,6 +51,16 @@ class _AlignScreenState extends State<AlignScreen> {
   TransitInterpretation? _transitInterpretation;
   bool _isLoadingTransitInterpretation = false;
   String? _transitInterpretationError;
+  
+  // Attunement data
+  final AudioService _audioService = AudioService();
+  AttunementAnalysis? _attunementData;
+  bool _isLoadingAttunement = false;
+  String? _attunementError;
+  String _attunementMode = 'attune'; // 'attune' or 'amplify'
+  String _attunementDuration = 'standard'; // 'quick', 'standard', 'meditate'
+  Set<String> _selectedAttunementPlanets = {};
+  bool _isPlayingAttunement = false;
   
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
@@ -321,10 +335,224 @@ class _AlignScreenState extends State<AlignScreen> {
     }
   }
 
+  Future<void> _loadAttunementData() async {
+    if (_attunementData != null || _isLoadingAttunement) return;
+    
+    setState(() {
+      _isLoadingAttunement = true;
+      _attunementError = null;
+    });
+    
+    try {
+      final result = await _apiService.getAttunementAnalysis(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String? ?? 'UTC',
+      );
+      if (mounted) {
+        setState(() {
+          _attunementData = result;
+          _isLoadingAttunement = false;
+          // Auto-select the primary gap or resonance
+          if (result.hasGaps) {
+            _selectedAttunementPlanets = {result.primaryGap!.planet};
+            _attunementMode = 'attune';
+          } else if (result.hasResonances) {
+            _selectedAttunementPlanets = {result.primaryResonance!.planet};
+            _attunementMode = 'amplify';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _attunementError = e.toString();
+          _isLoadingAttunement = false;
+        });
+      }
+    }
+  }
+
+  void _togglePlanetSelection(String planet) {
+    setState(() {
+      if (_selectedAttunementPlanets.contains(planet)) {
+        _selectedAttunementPlanets.remove(planet);
+      } else {
+        _selectedAttunementPlanets.add(planet);
+      }
+    });
+  }
+
+  Future<void> _playAttunement() async {
+    if (_selectedAttunementPlanets.isEmpty || _attunementData == null) return;
+    
+    // If already playing, stop instead
+    if (_isPlayingAttunement) {
+      _stopAttunement();
+      return;
+    }
+    
+    setState(() => _isPlayingAttunement = true);
+    
+    // Determine duration in seconds
+    final durationSeconds = switch (_attunementDuration) {
+      'quick' => 60.0,    // 1 minute
+      'standard' => 180.0, // 3 minutes
+      'meditate' => 600.0, // 10 minutes for meditate
+      _ => 180.0,
+    };
+    
+    // Get the selected planet data
+    final selectedPlanets = _attunementData!.planets
+        .where((p) => _selectedAttunementPlanets.contains(p.planet))
+        .toList();
+    
+    if (selectedPlanets.isNotEmpty) {
+      final attunementPlanet = selectedPlanets.first;
+      
+      // Choose frequency based on mode
+      final frequency = _attunementMode == 'attune' 
+          ? attunementPlanet.transitFrequency 
+          : attunementPlanet.natalFrequency;
+      
+      // Choose intensity based on mode
+      final intensity = _attunementMode == 'attune'
+          ? attunementPlanet.transitIntensity
+          : attunementPlanet.natalIntensity;
+      
+      // Create a PlanetSound from the attunement data
+      final planetSound = PlanetSound(
+        planet: attunementPlanet.planet,
+        frequency: frequency,
+        intensity: intensity,
+        role: 'carrier', // Default role for attunement
+        filterType: 'lowpass',
+        filterCutoff: 2000.0,
+        attack: 0.5,
+        decay: 0.3,
+        reverb: 0.5,
+        pan: 0.0, // Center
+        house: _attunementMode == 'attune' 
+            ? attunementPlanet.transitHouse 
+            : attunementPlanet.natalHouse,
+        houseDegree: 15.0, // Middle of house
+        sign: _attunementMode == 'attune'
+            ? attunementPlanet.transitSign
+            : attunementPlanet.natalSign,
+      );
+      
+      // Show feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🔊 Playing ${attunementPlanet.planet} at ${frequency.toStringAsFixed(1)} Hz'),
+            backgroundColor: _attunementMode == 'attune' 
+                ? const Color(0xFFFF6B6B) 
+                : const Color(0xFF4ECDC4),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+      // Start playing (don't await - it will set up timer and return immediately)
+      // We leave _isPlayingAttunement = true until user stops or audio finishes
+      _audioService.playSinglePlanet(planetSound, duration: durationSeconds);
+      
+      // Listen for audio completion to reset state
+      _audioService.playingStream.listen((isPlaying) {
+        if (!isPlaying && mounted && _isPlayingAttunement) {
+          setState(() => _isPlayingAttunement = false);
+        }
+      });
+    }
+  }
+
+  void _stopAttunement() {
+    _audioService.stop();
+    setState(() => _isPlayingAttunement = false);
+  }
+
+  void _showModeUnavailableDialog({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1A1A2E),
+                color.withOpacity(0.15),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: GoogleFonts.syne(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  color: Colors.white.withAlpha(179),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Got it!',
+                    style: GoogleFonts.syne(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   @override
   void dispose() {
     _apiService.dispose();
+    _audioService.dispose();
     super.dispose();
   }
 
@@ -634,6 +862,10 @@ class _AlignScreenState extends State<AlignScreen> {
           _TabButton(label: 'Transit', isActive: _alignTarget == 'transit', onPressed: () {
             setState(() { _alignTarget = 'transit'; _resetAlignment(); });
           }),
+          _TabButton(label: 'Attune', isActive: _alignTarget == 'attune', onPressed: () {
+            setState(() { _alignTarget = 'attune'; _resetAlignment(); });
+            _loadAttunementData();
+          }),
         ],
       ),
     );
@@ -642,6 +874,7 @@ class _AlignScreenState extends State<AlignScreen> {
   Widget _buildTargetContent() {
     if (_alignTarget == 'today') return _buildTodayContent();
     if (_alignTarget == 'friend') return _buildFriendContent();
+    if (_alignTarget == 'attune') return _buildAttuneContent();
     return _buildTransitContent();
   }
 
@@ -893,6 +1126,200 @@ class _AlignScreenState extends State<AlignScreen> {
       'Pluto': '♇',
     };
     return symbols[name] ?? '✦';
+  }
+
+  Widget _buildAttuneContent() {
+    // Loading state
+    if (_isLoadingAttunement) {
+      return Column(
+        children: List.generate(3, (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SkeletonCard(height: 100),
+        )),
+      );
+    }
+    
+    // Error state
+    if (_attunementError != null) {
+      return GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: InlineError(
+          message: 'Could not load attunement data',
+          onRetry: _loadAttunementData,
+        ),
+      );
+    }
+    
+    // Not loaded yet
+    if (_attunementData == null) {
+      return GlassCard(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(Icons.tune, size: 48, color: Colors.white.withAlpha(128)),
+            const SizedBox(height: 12),
+            Text(
+              'Tap above to analyze your cosmic attunement',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 14,
+                color: Colors.white.withAlpha(153),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Attunement content
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Alignment Dashboard
+        AlignmentDashboardCard(
+          alignmentScore: _attunementData!.alignmentScore,
+          gapCount: _attunementData!.gaps.length,
+          resonanceCount: _attunementData!.resonances.length,
+          dominantEnergy: _attunementData!.dominantGapEnergy,
+        ),
+        const SizedBox(height: 16),
+        
+        // Mode Selector (Attune vs Amplify)
+        AttunementModeSelector(
+          selectedMode: _attunementMode,
+          onModeChanged: (mode) => setState(() => _attunementMode = mode),
+          hasGaps: _attunementData!.hasGaps,
+          hasResonances: _attunementData!.hasResonances,
+          onAttuneUnavailable: () => _showModeUnavailableDialog(
+            title: 'Perfect Harmony! ✨',
+            message: "You're in perfect cosmic alignment today! "
+                "There are no gaps between your natal energy and today's transits. "
+                "This means your natural frequencies are already flowing smoothly with the universe. "
+                "No attunement needed — just enjoy the harmony!",
+            icon: Icons.check_circle,
+            color: const Color(0xFF4ECDC4),
+          ),
+          onAmplifyUnavailable: () => _showModeUnavailableDialog(
+            title: 'Cosmic Alignment Mode 🌟',
+            message: "Today your natal chart and cosmic transits are working independently. "
+                "There are gaps to bridge, but no strong resonances to amplify yet. "
+                "Focus on \"Attune\" mode to balance your energy with today's cosmos. "
+                "Resonances appear when your natal placements naturally align with current transits!",
+            icon: Icons.auto_awesome,
+            color: const Color(0xFF6366F1),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Duration Selector
+        AttunementDurationSelector(
+          selectedDuration: _attunementDuration,
+          onDurationChanged: (duration) => setState(() => _attunementDuration = duration),
+        ),
+        const SizedBox(height: 16),
+        
+        // Planet Cards
+        if (_attunementMode == 'attune' && _attunementData!.hasGaps) ...[
+          Text(
+            'GAPS TO ATTUNE',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11,
+              color: Colors.white.withAlpha(128),
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...(_attunementData!.gaps.map((planet) => AttunementPlanetCard(
+            planet: planet,
+            isSelected: _selectedAttunementPlanets.contains(planet.planet),
+            onTap: () => _togglePlanetSelection(planet.planet),
+          ))),
+        ],
+        
+        if (_attunementMode == 'amplify' && _attunementData!.hasResonances) ...[
+          Text(
+            'RESONANCES TO AMPLIFY',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11,
+              color: Colors.white.withAlpha(128),
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...(_attunementData!.resonances.map((planet) => AttunementPlanetCard(
+            planet: planet,
+            isSelected: _selectedAttunementPlanets.contains(planet.planet),
+            onTap: () => _togglePlanetSelection(planet.planet),
+          ))),
+        ],
+        
+        // No gaps/resonances message
+        if ((_attunementMode == 'attune' && !_attunementData!.hasGaps) ||
+            (_attunementMode == 'amplify' && !_attunementData!.hasResonances))
+          GlassCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Icon(
+                  _attunementMode == 'attune' ? Icons.check_circle : Icons.star,
+                  size: 36,
+                  color: const Color(0xFF4ECDC4),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _attunementMode == 'attune'
+                      ? "You're in perfect alignment today!"
+                      : "No strong resonances detected today",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    color: Colors.white.withAlpha(179),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        
+        const SizedBox(height: 16),
+        
+        // Play/Stop Button
+        if (_selectedAttunementPlanets.isNotEmpty)
+          GestureDetector(
+            onTap: _isPlayingAttunement ? _stopAttunement : _playAttunement,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _attunementMode == 'attune'
+                      ? [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]
+                      : [const Color(0xFF4ECDC4), const Color(0xFF44A08D)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _isPlayingAttunement ? Icons.stop : Icons.play_arrow,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isPlayingAttunement
+                        ? 'Stop'
+                        : '${_attunementMode == 'attune' ? 'Attune' : 'Amplify'} Now',
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   /// Build the AI cosmic weather insight card for transits

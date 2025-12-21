@@ -7,6 +7,7 @@ import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/playlist.dart';
 import '../models/alignment.dart';
+import '../models/attunement.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -541,6 +542,80 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get transits',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get attunement analysis comparing natal chart to current transits.
+  /// Identifies gaps (where user needs to attune) and resonances (natural alignment).
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<AttunementAnalysis> getAttunementAnalysis({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.attunementAnalyzeEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return AttunementAnalysis.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get attunement analysis',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get weekly digest of attunement patterns.
+  /// Shows trends, best/worst days, and common gaps for the past week.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<WeeklyDigest> getWeeklyDigest({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.attunementWeeklyDigestEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return WeeklyDigest.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get weekly digest',
         statusCode: response.statusCode,
       );
     }

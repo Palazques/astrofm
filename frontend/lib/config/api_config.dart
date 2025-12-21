@@ -25,6 +25,10 @@ class ApiConfig {
   static const String friendAlignmentEndpoint = '/api/alignment/friend';
   static const String transitsEndpoint = '/api/alignment/transits';
   
+  // Attunement endpoints
+  static const String attunementAnalyzeEndpoint = '/api/attunement/analyze';
+  static const String attunementWeeklyDigestEndpoint = '/api/attunement/weekly-digest';
+  
   // Spotify endpoints
   static const String spotifyAuthUrlEndpoint = '/api/spotify/auth-url';
   static const String spotifyStatusEndpoint = '/api/spotify/status';

@@ -8,12 +8,14 @@ import '../../widgets/onboarding/orbital_ring.dart';
 /// Screen 2: Name input screen with dynamic gradient orb.
 class NameScreen extends StatefulWidget {
   final String? initialName;
-  final Function(String name) onNext;
+  final String? initialEmail;
+  final Function(String name, String email) onNext;
   final VoidCallback onBack;
 
   const NameScreen({
     super.key,
     this.initialName,
+    this.initialEmail,
     required this.onNext,
     required this.onBack,
   });
@@ -23,8 +25,10 @@ class NameScreen extends StatefulWidget {
 }
 
 class _NameScreenState extends State<NameScreen> {
-  late TextEditingController _controller;
-  String? _errorText;
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  String? _nameError;
+  String? _emailError;
   bool _hasInteracted = false;
 
   // Gradient cycles based on name length (matching mockup)
@@ -38,37 +42,58 @@ class _NameScreenState extends State<NameScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialName ?? '');
+    _nameController = TextEditingController(text: widget.initialName ?? '');
+    _emailController = TextEditingController(text: widget.initialEmail ?? '');
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
   List<Color> get _currentGradient {
-    final index = _controller.text.length % 4;
+    final index = _nameController.text.length % 4;
     return _gradients[index];
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
   void _validateAndProceed() {
     setState(() => _hasInteracted = true);
 
-    final name = _controller.text.trim();
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    bool hasError = false;
 
+    // Validate name
     if (name.length < 2) {
-      setState(() => _errorText = 'Please enter at least 2 characters');
-      return;
+      setState(() => _nameError = 'Please enter at least 2 characters');
+      hasError = true;
+    } else if (name.length > 20) {
+      setState(() => _nameError = 'Name is too long');
+      hasError = true;
+    } else {
+      setState(() => _nameError = null);
     }
 
-    if (name.length > 20) {
-      setState(() => _errorText = 'Name is too long');
-      return;
+    // Validate email
+    if (email.isEmpty) {
+      setState(() => _emailError = 'Please enter your email');
+      hasError = true;
+    } else if (!_isValidEmail(email)) {
+      setState(() => _emailError = 'Please enter a valid email');
+      hasError = true;
+    } else {
+      setState(() => _emailError = null);
     }
 
-    setState(() => _errorText = null);
-    widget.onNext(name);
+    if (hasError) return;
+
+    widget.onNext(name, email);
   }
 
   void _onNameChanged(String value) {
@@ -76,11 +101,26 @@ class _NameScreenState extends State<NameScreen> {
       if (_hasInteracted) {
         final name = value.trim();
         if (name.length < 2) {
-          _errorText = 'Please enter at least 2 characters';
+          _nameError = 'Please enter at least 2 characters';
         } else if (name.length > 20) {
-          _errorText = 'Name is too long';
+          _nameError = 'Name is too long';
         } else {
-          _errorText = null;
+          _nameError = null;
+        }
+      }
+    });
+  }
+
+  void _onEmailChanged(String value) {
+    setState(() {
+      if (_hasInteracted) {
+        final email = value.trim();
+        if (email.isEmpty) {
+          _emailError = 'Please enter your email';
+        } else if (!_isValidEmail(email)) {
+          _emailError = 'Please enter a valid email';
+        } else {
+          _emailError = null;
         }
       }
     });
@@ -88,8 +128,9 @@ class _NameScreenState extends State<NameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name = _controller.text.trim();
-    final isValid = name.length >= 2;
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final isValid = name.length >= 2 && email.isNotEmpty && _isValidEmail(email);
 
     return OnboardingScaffold(
       step: 2,
@@ -180,13 +221,13 @@ class _NameScreenState extends State<NameScreen> {
                 color: Colors.white.withAlpha(13),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _errorText != null 
+                  color: _nameError != null 
                       ? AppColors.red 
                       : Colors.white.withAlpha(26),
                 ),
               ),
               child: TextField(
-                controller: _controller,
+                controller: _nameController,
                 onChanged: _onNameChanged,
                 maxLength: 20,
                 textCapitalization: TextCapitalization.words,
@@ -216,12 +257,63 @@ class _NameScreenState extends State<NameScreen> {
               ),
             ),
             
-            // Error text
-            if (_errorText != null)
+            // Name error text
+            if (_nameError != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  _errorText!,
+                  _nameError!,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 13,
+                    color: AppColors.red,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 20),
+
+            // Email input field
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(13),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _emailError != null 
+                      ? AppColors.red 
+                      : Colors.white.withAlpha(26),
+                ),
+              ),
+              child: TextField(
+                controller: _emailController,
+                onChanged: _onEmailChanged,
+                keyboardType: TextInputType.emailAddress,
+                style: GoogleFonts.syne(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: 'Enter your email',
+                  hintStyle: GoogleFonts.syne(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withAlpha(77),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Email error text
+            if (_emailError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _emailError!,
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 13,
                     color: AppColors.red,

@@ -4,6 +4,7 @@ import '../models/location.dart';
 import '../models/birth_data.dart';
 import '../models/user_profile.dart';
 import '../services/storage_service.dart';
+import '../services/auth_service.dart';
 
 /// State management for the onboarding flow.
 class OnboardingController extends ChangeNotifier {
@@ -30,6 +31,12 @@ class OnboardingController extends ChangeNotifier {
   /// Update display name (Screen 2).
   void updateName(String name) {
     _data = _data.copyWith(displayName: name);
+    notifyListeners();
+  }
+
+  /// Update user email (Screen 2).
+  void updateEmail(String email) {
+    _data = _data.copyWith(email: email);
     notifyListeners();
   }
 
@@ -189,6 +196,17 @@ class OnboardingController extends ChangeNotifier {
       );
       
       await storageService.saveBirthData(birthData);
+    }
+    
+    // Register user with auth service if email provided
+    if (_data.email != null && _data.email!.isNotEmpty) {
+      // Use email as password for now (user can change later)
+      // This creates a local account for "Remember Me" functionality
+      await authService.register(
+        _data.email!,
+        _data.email!, // Temporary password = email
+        displayName: _data.displayName,
+      );
     }
     
     // Mark onboarding as complete

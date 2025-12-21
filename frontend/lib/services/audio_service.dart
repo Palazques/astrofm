@@ -84,6 +84,7 @@ class AudioService {
   ChartSonification? _currentSonification;
   Set<String>? _currentActivePlanets;
   Timer? _loopTimer;
+  Timer? _singlePlayTimer; // Timer for single planet playback cleanup
 
   /// Start looped playback of the sonification
   void _startLoopedPlayback(ChartSonification sonification, Set<String> currentlyActive) {
@@ -194,7 +195,9 @@ class AudioService {
     _activeOscillators['single'] = oscillator;
     _activeGains['single'] = gainNode;
     
-    Future.delayed(Duration(milliseconds: (duration * 1000).toInt()), () {
+    // Schedule cleanup after duration using cancellable Timer
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = Timer(Duration(milliseconds: (duration * 1000).toInt()), () {
       if (_isPlaying) {
         _cleanup();
         _isPlaying = false;
@@ -207,9 +210,11 @@ class AudioService {
   void stop() {
     if (!_isPlaying) return;
 
-    // Cancel the loop timer to prevent re-triggering
+    // Cancel all timers to prevent re-triggering or delayed cleanup
     _loopTimer?.cancel();
     _loopTimer = null;
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = null;
     _currentSonification = null;
     _currentActivePlanets = null;
 

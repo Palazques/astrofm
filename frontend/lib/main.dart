@@ -8,8 +8,10 @@ import 'screens/friend_profile_screen.dart';
 import 'screens/sign_in_screen.dart';
 import 'screens/align_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/welcome_back_screen.dart';
 import 'screens/onboarding/onboarding_flow.dart';
 import 'models/friend_data.dart';
+import 'services/auth_service.dart';
 
 void main() {
   runApp(const AstroFmApp());
@@ -57,15 +59,17 @@ class AstroFmApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/onboarding',
+      // Start with auth wrapper to determine initial route
+      home: const _AuthWrapper(),
       routes: {
-        '/': (context) => const MainShell(),
+        '/home': (context) => const MainShell(),
         '/birth-input': (context) => const BirthInputScreen(),
         '/sign-in': (context) => const SignInScreen(),
         '/align': (context) => const _AlignScreenWrapper(),
         '/settings': (context) => const SettingsScreen(),
+        '/welcome-back': (context) => const WelcomeBackScreen(),
         '/onboarding': (context) => OnboardingFlow(
-          onComplete: () => Navigator.pushReplacementNamed(context, '/'),
+          onComplete: () => Navigator.pushReplacementNamed(context, '/home'),
         ),
       },
       onGenerateRoute: (settings) {
@@ -86,6 +90,66 @@ class AstroFmApp extends StatelessWidget {
         return null;
       },
     );
+  }
+}
+
+/// Wrapper that checks auth state and routes accordingly.
+class _AuthWrapper extends StatefulWidget {
+  const _AuthWrapper();
+
+  @override
+  State<_AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<_AuthWrapper> {
+  bool _isLoading = true;
+  bool _hasRememberedUser = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthState();
+  }
+
+  Future<void> _checkAuthState() async {
+    // Initialize auth service and check for remembered user
+    await authService.init();
+    final hasUser = await authService.hasRememberedUser();
+
+    if (mounted) {
+      setState(() {
+        _hasRememberedUser = hasUser;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      // Show minimal loading while checking auth
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.backgroundGradient,
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Route based on auth state
+    if (_hasRememberedUser) {
+      return const WelcomeBackScreen();
+    } else {
+      return OnboardingFlow(
+        onComplete: () => Navigator.pushReplacementNamed(context, '/home'),
+      );
+    }
   }
 }
 
