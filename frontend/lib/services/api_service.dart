@@ -8,6 +8,7 @@ import '../models/ai_responses.dart';
 import '../models/playlist.dart';
 import '../models/alignment.dart';
 import '../models/attunement.dart';
+import '../models/prescription.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -616,6 +617,43 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get weekly digest',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get cosmic prescription based on transit-to-natal aspects.
+  /// Returns personalized brainwave recommendations with AI-generated text.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<CosmicPrescription> getCosmicPrescription({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/prescription/cosmic'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return CosmicPrescription.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get cosmic prescription',
         statusCode: response.statusCode,
       );
     }

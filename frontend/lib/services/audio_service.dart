@@ -206,6 +206,95 @@ class AudioService {
     });
   }
 
+  /// Play a binaural beat for brainwave entrainment.
+  /// 
+  /// Creates a stereo effect where the left ear receives [carrierHz] and
+  /// the right ear receives [carrierHz] + [binauralHz]. The brain perceives
+  /// a "beat" at the [binauralHz] frequency, inducing the corresponding
+  /// brainwave state.
+  /// 
+  /// [carrierHz] - Base frequency (planet's Cosmic Octave, e.g., 141.27 Hz for Mercury)
+  /// [binauralHz] - Brainwave offset (2-40 Hz depending on mode)
+  /// [duration] - Playback duration in seconds
+  Future<void> playBinauralBeat({
+    required double carrierHz,
+    required double binauralHz,
+    double duration = 180.0, // Default 3 minutes
+  }) async {
+    stop();
+    
+    _ensureContext();
+    final ctx = _audioContext!;
+    
+    if (ctx.state == 'suspended') ctx.resume();
+    _isPlaying = true;
+    _playingController.add(true);
+    
+    final now = ctx.currentTime;
+    
+    // Left ear oscillator (carrier frequency)
+    final leftOsc = ctx.createOscillator();
+    leftOsc.type = 'sine';
+    leftOsc.frequency.value = carrierHz;
+    
+    // Right ear oscillator (carrier + binaural offset)
+    final rightOsc = ctx.createOscillator();
+    rightOsc.type = 'sine';
+    rightOsc.frequency.value = carrierHz + binauralHz;
+    
+    // Left channel gain with envelope
+    final leftGain = ctx.createGain();
+    leftGain.gain.setValueAtTime(0.0, now);
+    leftGain.gain.linearRampToValueAtTime(0.25, now + 3.0); // 3s fade in
+    leftGain.gain.setValueAtTime(0.25, now + duration - 5.0);
+    leftGain.gain.linearRampToValueAtTime(0.0, now + duration); // 5s fade out
+    
+    // Right channel gain with envelope
+    final rightGain = ctx.createGain();
+    rightGain.gain.setValueAtTime(0.0, now);
+    rightGain.gain.linearRampToValueAtTime(0.25, now + 3.0);
+    rightGain.gain.setValueAtTime(0.25, now + duration - 5.0);
+    rightGain.gain.linearRampToValueAtTime(0.0, now + duration);
+    
+    // Hard pan: left ear gets left panner, right ear gets right panner
+    final leftPanner = ctx.createStereoPanner();
+    leftPanner.pan.value = -1.0; // Full left
+    
+    final rightPanner = ctx.createStereoPanner();
+    rightPanner.pan.value = 1.0; // Full right
+    
+    // Connect chains
+    leftOsc.connect(leftGain);
+    leftGain.connect(leftPanner);
+    leftPanner.connect(ctx.destination);
+    
+    rightOsc.connect(rightGain);
+    rightGain.connect(rightPanner);
+    rightPanner.connect(ctx.destination);
+    
+    // Start oscillators
+    leftOsc.start(now);
+    rightOsc.start(now);
+    leftOsc.stop(now + duration);
+    rightOsc.stop(now + duration);
+    
+    // Store references for cleanup
+    _activeOscillators['binaural_left'] = leftOsc;
+    _activeOscillators['binaural_right'] = rightOsc;
+    _activeGains['binaural_left'] = leftGain;
+    _activeGains['binaural_right'] = rightGain;
+    
+    // Schedule cleanup after duration
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = Timer(Duration(milliseconds: (duration * 1000).toInt()), () {
+      if (_isPlaying) {
+        _cleanup();
+        _isPlaying = false;
+        _playingController.add(false);
+      }
+    });
+  }
+
   /// Stop all playback immediately.
   void stop() {
     if (!_isPlaying) return;

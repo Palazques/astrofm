@@ -226,5 +226,6 @@ def check_ephemeris_available() -> bool:
         jd = swe.julday(2000, 1, 1, 12.0)
         swe.calc_ut(jd, swe.SUN)
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[WARN] Ephemeris check failed: {e}")
         return False

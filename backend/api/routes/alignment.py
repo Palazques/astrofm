@@ -52,6 +52,7 @@ async def get_daily_alignment(birth_data: DailyAlignmentRequest) -> DailyAlignme
                 birth_dt = birth_dt.astimezone(ZoneInfo("UTC"))
                 birth_dt = birth_dt.replace(tzinfo=None)  # Remove tzinfo for calculation
             except Exception as e:
+                print(f"[WARN] Timezone conversion failed for '{birth_data.timezone}': {e}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid timezone: {birth_data.timezone}"
@@ -118,7 +119,8 @@ async def get_friend_alignment(request: FriendAlignmentRequest) -> FriendAlignme
                 user_dt = user_dt.replace(tzinfo=local_tz)
                 user_dt = user_dt.astimezone(ZoneInfo("UTC"))
                 user_dt = user_dt.replace(tzinfo=None)
-            except Exception:
+            except Exception as e:
+                print(f"[WARN] User timezone conversion failed for '{request.user_timezone}': {e}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid user timezone: {request.user_timezone}"
@@ -132,7 +134,8 @@ async def get_friend_alignment(request: FriendAlignmentRequest) -> FriendAlignme
                 friend_dt = friend_dt.replace(tzinfo=local_tz)
                 friend_dt = friend_dt.astimezone(ZoneInfo("UTC"))
                 friend_dt = friend_dt.replace(tzinfo=None)
-            except Exception:
+            except Exception as e:
+                print(f"[WARN] Friend timezone conversion failed for '{request.friend_timezone}': {e}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid friend timezone: {request.friend_timezone}"

@@ -274,7 +274,7 @@ class AttunementDurationSelector extends StatelessWidget {
 }
 
 
-/// Mode selector for Attune vs Amplify.
+/// Mode selector for Attune, Amplify, and Prescribe.
 class AttunementModeSelector extends StatelessWidget {
   final String selectedMode;
   final ValueChanged<String> onModeChanged;
@@ -311,7 +311,7 @@ class AttunementModeSelector extends StatelessWidget {
                 : onAttuneUnavailable,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         // Amplify button
         Expanded(
           child: _ModeButton(
@@ -324,6 +324,19 @@ class AttunementModeSelector extends StatelessWidget {
             onTap: hasResonances 
                 ? () => onModeChanged('amplify') 
                 : onAmplifyUnavailable,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Prescribe button (always enabled)
+        Expanded(
+          child: _ModeButton(
+            label: 'Prescribe',
+            icon: Icons.local_pharmacy_outlined,
+            description: 'Cosmic Rx',
+            isSelected: selectedMode == 'prescribe',
+            isEnabled: true,
+            color: const Color(0xFF9333EA),
+            onTap: () => onModeChanged('prescribe'),
           ),
         ),
       ],

@@ -17,6 +17,8 @@ import '../models/ai_responses.dart';
 import '../models/birth_data.dart';
 import '../models/attunement.dart';
 import '../models/sonification.dart';
+import '../models/prescription.dart';
+import '../widgets/prescribe_tab.dart';
 import '../data/test_users.dart';
 
 /// Align screen for frequency alignment.
@@ -61,6 +63,11 @@ class _AlignScreenState extends State<AlignScreen> {
   String _attunementDuration = 'standard'; // 'quick', 'standard', 'meditate'
   Set<String> _selectedAttunementPlanets = {};
   bool _isPlayingAttunement = false;
+  
+  // Prescription data
+  CosmicPrescription? _prescriptionData;
+  bool _isLoadingPrescription = false;
+  String? _prescriptionError;
   
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
@@ -147,6 +154,35 @@ class _AlignScreenState extends State<AlignScreen> {
         setState(() {
           _transitInterpretationError = e.toString();
           _isLoadingTransitInterpretation = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadPrescription() async {
+    setState(() {
+      _isLoadingPrescription = true;
+      _prescriptionError = null;
+    });
+    
+    try {
+      final result = await _apiService.getCosmicPrescription(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
+      );
+      if (mounted) {
+        setState(() {
+          _prescriptionData = result;
+          _isLoadingPrescription = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _prescriptionError = e.toString();
+          _isLoadingPrescription = false;
         });
       }
     }
@@ -1187,7 +1223,13 @@ class _AlignScreenState extends State<AlignScreen> {
         // Mode Selector (Attune vs Amplify)
         AttunementModeSelector(
           selectedMode: _attunementMode,
-          onModeChanged: (mode) => setState(() => _attunementMode = mode),
+          onModeChanged: (mode) {
+            setState(() => _attunementMode = mode);
+            // Load prescription when switching to prescribe mode
+            if (mode == 'prescribe' && _prescriptionData == null && !_isLoadingPrescription) {
+              _loadPrescription();
+            }
+          },
           hasGaps: _attunementData!.hasGaps,
           hasResonances: _attunementData!.hasResonances,
           onAttuneUnavailable: () => _showModeUnavailableDialog(
@@ -1211,113 +1253,125 @@ class _AlignScreenState extends State<AlignScreen> {
         ),
         const SizedBox(height: 16),
         
-        // Duration Selector
-        AttunementDurationSelector(
-          selectedDuration: _attunementDuration,
-          onDurationChanged: (duration) => setState(() => _attunementDuration = duration),
-        ),
-        const SizedBox(height: 16),
-        
-        // Planet Cards
-        if (_attunementMode == 'attune' && _attunementData!.hasGaps) ...[
-          Text(
-            'GAPS TO ATTUNE',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 11,
-              color: Colors.white.withAlpha(128),
-              letterSpacing: 2,
-            ),
+        // Show different content based on mode
+        if (_attunementMode == 'prescribe') ...[  
+          // Prescribe Tab Content
+          PrescribeTab(
+            prescription: _prescriptionData,
+            isLoading: _isLoadingPrescription,
+            error: _prescriptionError,
+            audioService: _audioService,
+            onRetry: _loadPrescription,
           ),
-          const SizedBox(height: 8),
-          ...(_attunementData!.gaps.map((planet) => AttunementPlanetCard(
-            planet: planet,
-            isSelected: _selectedAttunementPlanets.contains(planet.planet),
-            onTap: () => _togglePlanetSelection(planet.planet),
-          ))),
-        ],
-        
-        if (_attunementMode == 'amplify' && _attunementData!.hasResonances) ...[
-          Text(
-            'RESONANCES TO AMPLIFY',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 11,
-              color: Colors.white.withAlpha(128),
-              letterSpacing: 2,
-            ),
+        ] else ...[
+          // Duration Selector (for Attune/Amplify only)
+          AttunementDurationSelector(
+            selectedDuration: _attunementDuration,
+            onDurationChanged: (duration) => setState(() => _attunementDuration = duration),
           ),
-          const SizedBox(height: 8),
-          ...(_attunementData!.resonances.map((planet) => AttunementPlanetCard(
-            planet: planet,
-            isSelected: _selectedAttunementPlanets.contains(planet.planet),
-            onTap: () => _togglePlanetSelection(planet.planet),
-          ))),
-        ],
-        
-        // No gaps/resonances message
-        if ((_attunementMode == 'attune' && !_attunementData!.hasGaps) ||
-            (_attunementMode == 'amplify' && !_attunementData!.hasResonances))
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Icon(
-                  _attunementMode == 'attune' ? Icons.check_circle : Icons.star,
-                  size: 36,
-                  color: const Color(0xFF4ECDC4),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _attunementMode == 'attune'
-                      ? "You're in perfect alignment today!"
-                      : "No strong resonances detected today",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 14,
-                    color: Colors.white.withAlpha(179),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        
-        const SizedBox(height: 16),
-        
-        // Play/Stop Button
-        if (_selectedAttunementPlanets.isNotEmpty)
-          GestureDetector(
-            onTap: _isPlayingAttunement ? _stopAttunement : _playAttunement,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _attunementMode == 'attune'
-                      ? [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]
-                      : [const Color(0xFF4ECDC4), const Color(0xFF44A08D)],
-                ),
-                borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 16),
+          
+          // Planet Cards
+          if (_attunementMode == 'attune' && _attunementData!.hasGaps) ...[
+            Text(
+              'GAPS TO ATTUNE',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: Colors.white.withAlpha(128),
+                letterSpacing: 2,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            ),
+            const SizedBox(height: 8),
+            ...(_attunementData!.gaps.map((planet) => AttunementPlanetCard(
+              planet: planet,
+              isSelected: _selectedAttunementPlanets.contains(planet.planet),
+              onTap: () => _togglePlanetSelection(planet.planet),
+            ))),
+          ],
+          
+          if (_attunementMode == 'amplify' && _attunementData!.hasResonances) ...[
+            Text(
+              'RESONANCES TO AMPLIFY',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: Colors.white.withAlpha(128),
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...(_attunementData!.resonances.map((planet) => AttunementPlanetCard(
+              planet: planet,
+              isSelected: _selectedAttunementPlanets.contains(planet.planet),
+              onTap: () => _togglePlanetSelection(planet.planet),
+            ))),
+          ],
+          
+          // No gaps/resonances message
+          if ((_attunementMode == 'attune' && !_attunementData!.hasGaps) ||
+              (_attunementMode == 'amplify' && !_attunementData!.hasResonances))
+            GlassCard(
+              padding: const EdgeInsets.all(20),
+              child: Column(
                 children: [
                   Icon(
-                    _isPlayingAttunement ? Icons.stop : Icons.play_arrow,
-                    color: Colors.white,
+                    _attunementMode == 'attune' ? Icons.check_circle : Icons.star,
+                    size: 36,
+                    color: const Color(0xFF4ECDC4),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    _isPlayingAttunement
-                        ? 'Stop'
-                        : '${_attunementMode == 'attune' ? 'Attune' : 'Amplify'} Now',
-                    style: GoogleFonts.syne(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                    _attunementMode == 'attune'
+                        ? "You're in perfect alignment today!"
+                        : "No strong resonances detected today",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      color: Colors.white.withAlpha(179),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          
+          const SizedBox(height: 16),
+          
+          // Play/Stop Button
+          if (_selectedAttunementPlanets.isNotEmpty)
+            GestureDetector(
+              onTap: _isPlayingAttunement ? _stopAttunement : _playAttunement,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _attunementMode == 'attune'
+                        ? [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]
+                        : [const Color(0xFF4ECDC4), const Color(0xFF44A08D)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isPlayingAttunement ? Icons.stop : Icons.play_arrow,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _isPlayingAttunement
+                          ? 'Stop'
+                          : '${_attunementMode == 'attune' ? 'Attune' : 'Amplify'} Now',
+                      style: GoogleFonts.syne(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ], // End of Attune/Amplify content (else block)
       ],
     );
   }

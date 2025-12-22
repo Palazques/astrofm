@@ -48,7 +48,8 @@ async def analyze_attunement(request: AttunementRequest) -> AttunementAnalysis:
                 birth_dt = birth_dt.replace(tzinfo=local_tz)
                 birth_dt = birth_dt.astimezone(ZoneInfo("UTC"))
                 birth_dt = birth_dt.replace(tzinfo=None)
-            except Exception:
+            except Exception as e:
+                print(f"[WARN] Timezone conversion failed for '{request.timezone}': {e}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid timezone: {request.timezone}"
@@ -102,7 +103,8 @@ async def get_weekly_attunement_digest(request: AttunementRequest) -> WeeklyDige
                 birth_dt = birth_dt.replace(tzinfo=local_tz)
                 birth_dt = birth_dt.astimezone(ZoneInfo("UTC"))
                 birth_dt = birth_dt.replace(tzinfo=None)
-            except Exception:
+            except Exception as e:
+                print(f"[WARN] Timezone conversion failed for '{request.timezone}': {e}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid timezone: {request.timezone}"

@@ -44,7 +44,8 @@ async def get_user_sonification(request: SonificationRequest) -> ChartSonificati
                 birth_dt = birth_dt.replace(tzinfo=local_tz)
                 birth_dt = birth_dt.astimezone(ZoneInfo("UTC"))
                 birth_dt = birth_dt.replace(tzinfo=None)
-            except Exception:
+            except Exception as e:
+                print(f"[WARN] Timezone conversion failed for '{request.timezone}': {e}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid timezone: {request.timezone}"

@@ -929,6 +929,104 @@ ENERGY_LEVEL: [number]"""
         
         return result
 
+    def generate_prescription_text(
+        self,
+        transit_planet: str,
+        natal_planet: str,
+        aspect: str,
+        recommended_mode: str,
+        brainwave_hz: float,
+        effect_description: str,
+        is_quiet_day: bool = False,
+    ) -> dict:
+        """
+        Generate the 3-part prescription text for cosmic prescription feature.
+        
+        The prescription has three parts:
+        1. What's happening (the transit, in plain language)
+        2. How it might feel (the human experience)
+        3. What this frequency does about it (the medicine)
+        
+        Args:
+            transit_planet: Name of transiting planet
+            natal_planet: Name of natal planet being aspected
+            aspect: Aspect type (Square, Trine, Conjunction, etc.)
+            recommended_mode: Recommended brainwave mode (focus, calm, etc.)
+            brainwave_hz: Frequency in Hz
+            effect_description: Short description of what the mode does
+            is_quiet_day: True if no significant transits
+            
+        Returns:
+            dict with whats_happening, how_it_feels, what_it_does
+        """
+        if is_quiet_day:
+            return {
+                "whats_happening": "The planets are quiet in your chart today. No major transits are demanding your attention.",
+                "how_it_feels": "This is a good day to choose your own intention. What do you need right now?",
+                "what_it_does": "Select any mode below to set your own cosmic intention for the day.",
+            }
+        
+        # Determine aspect quality for prompt
+        aspect_quality = "challenging" if aspect in ["Square", "Opposition"] else "harmonious" if aspect in ["Trine", "Sextile"] else "intense"
+        
+        prompt = f"""You are a cosmic wellness guide. Generate a 3-part prescription for this transit.
+
+TRANSIT:
+- {transit_planet} is forming a {aspect} to their natal {natal_planet}
+- This is a {aspect_quality} aspect
+- Recommended mode: {recommended_mode.upper()} ({brainwave_hz} Hz)
+- Effect: {effect_description}
+
+Generate exactly 3 parts:
+
+1. WHATS_HAPPENING: A 1-2 sentence plain-language explanation of what this transit means. Use "is" not "was". Be specific about the planetary energy. Example: "Mercury is clashing with your Mars today."
+
+2. HOW_IT_FEELS: A 1-2 sentence description of how this might feel in daily life. Be relatable and specific. Example: "Words may come out sharper than intended, and your mind might race ahead of your patience."
+
+3. WHAT_IT_DOES: A 1-2 sentence explanation of what the {brainwave_hz} Hz {recommended_mode} frequency does to help. Use action verbs like "synchronizes", "anchors", "creates space", "metabolizes". Example: "This frequency synchronizes scattered mental energy, helping you think before you speak."
+
+RULES:
+- Be warm and conversational, not mystical
+- Make it specific to {transit_planet} and {natal_planet}
+- Keep each part short (1-2 sentences max)
+- Don't use "you will" - use present tense
+- Don't mention "binaural" or technical terms
+
+Format:
+WHATS_HAPPENING: [text]
+HOW_IT_FEELS: [text]
+WHAT_IT_DOES: [text]"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        whats_happening = ""
+        how_it_feels = ""
+        what_it_does = ""
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("WHATS_HAPPENING:"):
+                whats_happening = line.replace("WHATS_HAPPENING:", "").strip()
+            elif line.startswith("HOW_IT_FEELS:"):
+                how_it_feels = line.replace("HOW_IT_FEELS:", "").strip()
+            elif line.startswith("WHAT_IT_DOES:"):
+                what_it_does = line.replace("WHAT_IT_DOES:", "").strip()
+        
+        # Fallbacks if parsing failed
+        if not whats_happening:
+            whats_happening = f"{transit_planet} is forming a {aspect.lower()} with your natal {natal_planet} today."
+        if not how_it_feels:
+            how_it_feels = f"You may notice {transit_planet}'s energy influencing your {natal_planet} themes."
+        if not what_it_does:
+            what_it_does = f"This {brainwave_hz} Hz frequency {effect_description}."
+        
+        return {
+            "whats_happening": whats_happening,
+            "how_it_feels": how_it_feels,
+            "what_it_does": what_it_does,
+        }
+
 
 # Global singleton instance
 _ai_service: Optional[AIService] = None
