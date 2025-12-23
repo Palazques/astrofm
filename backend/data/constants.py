@@ -7,44 +7,43 @@ S2: Documentation Rule - All constants include clear descriptions.
 from typing import Dict, List
 
 # =============================================================================
-# GENRES (30 total)
+# GENRES (24 total - Restructured)
 # =============================================================================
 
 GENRES: List[str] = [
-    # Electronic (8)
-    "Ambient",
-    "Deep House",
-    "Techno",
-    "Trance",
-    "Synthwave",
-    "Downtempo",
-    "Drum & Bass",
-    "IDM",
-    # Contemporary (7)
+    # Pop/Contemporary (4)
     "Pop",
-    "Indie Pop",
-    "Alternative",
-    "R&B",
-    "Neo-Soul",
-    "Hip Hop",
-    "Lo-fi Hip Hop",
-    # Rock & Adjacent (5)
+    "K-Pop",
+    "J-Pop",
+    "Disco",
+    # Rock & Adjacent (4)
     "Rock",
-    "Indie Rock",
-    "Post-Rock",
-    "Shoegaze",
+    "Indie",
     "Metal",
-    # Acoustic & Classical (5)
+    "Punk",
+    # Electronic (1 - includes Trance, House, Techno as subgenres)
+    "Electronic",
+    # Hip Hop & Soul (3)
+    "Hip Hop / R&B",
+    "Soul",
+    "Funk",
+    # Classical & Jazz (2)
     "Classical",
     "Jazz",
+    # Acoustic & Folk (2)
     "Folk",
-    "Acoustic",
-    "Singer-Songwriter",
-    # World & Spiritual (5)
+    "Country",
+    # World Music & Latin (4)
+    "Latin",
     "World Music",
+    "Reggae",
+    "Afrobeats",
+    # Blues (1)
+    "Blues",
+    # Spiritual & Soundtrack (3)
     "New Age",
-    "Meditation",
-    "Afrobeat",
+    "Religious",
+    "Soundtrack",
 ]
 
 # =============================================================================

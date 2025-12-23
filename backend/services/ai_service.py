@@ -24,6 +24,13 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
+# Persistent cache import
+try:
+    import diskcache
+    DISKCACHE_AVAILABLE = True
+except ImportError:
+    DISKCACHE_AVAILABLE = False
+
 
 @dataclass
 class CacheEntry:
@@ -78,9 +85,24 @@ For playlist parameters, always include as JSON on a separate line:
     DAILY_READING_TTL = timedelta(hours=6)
     COMPATIBILITY_TTL = None  # Indefinite cache for compatibility
     
-    def __init__(self):
+    def __init__(self, cache_dir: str = "./cache/ai_responses"):
         """Initialize AI service with API keys from environment."""
-        self._cache: dict[str, CacheEntry] = {}
+        # Initialize persistent disk cache (100MB limit)
+        # Falls back to in-memory cache if diskcache not available
+        if DISKCACHE_AVAILABLE:
+            try:
+                self._cache = diskcache.Cache(
+                    cache_dir,
+                    size_limit=100 * 1024 * 1024,  # 100MB
+                    eviction_policy='least-recently-used'
+                )
+                print(f"[AIService] Using persistent disk cache at {cache_dir}")
+            except Exception as e:
+                print(f"[AIService] Disk cache failed ({e}), using in-memory cache")
+                self._cache = {}  # Fallback to in-memory
+        else:
+            self._cache = {}  # In-memory cache
+            print("[AIService] Using in-memory cache (diskcache not installed)")
         
         # Load API keys from environment (Rule C3)
         self._gemini_key = os.getenv("GEMINI_API_KEY")
@@ -110,31 +132,68 @@ For playlist parameters, always include as JSON on a separate line:
         return f"{prefix}:{hash_val}"
     
     def _get_cached(self, key: str) -> Optional[dict]:
-        """Get cached data if not expired."""
-        if key not in self._cache:
+        """Get cached data if not expired. Works with both disk and in-memory cache."""
+        try:
+            if isinstance(self._cache, dict):
+                # In-memory cache (fallback)
+                if key not in self._cache:
+                    return None
+                entry = self._cache[key]
+                if entry.expires_at and datetime.now(timezone.utc) > entry.expires_at:
+                    del self._cache[key]
+                    return None
+                return entry.data
+            else:
+                # Disk cache with diskcache
+                entry = self._cache.get(key)
+                if entry is None:
+                    return None
+                # Check expiration
+                if entry.get('expires_at'):
+                    expires_at = datetime.fromisoformat(entry['expires_at'])
+                    if datetime.now(timezone.utc) > expires_at:
+                        del self._cache[key]
+                        return None
+                return entry.get('data')
+        except Exception as e:
+            print(f"[AIService] Cache get error: {e}")
             return None
-        
-        entry = self._cache[key]
-        if entry.expires_at and datetime.now(timezone.utc) > entry.expires_at:
-            del self._cache[key]
-            return None
-        
-        return entry.data
     
     def _set_cached(self, key: str, data: dict, ttl: Optional[timedelta] = None):
-        """Cache data with optional TTL."""
-        expires_at = datetime.now(timezone.utc) + ttl if ttl else None
-        self._cache[key] = CacheEntry(data=data, expires_at=expires_at)
+        """Cache data with optional TTL. Works with both disk and in-memory cache."""
+        try:
+            expires_at = datetime.now(timezone.utc) + ttl if ttl else None
+            
+            if isinstance(self._cache, dict):
+                # In-memory cache (fallback)
+                self._cache[key] = CacheEntry(data=data, expires_at=expires_at)
+            else:
+                # Disk cache - store as serializable dict
+                entry = {
+                    'data': data,
+                    'expires_at': expires_at.isoformat() if expires_at else None
+                }
+                # Use diskcache's expire parameter for automatic cleanup
+                expire_seconds = ttl.total_seconds() if ttl else None
+                self._cache.set(key, entry, expire=expire_seconds)
+        except Exception as e:
+            print(f"[AIService] Cache set error: {e}")
     
     def _call_gemini(self, prompt: str) -> str:
-        """Call Gemini API."""
+        """Call Gemini API using direct generation (faster than chat mode)."""
         if not self._gemini_model:
             raise RuntimeError("Gemini not configured")
         
         print(f"[AIService] Calling Gemini...")
         try:
-            chat = self._gemini_model.start_chat(history=[])
-            response = chat.send_message(f"{self.SYSTEM_PROMPT}\n\n{prompt}")
+            # Use direct generate_content instead of chat mode for faster responses
+            response = self._gemini_model.generate_content(
+                f"{self.SYSTEM_PROMPT}\n\n{prompt}",
+                generation_config=genai.GenerationConfig(
+                    max_output_tokens=800,
+                    temperature=0.7,
+                )
+            )
             print(f"[AIService] Gemini response received")
             return response.text
         except Exception as e:

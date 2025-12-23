@@ -348,6 +348,72 @@ class SpotifyService {
     _client.close();
   }
 
+  /// Sync user's Spotify library to the app's shared music pool.
+  ///
+  /// Call this after Spotify OAuth callback is received.
+  /// This triggers the backend to fetch the user's saved tracks
+  /// and import them with hybrid deduplication.
+  ///
+  /// Returns the sync result with counts of imported/duplicate tracks.
+  Future<Map<String, dynamic>> syncLibraryAfterAuth() async {
+    final sessionId = await getStoredSessionId();
+    
+    if (sessionId == null) {
+      throw SpotifyException(
+        message: 'Not connected to Spotify. Please connect first.',
+        statusCode: 401,
+      );
+    }
+    
+    try {
+      // First get the access token for this session
+      final statusUri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.spotifyStatusEndpoint}')
+          .replace(queryParameters: {'session_id': sessionId});
+      
+      final statusResponse = await _client.get(statusUri).timeout(ApiConfig.timeout);
+      
+      if (statusResponse.statusCode != 200) {
+        throw SpotifyException(
+          message: 'Failed to get Spotify connection status',
+          statusCode: statusResponse.statusCode,
+        );
+      }
+      
+      final statusData = jsonDecode(statusResponse.body);
+      if (statusData['connected'] != true) {
+        throw SpotifyException(
+          message: 'Spotify not connected',
+          statusCode: 401,
+        );
+      }
+      
+      // Trigger library sync via the backend
+      // The backend will use the stored session tokens to fetch tracks
+      final syncUri = Uri.parse('${ApiConfig.baseUrl}/api/spotify/sync-library')
+          .replace(queryParameters: {'session_id': sessionId});
+      
+      final syncResponse = await _client
+          .post(syncUri, headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 120)); // Long timeout for sync
+      
+      if (syncResponse.statusCode == 200) {
+        return jsonDecode(syncResponse.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(syncResponse.body);
+        throw SpotifyException(
+          message: error['detail'] ?? 'Failed to sync library',
+          statusCode: syncResponse.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is SpotifyException) rethrow;
+      throw SpotifyException(
+        message: 'Failed to sync library: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
   /// Get monthly zodiac playlist generated from user's library.
   /// 
   /// Generates a playlist based on the current zodiac season's element

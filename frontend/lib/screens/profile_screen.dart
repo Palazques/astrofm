@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/design_tokens.dart';
+import '../config/onboarding_options.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/genre_preferences_modal.dart';
 import '../services/storage_service.dart';
 import '../models/birth_data.dart';
 
@@ -21,6 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   // Birth data from storage
   BirthData? _birthData;
+  
+  // Genre preferences
+  List<String> _selectedGenres = [];
+  List<String> _selectedSubgenres = [];
   
   Map<String, dynamic> get user => {
     'name': _birthData?.name ?? 'Paul',
@@ -62,6 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadBirthData();
+    _loadGenrePreferences();
   }
   
   Future<void> _loadBirthData() async {
@@ -69,6 +76,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted && stored != null) {
       setState(() => _birthData = stored);
     }
+  }
+  
+  Future<void> _loadGenrePreferences() async {
+    final prefs = await storageService.loadGenres();
+    if (mounted) {
+      setState(() {
+        _selectedGenres = prefs.genres;
+        _selectedSubgenres = prefs.subgenres;
+      });
+    }
+  }
+  
+  void _openGenreEditor() {
+    GenrePreferencesModal.show(
+      context,
+      initialGenres: _selectedGenres,
+      initialSubgenres: _selectedSubgenres,
+      onSaved: _loadGenrePreferences,
+    );
   }
 
   void _handleMenuTap(String menuId) {
@@ -135,6 +161,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // Achievements
             _buildAchievements(),
+            const SizedBox(height: 20),
+
+            // Genre Preferences
+            _buildGenrePreferences(),
             const SizedBox(height: 20),
 
             // Settings Toggles
@@ -312,6 +342,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
               );
             },
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenrePreferences() {
+    final hasGenres = _selectedGenres.isNotEmpty;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Music Preferences',
+              style: GoogleFonts.syne(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            TextButton(
+              onPressed: _openGenreEditor,
+              child: Text(
+                'Edit Genres',
+                style: GoogleFonts.syne(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.cosmicPurple,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        GlassCard(
+          child: hasGenres
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Selected genres as chips
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _selectedGenres.map((genre) {
+                        // Get subgenres for this genre
+                        final subgenres = _selectedSubgenres
+                            .where((s) => getSubgenresFor(genre).contains(s))
+                            .toList();
+                        
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Genre chip
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.cosmicPurple.withAlpha(51),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.cosmicPurple.withAlpha(77),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.music_note_rounded,
+                                    size: 14,
+                                    color: AppColors.cosmicPurple,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    genre,
+                                    style: GoogleFonts.syne(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Subgenres underneath
+                            if (subgenres.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 12,
+                                  top: 4,
+                                ),
+                                child: Text(
+                                  subgenres.join(', '),
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 11,
+                                    color: Colors.white.withAlpha(128),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                )
+              : Column(
+                  children: [
+                    Icon(
+                      Icons.library_music_rounded,
+                      size: 40,
+                      color: Colors.white.withAlpha(51),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No genres selected',
+                      style: GoogleFonts.syne(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withAlpha(128),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tap "Edit Genres" to set your preferences',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: Colors.white.withAlpha(77),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ],
     );

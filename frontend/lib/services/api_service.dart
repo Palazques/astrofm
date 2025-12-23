@@ -659,9 +659,427 @@ class ApiService {
     }
   }
 
+  /// Generate a playlist from the 114K track music dataset with genre preferences.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  /// [playlistSize] - Number of tracks to generate (default: 20)
+  /// [mainGenres] - User's selected main genres (e.g., ["Electronic", "Latin"])
+  /// [subgenres] - User's explicitly selected subgenres (e.g., ["Trance", "Reggaeton"])
+  /// [includeRelated] - Include related genres at 0.3x weight (default: true)
+  Future<DatasetPlaylistResult> generateFromDataset({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+    int playlistSize = 20,
+    List<String> mainGenres = const [],
+    List<String> subgenres = const [],
+    bool includeRelated = true,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/playlist/generate-from-dataset'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'birth_datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+            'playlist_size': playlistSize,
+            'main_genres': mainGenres,
+            'subgenres': subgenres,
+            'include_related': includeRelated,
+          }),
+        )
+        .timeout(const Duration(seconds: 120)); // Longer timeout for dataset loading
+
+    if (response.statusCode == 200) {
+      return DatasetPlaylistResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to generate playlist from dataset',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Export a playlist as formatted text.
+  Future<String> exportPlaylistAsText({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+    int playlistSize = 20,
+    List<String> mainGenres = const [],
+    List<String> subgenres = const [],
+    bool includeRelated = true,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/playlist/export/text'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'birth_datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+            'playlist_size': playlistSize,
+            'main_genres': mainGenres,
+            'subgenres': subgenres,
+            'include_related': includeRelated,
+          }),
+        )
+        .timeout(const Duration(seconds: 120));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['formatted_text'] as String;
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to export playlist',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  // =========================================================================
+  // USER LIBRARY INTEGRATION
+  // =========================================================================
+
+  /// Sync Spotify library to the app's shared music pool.
+  ///
+  /// Call this after Spotify OAuth completes to import user's saved tracks.
+  /// Tracks are deduplicated using hybrid matching (provider ID + name+artist).
+  ///
+  /// [accessToken] - Valid Spotify access token
+  /// [maxTracks] - Maximum tracks to sync (default: 500)
+  Future<UserLibrarySyncResult> syncSpotifyLibrary({
+    required String accessToken,
+    int maxTracks = 500,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/user-library/sync/spotify'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'access_token': accessToken,
+            'max_tracks': maxTracks,
+          }),
+        )
+        .timeout(const Duration(seconds: 120)); // Long timeout for library sync
+
+    if (response.statusCode == 200) {
+      return UserLibrarySyncResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to sync Spotify library',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get library statistics (total tracks, features status, etc).
+  Future<UserLibraryStats> getUserLibraryStats() async {
+    final response = await _client
+        .get(Uri.parse('${ApiConfig.baseUrl}/api/user-library/stats'))
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return UserLibraryStats.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get library stats',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Generate a blended playlist from user library + app dataset.
+  ///
+  /// If user has synced their Spotify library, this will blend their tracks
+  /// with the app's dataset based on the day's astrology.
+  /// Falls back to dataset-only if no user library exists.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  /// [playlistSize] - Number of tracks to generate (default: 20)
+  /// [mainGenres] - User's selected main genres
+  /// [subgenres] - User's explicitly selected subgenres
+  /// [includeRelated] - Include related genres at 0.3x weight
+  Future<BlendedPlaylistResult> generateBlendedPlaylist({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+    int playlistSize = 20,
+    List<String> mainGenres = const [],
+    List<String> subgenres = const [],
+    bool includeRelated = true,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/playlist/generate-blended'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'birth_datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+            'playlist_size': playlistSize,
+            'main_genres': mainGenres,
+            'subgenres': subgenres,
+            'include_related': includeRelated,
+          }),
+        )
+        .timeout(const Duration(seconds: 120));
+
+    if (response.statusCode == 200) {
+      return BlendedPlaylistResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to generate blended playlist',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   void dispose() {
     _client.close();
   }
+}
+
+// =========================================================================
+// USER LIBRARY MODELS
+// =========================================================================
+
+/// Result of syncing user's Spotify library.
+class UserLibrarySyncResult {
+  final bool success;
+  final int totalProcessed;
+  final int inserted;
+  final int duplicateId;
+  final int duplicateName;
+  final int skipped;
+  final String message;
+
+  UserLibrarySyncResult({
+    required this.success,
+    required this.totalProcessed,
+    required this.inserted,
+    required this.duplicateId,
+    required this.duplicateName,
+    required this.skipped,
+    required this.message,
+  });
+
+  factory UserLibrarySyncResult.fromJson(Map<String, dynamic> json) {
+    return UserLibrarySyncResult(
+      success: json['success'] ?? false,
+      totalProcessed: json['total_processed'] ?? 0,
+      inserted: json['inserted'] ?? 0,
+      duplicateId: json['duplicate_id'] ?? 0,
+      duplicateName: json['duplicate_name'] ?? 0,
+      skipped: json['skipped'] ?? 0,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+/// Statistics about the app's shared user library.
+class UserLibraryStats {
+  final int totalTracks;
+  final int completeFeatures;
+  final int pendingFeatures;
+  final int failedFeatures;
+  final Map<String, int> elementDistribution;
+
+  UserLibraryStats({
+    required this.totalTracks,
+    required this.completeFeatures,
+    required this.pendingFeatures,
+    required this.failedFeatures,
+    required this.elementDistribution,
+  });
+
+  factory UserLibraryStats.fromJson(Map<String, dynamic> json) {
+    return UserLibraryStats(
+      totalTracks: json['total_tracks'] ?? 0,
+      completeFeatures: json['complete_features'] ?? 0,
+      pendingFeatures: json['pending_features'] ?? 0,
+      failedFeatures: json['failed_features'] ?? 0,
+      elementDistribution: Map<String, int>.from(
+        (json['element_distribution'] ?? {}).map(
+          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+        ),
+      ),
+    );
+  }
+
+  /// Check if user library has any tracks with complete features.
+  bool get hasLibrary => completeFeatures > 0;
+}
+
+/// A track in a blended playlist (from user library or app dataset).
+class BlendedTrack {
+  final String trackId;
+  final String trackName;
+  final String artists;
+  final String? albumName;
+  final int durationMs;
+  final double? energy;
+  final double? valence;
+  final double? danceability;
+  final String? mainGenre;
+  final String? subgenre;
+  final String? element;
+  final String source; // "user_library" or "app_dataset"
+  final double matchScore;
+
+  BlendedTrack({
+    required this.trackId,
+    required this.trackName,
+    required this.artists,
+    this.albumName,
+    required this.durationMs,
+    this.energy,
+    this.valence,
+    this.danceability,
+    this.mainGenre,
+    this.subgenre,
+    this.element,
+    required this.source,
+    required this.matchScore,
+  });
+
+  factory BlendedTrack.fromJson(Map<String, dynamic> json) {
+    return BlendedTrack(
+      trackId: json['track_id'] ?? '',
+      trackName: json['track_name'] ?? '',
+      artists: json['artists'] ?? '',
+      albumName: json['album_name'],
+      durationMs: json['duration_ms'] ?? 0,
+      energy: json['energy']?.toDouble(),
+      valence: json['valence']?.toDouble(),
+      danceability: json['danceability']?.toDouble(),
+      mainGenre: json['main_genre'],
+      subgenre: json['subgenre'],
+      element: json['element'],
+      source: json['source'] ?? 'app_dataset',
+      matchScore: (json['match_score'] ?? 0).toDouble(),
+    );
+  }
+
+  /// Check if this track is from the user's library.
+  bool get isFromUserLibrary => source == 'user_library';
+}
+
+/// Result of blended playlist generation.
+class BlendedPlaylistResult {
+  final List<BlendedTrack> tracks;
+  final int totalDurationMs;
+  final double vibeMatchScore;
+  final List<double> energyArc;
+  final Map<String, int> elementDistribution;
+  final Map<String, int> genreDistribution;
+  final BlendedPlaylistMetadata metadata;
+
+  BlendedPlaylistResult({
+    required this.tracks,
+    required this.totalDurationMs,
+    required this.vibeMatchScore,
+    required this.energyArc,
+    required this.elementDistribution,
+    required this.genreDistribution,
+    required this.metadata,
+  });
+
+  factory BlendedPlaylistResult.fromJson(Map<String, dynamic> json) {
+    return BlendedPlaylistResult(
+      tracks: (json['tracks'] as List<dynamic>?)
+          ?.map((t) => BlendedTrack.fromJson(t))
+          .toList() ?? [],
+      totalDurationMs: json['total_duration_ms'] ?? 0,
+      vibeMatchScore: (json['vibe_match_score'] ?? 0).toDouble(),
+      energyArc: (json['energy_arc'] as List<dynamic>?)
+          ?.map((e) => (e as num).toDouble())
+          .toList() ?? [],
+      elementDistribution: Map<String, int>.from(
+        (json['element_distribution'] ?? {}).map(
+          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+        ),
+      ),
+      genreDistribution: Map<String, int>.from(
+        (json['genre_distribution'] ?? {}).map(
+          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+        ),
+      ),
+      metadata: BlendedPlaylistMetadata.fromJson(
+        json['generation_metadata'] ?? {},
+      ),
+    );
+  }
+
+  /// Number of tracks from user library.
+  int get userLibraryCount => tracks.where((t) => t.isFromUserLibrary).length;
+
+  /// Number of tracks from app dataset.
+  int get datasetCount => tracks.where((t) => !t.isFromUserLibrary).length;
+}
+
+/// Metadata about blended playlist generation.
+class BlendedPlaylistMetadata {
+  final String source;
+  final int userLibraryTracks;
+  final int datasetTracks;
+  final int playlistSizeRequested;
+  final int tracksSelected;
+  final List<int>? targetEnergy;
+  final List<int>? targetValence;
+  final List<String> primaryElements;
+  final int? userLibraryPoolSize;
+
+  BlendedPlaylistMetadata({
+    required this.source,
+    required this.userLibraryTracks,
+    required this.datasetTracks,
+    required this.playlistSizeRequested,
+    required this.tracksSelected,
+    this.targetEnergy,
+    this.targetValence,
+    required this.primaryElements,
+    this.userLibraryPoolSize,
+  });
+
+  factory BlendedPlaylistMetadata.fromJson(Map<String, dynamic> json) {
+    return BlendedPlaylistMetadata(
+      source: json['source'] ?? 'dataset_only',
+      userLibraryTracks: json['user_library_tracks'] ?? 0,
+      datasetTracks: json['dataset_tracks'] ?? 0,
+      playlistSizeRequested: json['playlist_size_requested'] ?? 20,
+      tracksSelected: json['tracks_selected'] ?? 0,
+      targetEnergy: (json['target_energy'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList(),
+      targetValence: (json['target_valence'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList(),
+      primaryElements: List<String>.from(json['primary_elements'] ?? []),
+      userLibraryPoolSize: json['user_library_pool_size'],
+    );
+  }
+
+  /// Check if playlist is blended (has tracks from both sources).
+  bool get isBlended => source == 'blended';
 }
 
 /// Exception for API errors.

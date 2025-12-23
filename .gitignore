@@ -20,3 +20,6 @@ Thumbs.db
 # Log files
 server_log.txt
 build_output*.txt
+
+# Cache directories
+cache/

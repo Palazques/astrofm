@@ -133,3 +133,115 @@ class PlaylistResult {
     return '${minutes}m';
   }
 }
+
+/// Track from the 114K music dataset.
+class DatasetTrack {
+  final String trackId;
+  final String trackName;
+  final String artists;
+  final String albumName;
+  final int durationMs;
+  final int popularity;
+  final double energy;
+  final double valence;
+  final double danceability;
+  final String? mainGenre;
+  final String? subgenre;
+  final String? element;
+
+  DatasetTrack({
+    required this.trackId,
+    required this.trackName,
+    required this.artists,
+    required this.albumName,
+    required this.durationMs,
+    required this.popularity,
+    required this.energy,
+    required this.valence,
+    required this.danceability,
+    this.mainGenre,
+    this.subgenre,
+    this.element,
+  });
+
+  factory DatasetTrack.fromJson(Map<String, dynamic> json) {
+    return DatasetTrack(
+      trackId: json['track_id'] as String,
+      trackName: json['track_name'] as String,
+      artists: json['artists'] as String,
+      albumName: json['album_name'] as String,
+      durationMs: json['duration_ms'] as int,
+      popularity: json['popularity'] as int,
+      energy: (json['energy'] as num).toDouble(),
+      valence: (json['valence'] as num).toDouble(),
+      danceability: (json['danceability'] as num).toDouble(),
+      mainGenre: json['main_genre'] as String?,
+      subgenre: json['subgenre'] as String?,
+      element: json['element'] as String?,
+    );
+  }
+
+  /// Get formatted duration string (MM:SS)
+  String get formattedDuration {
+    final minutes = durationMs ~/ 60000;
+    final seconds = (durationMs % 60000) ~/ 1000;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Playlist result from the 114K music dataset.
+class DatasetPlaylistResult {
+  final List<DatasetTrack> tracks;
+  final int totalDurationMs;
+  final double vibeMatchScore;
+  final List<double> energyArc;
+  final Map<String, int> elementDistribution;
+  final Map<String, int> genreDistribution;
+  final Map<String, dynamic> generationMetadata;
+
+  DatasetPlaylistResult({
+    required this.tracks,
+    required this.totalDurationMs,
+    required this.vibeMatchScore,
+    required this.energyArc,
+    required this.elementDistribution,
+    required this.genreDistribution,
+    required this.generationMetadata,
+  });
+
+  factory DatasetPlaylistResult.fromJson(Map<String, dynamic> json) {
+    return DatasetPlaylistResult(
+      tracks: (json['tracks'] as List)
+          .map((t) => DatasetTrack.fromJson(t as Map<String, dynamic>))
+          .toList(),
+      totalDurationMs: json['total_duration_ms'] as int,
+      vibeMatchScore: (json['vibe_match_score'] as num).toDouble(),
+      energyArc: (json['energy_arc'] as List).map((e) => (e as num).toDouble()).toList(),
+      elementDistribution: Map<String, int>.from(
+        (json['element_distribution'] as Map).map(
+          (key, value) => MapEntry(key as String, value as int),
+        ),
+      ),
+      genreDistribution: Map<String, int>.from(
+        (json['genre_distribution'] as Map).map(
+          (key, value) => MapEntry(key as String, value as int),
+        ),
+      ),
+      generationMetadata: json['generation_metadata'] as Map<String, dynamic>,
+    );
+  }
+
+  /// Get formatted total duration (e.g., "1h 10m" or "45m")
+  String get formattedDuration {
+    final totalMinutes = totalDurationMs ~/ 60000;
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
+  int get trackCount => tracks.length;
+}

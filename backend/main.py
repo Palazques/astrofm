@@ -21,10 +21,12 @@ from api.routes.geocoding import router as geocoding_router
 from api.routes.sonification import router as sonification_router
 from api.routes.ai import router as ai_router
 from api.routes.playlist import router as playlist_router
+from api.routes.playlist_export import router as playlist_export_router
 from api.routes.alignment import router as alignment_router
 from api.routes.spotify import router as spotify_router
 from api.routes.attunement import router as attunement_router
 from api.routes.prescription import router as prescription_router
+from api.routes.user_library import router as user_library_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
 
@@ -78,10 +80,12 @@ app.include_router(geocoding_router)
 app.include_router(sonification_router)
 app.include_router(ai_router)
 app.include_router(playlist_router)
+app.include_router(playlist_export_router)
 app.include_router(alignment_router)
 app.include_router(spotify_router)
 app.include_router(attunement_router)
 app.include_router(prescription_router)
+app.include_router(user_library_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

@@ -6,9 +6,10 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, HTTPException
 
 from models.playlist import PlaylistRequest, PlaylistResult
+from models.track_model import GenrePreference
 from services.ephemeris import calculate_natal_chart
 from services.vibe_calculator import calculate_vibe_parameters
-from services.playlist_matcher import generate_playlist
+from services.playlist_matcher import generate_playlist, generate_blended_playlist
 
 router = APIRouter(prefix="/api/playlist", tags=["playlist"])
 
@@ -118,3 +119,108 @@ async def generate_playlist_endpoint(request: PlaylistRequest) -> PlaylistResult
             status_code=500,
             detail=f"Unexpected error: {str(e)}"
         )
+
+
+from pydantic import BaseModel, Field
+from typing import Optional, List
+
+
+class BlendedPlaylistRequest(BaseModel):
+    """Request for blended playlist generation (user library + app dataset)."""
+    birth_datetime: str = Field(..., description="Birth date/time in ISO format")
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    timezone: str = Field(default="UTC")
+    playlist_size: int = Field(default=20, ge=10, le=30)
+    current_datetime: Optional[str] = None
+    current_latitude: Optional[float] = None
+    current_longitude: Optional[float] = None
+    # Genre preferences
+    main_genres: List[str] = Field(default=[])
+    subgenres: List[str] = Field(default=[])
+    include_related: bool = Field(default=True)
+
+
+@router.post("/generate-blended")
+async def generate_blended_playlist_endpoint(request: BlendedPlaylistRequest):
+    """
+    Generate a blended playlist from user library and app dataset.
+    
+    If user has connected a music service (Spotify, etc.), their library
+    tracks are matched against the day's astrology and blended with
+    tracks from the app's dataset.
+    
+    Dynamic blending prioritizes high-scoring user library tracks.
+    Falls back to dataset-only if no user library exists.
+    """
+    try:
+        # Parse birth datetime
+        try:
+            birth_dt = datetime.fromisoformat(request.birth_datetime.replace('Z', '+00:00'))
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid birth_datetime format: {str(e)}"
+            )
+        
+        # Convert to UTC if timezone is provided
+        if request.timezone != "UTC":
+            try:
+                local_tz = ZoneInfo(request.timezone)
+                birth_dt = birth_dt.replace(tzinfo=local_tz)
+                birth_dt = birth_dt.astimezone(ZoneInfo("UTC"))
+                birth_dt = birth_dt.replace(tzinfo=None)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid timezone: {request.timezone}")
+        
+        # Parse current datetime
+        if request.current_datetime:
+            current_dt = datetime.fromisoformat(request.current_datetime.replace('Z', '+00:00'))
+            if request.timezone != "UTC":
+                current_dt = current_dt.replace(tzinfo=local_tz)
+                current_dt = current_dt.astimezone(ZoneInfo("UTC"))
+                current_dt = current_dt.replace(tzinfo=None)
+        else:
+            current_dt = datetime.utcnow()
+        
+        current_lat = request.current_latitude or request.latitude
+        current_lon = request.current_longitude or request.longitude
+        
+        # Calculate natal chart
+        natal_chart = calculate_natal_chart(
+            birth_datetime=birth_dt,
+            latitude=request.latitude,
+            longitude=request.longitude
+        )
+        
+        # Calculate vibe parameters
+        vibe_params = calculate_vibe_parameters(
+            natal_chart=natal_chart,
+            current_datetime=current_dt,
+            latitude=current_lat,
+            longitude=current_lon
+        )
+        
+        # Build genre preferences
+        genre_prefs = None
+        if request.main_genres or request.subgenres:
+            genre_prefs = GenrePreference(
+                main_genres=request.main_genres,
+                subgenres=request.subgenres,
+                include_related=request.include_related
+            )
+        
+        # Generate blended playlist (parallel query to user library + dataset)
+        result = await generate_blended_playlist(
+            vibe_params=vibe_params,
+            genre_preferences=genre_prefs,
+            playlist_size=request.playlist_size
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating blended playlist: {str(e)}")
+

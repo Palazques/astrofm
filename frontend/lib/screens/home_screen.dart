@@ -41,11 +41,16 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingReading = false;
   String? _readingError;
   PlaylistResult? _generatedPlaylist;
+  DatasetPlaylistResult? _datasetPlaylist; // New dataset-based playlist
   bool _isGeneratingPlaylist = false;
   String? _playlistError;
   PlaylistInsight? _playlistInsight;
   bool _isLoadingPlaylistInsight = false;
   bool _isLoadingSonification = true;
+  
+  // User's genre preferences from onboarding
+  List<String> _userMainGenres = [];
+  List<String> _userSubgenres = [];
   
   // Spotify playlist data
   String? _spotifyPlaylistUrl;
@@ -142,22 +147,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   Future<void> _loadBirthDataAndInit() async {
-    // Load birth data from storage
+    // Load birth data from storage (fast, local)
     final stored = await storageService.loadBirthData();
     if (mounted) {
       setState(() => _birthData = stored);
     }
     
-    // Check Spotify connection status FIRST (must complete before loading playlist)
-    await _checkSpotifyConnection();
+    // Load genre preferences from onboarding (fast, local)
+    final genrePrefs = await storageService.loadGenres();
+    if (mounted) {
+      setState(() {
+        _userMainGenres = genrePrefs.genres;
+        _userSubgenres = genrePrefs.subgenres;
+      });
+    }
     
-    // Load cached daily playlist (persists when navigating between screens)
-    await _loadCachedPlaylist();
+    // PERFORMANCE OPTIMIZATION: Fire AI reading immediately (slowest API call)
+    // This runs in parallel with everything else below
+    _loadDailyReading();
     
-    // Now load API data using birth data
-    _loadAlignmentScore();
-    _loadSonificationData();
-    _loadMonthlyZodiacPlaylist();
+    // Load local cache and Spotify status in parallel
+    await Future.wait([
+      _checkSpotifyConnection(),
+      _loadCachedPlaylist(),
+    ]);
+    
+    // Load all API data in parallel (no dependencies between these)
+    Future.wait([
+      _loadAlignmentScore(),
+      _loadSonificationData(),
+      _loadMonthlyZodiacPlaylist(),
+    ]);
   }
   
   /// Load cached daily playlist if available for today.
@@ -286,24 +306,24 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoadingSonification = true);
     
     try {
-      // Load user's sound
-      final userSonification = await _apiService.getUserSonification(
-        datetime: _birthDataMap['datetime'] as String,
-        latitude: _birthDataMap['latitude'] as double,
-        longitude: _birthDataMap['longitude'] as double,
-        timezone: _birthDataMap['timezone'] as String,
-      );
-      
-      // Load daily sound
-      final dailySonification = await _apiService.getDailySonification(
-        latitude: _birthDataMap['latitude'] as double,
-        longitude: _birthDataMap['longitude'] as double,
-      );
+      // Load user's sound and daily sound in parallel
+      final results = await Future.wait([
+        _apiService.getUserSonification(
+          datetime: _birthDataMap['datetime'] as String,
+          latitude: _birthDataMap['latitude'] as double,
+          longitude: _birthDataMap['longitude'] as double,
+          timezone: _birthDataMap['timezone'] as String,
+        ),
+        _apiService.getDailySonification(
+          latitude: _birthDataMap['latitude'] as double,
+          longitude: _birthDataMap['longitude'] as double,
+        ),
+      ]);
       
       if (mounted) {
         setState(() {
-          _userSonification = userSonification;
-          _dailySonification = dailySonification;
+          _userSonification = results[0];
+          _dailySonification = results[1];
           _isLoadingSonification = false;
         });
       }
@@ -313,9 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isLoadingSonification = false);
       }
     }
-    
-    // Load AI-generated daily reading
-    _loadDailyReading();
+    // Note: _loadDailyReading is now called independently in _loadBirthDataAndInit
   }
   
   Future<void> _loadDailyReading() async {
@@ -356,79 +374,115 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isGeneratingPlaylist = true;
       _playlistError = null;
-      _spotifyPlaylistUrl = null;
-      _spotifyLibraryTracks = [];
+      _datasetPlaylist = null;
+      _spotifyPlaylistUrl = null; // Reset Spotify URL
     });
     
-    // Re-check Spotify connection (user may have connected after page load)
-    await _checkSpotifyConnection();
-    
-    if (!_isSpotifyConnected) {
-      // Not connected to Spotify - show error and prompt to connect
-      setState(() {
-        _isGeneratingPlaylist = false;
-        _playlistError = 'Connect to Spotify to generate your cosmic playlist';
-      });
-      
-      // Show connect prompt
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Connect Spotify to generate playlists from your library'),
-            backgroundColor: const Color(0xFF1DB954),
-            action: SnackBarAction(
-              label: 'Connect',
-              textColor: Colors.white,
-              onPressed: () => Navigator.pushNamed(context, '/settings'),
-            ),
-          ),
-        );
-      }
-      return;
-    }
-    
-    // Generate playlist directly from Spotify library
+    // Generate playlist from 114K music dataset with genre preferences
     try {
-      // Use default cosmic energy targets (can be customized later)
-      final result = await _spotifyService.generateFromLibrary(
-        name: 'Cosmic Queue - ${DateTime.now().toString().split(' ')[0]}',
-        energyTarget: 0.6,  // Moderate-high energy
-        moodTarget: 0.6,    // Slightly positive mood
-        tempoMin: 90,
-        tempoMax: 150,
+      final result = await _apiService.generateFromDataset(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
         playlistSize: 20,
-        description: 'Personalized from your library by Astro.FM 🌟✨',
+        mainGenres: _userMainGenres,
+        subgenres: _userSubgenres,
+        includeRelated: true,
       );
       
-      if (mounted && result.success) {
+      if (mounted) {
         setState(() {
-          _spotifyPlaylistUrl = result.playlistUrl;
-          _spotifyLibraryTracks = result.tracks;
+          _datasetPlaylist = result;
           _isGeneratingPlaylist = false;
         });
         
-        // Save to cache so it persists when navigating between screens
-        await storageService.saveDailyPlaylist(
-          tracks: result.tracks.map((t) => t.toJson()).toList(),
-          playlistUrl: result.playlistUrl,
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Generated ${result.trackCount} tracks based on your cosmic profile ✨'),
+            backgroundColor: const Color(0xFF7D67FE),
+            duration: const Duration(seconds: 2),
+          ),
         );
-      } else {
-        setState(() {
-          _isGeneratingPlaylist = false;
-          _playlistError = 'Failed to generate playlist';
-        });
+        
+        // Auto-create Spotify playlist if connected
+        if (_isSpotifyConnected) {
+          await _createSpotifyFromDataset(result);
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isGeneratingPlaylist = false;
-          _playlistError = e is SpotifyException ? e.message : 'Failed to generate playlist';
+          _playlistError = e is ApiException ? e.message : 'Failed to generate playlist';
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e is SpotifyException ? e.message : 'Failed to generate playlist'),
+            content: Text(_playlistError ?? 'Failed to generate playlist'),
             backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+  
+  /// Generate zodiac-themed playlist name for Spotify
+  String _getZodiacPlaylistName() {
+    final zodiacSign = _getCurrentZodiacSign();
+    final now = DateTime.now();
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dateStr = '${months[now.month - 1]} ${now.day}, ${now.year}';
+    return 'Astro.FM - $zodiacSign Season - $dateStr';
+  }
+  
+  /// Create Spotify playlist from dataset tracks
+  Future<void> _createSpotifyFromDataset(DatasetPlaylistResult playlist) async {
+    if (_isCreatingSpotifyPlaylist) return;
+    
+    setState(() => _isCreatingSpotifyPlaylist = true);
+    
+    try {
+      // Convert DatasetTracks to song list for Spotify search
+      final songs = playlist.tracks.map((track) => {
+        'title': track.trackName,
+        'artist': track.artists.split(',').first.trim(), // Use primary artist
+      }).toList();
+      
+      // Create playlist with zodiac-themed name
+      final playlistName = _getZodiacPlaylistName();
+      
+      final result = await _spotifyService.createPlaylist(
+        name: playlistName,
+        songs: songs,
+        description: 'Your cosmic vibe for today ✨🌟 Generated by Astro.FM',
+      );
+      
+      if (mounted && result.success && result.playlistUrl != null) {
+        setState(() {
+          _spotifyPlaylistUrl = result.playlistUrl;
+          _isCreatingSpotifyPlaylist = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Created Spotify playlist with ${result.tracksAdded} tracks 🎵'),
+            backgroundColor: const Color(0xFF1DB954),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCreatingSpotifyPlaylist = false);
+        // Show error but don't block - the dataset playlist is still available
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e is SpotifyException ? e.message : 'Could not create Spotify playlist'),
+            backgroundColor: Colors.orange.shade700,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -1090,7 +1144,15 @@ Generated by Astro.FM''';
                     color: Colors.white,
                   ),
                 ),
-            if (_generatedPlaylist != null)
+            if (_datasetPlaylist != null)
+                  Text(
+                    '${_datasetPlaylist!.trackCount} tracks • ${_datasetPlaylist!.formattedDuration}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: Colors.white.withAlpha(128),
+                    ),
+                  )
+            else if (_generatedPlaylist != null)
                   Text(
                     '${_generatedPlaylist!.songCount} songs • ${_generatedPlaylist!.formattedDuration}',
                     style: GoogleFonts.spaceGrotesk(
@@ -1186,7 +1248,7 @@ Generated by Astro.FM''';
             ),
           )
         // Show empty state
-        else if (_spotifyLibraryTracks.isEmpty && _generatedPlaylist == null)
+        else if (_datasetPlaylist == null && _spotifyLibraryTracks.isEmpty && _generatedPlaylist == null)
           GlassCard(
             child: Center(
               child: Padding(
@@ -1345,24 +1407,145 @@ Generated by Astro.FM''';
               GlassCard(
                 padding: const EdgeInsets.all(8),
                 child: Column(
-                  children: _spotifyLibraryTracks.isNotEmpty
-                    ? _spotifyLibraryTracks.asMap().entries.map((entry) {
+                  children: _datasetPlaylist != null
+                    ? _datasetPlaylist!.tracks.asMap().entries.map((entry) {
                         final index = entry.key;
                         final track = entry.value;
-                        return _buildSpotifyTrackItem(track, index);
+                        return _buildDatasetTrackItem(track, index);
                       }).toList()
-                    : _generatedPlaylist != null 
-                      ? _generatedPlaylist!.songs.asMap().entries.map((entry) {
+                    : _spotifyLibraryTracks.isNotEmpty
+                      ? _spotifyLibraryTracks.asMap().entries.map((entry) {
                           final index = entry.key;
-                          final song = entry.value;
-                          return _buildPlaylistItem(song, index);
+                          final track = entry.value;
+                          return _buildSpotifyTrackItem(track, index);
                         }).toList()
-                      : [], // Empty if neither has data (shouldn't happen due to else condition)
+                      : _generatedPlaylist != null 
+                        ? _generatedPlaylist!.songs.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final song = entry.value;
+                            return _buildPlaylistItem(song, index);
+                          }).toList()
+                        : [], // Empty if neither has data (shouldn't happen due to else condition)
                 ),
               ),
             ],
           ),
       ],
+    );
+  }
+
+  /// Build a dataset track item for display in the Cosmic Queue
+  Widget _buildDatasetTrackItem(DatasetTrack track, int index) {
+    final energyPercent = track.energy * 100;
+    final moodLabel = track.valence > 0.6 ? 'Upbeat' : track.valence > 0.4 ? 'Neutral' : 'Mellow';
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        border: index > 0 ? Border(top: BorderSide(color: Colors.white.withAlpha(13))) : null,
+      ),
+      child: Row(
+        children: [
+          // Track number
+          SizedBox(
+            width: 24,
+            child: Text(
+              '${index + 1}',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12,
+                color: Colors.white.withAlpha(102),
+              ),
+            ),
+          ),
+          // Track info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track.trackName,
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      track.artists,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: Colors.white.withAlpha(153),
+                      ),
+                    ),
+                    if (track.mainGenre != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.cosmicPurple.withAlpha(51),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          track.mainGenre!,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 9,
+                            color: AppColors.cosmicPurple,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Duration and stats
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                track.formattedDuration,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12,
+                  color: Colors.white.withAlpha(128),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.bolt,
+                    size: 10,
+                    color: energyPercent > 60 ? AppColors.electricYellow : Colors.white.withAlpha(102),
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${energyPercent.round()}%',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10,
+                      color: Colors.white.withAlpha(102),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    moodLabel,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10,
+                      color: AppColors.hotPink.withAlpha(179),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

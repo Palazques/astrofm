@@ -114,25 +114,25 @@ class TestCaching:
     
     def test_cache_respects_ttl(self):
         """Cache should expire entries after TTL."""
-        # Set entry with very short TTL (already expired)
-        entry = CacheEntry(
-            data={"value": 456},
-            expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)
-        )
-        self.service._cache["expired-key"] = entry
+        # Set entry with very short TTL
+        self.service._set_cached("expired-key", {"value": 456}, timedelta(seconds=1))
         
+        # Should exist immediately
         result = self.service._get_cached("expired-key")
+        assert result == {"value": 456}
         
+        # Wait for expiration (sleep briefly past TTL)
+        import time
+        time.sleep(1.5)
+        
+        # Should be expired now
+        result = self.service._get_cached("expired-key")
         assert result is None
-        assert "expired-key" not in self.service._cache
     
     def test_cache_no_ttl_never_expires(self):
         """Cache entries without TTL should never expire."""
-        entry = CacheEntry(
-            data={"value": 789},
-            expires_at=None  # No TTL
-        )
-        self.service._cache["permanent-key"] = entry
+        # Set entry without TTL
+        self.service._set_cached("permanent-key", {"value": 789}, None)
         
         result = self.service._get_cached("permanent-key")
         
@@ -180,11 +180,9 @@ class TestAIProviderFallback:
                 with patch('services.ai_service.OPENAI_AVAILABLE', True):
                     with patch('services.ai_service.genai') as mock_genai:
                         with patch('services.ai_service.OpenAI') as mock_openai_class:
-                            # Make Gemini fail
+                            # Make Gemini fail - mock generate_content to raise error
                             mock_model = MagicMock()
-                            mock_chat = MagicMock()
-                            mock_chat.send_message.side_effect = Exception("Gemini error")
-                            mock_model.start_chat.return_value = mock_chat
+                            mock_model.generate_content.side_effect = Exception("Gemini error")
                             mock_genai.GenerativeModel.return_value = mock_model
                             
                             # OpenAI should work

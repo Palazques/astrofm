@@ -106,13 +106,15 @@ class SpotifyService:
             "http://127.0.0.1:8000/api/spotify/callback"
         )
         
-        # In-memory token storage (replace with database in production)
-        # Key: state, Value: (tokens, user_id)
+        # In-memory caches (populated from SQLite on init)
         self._token_store: Dict[str, SpotifyTokens] = {}
         self._user_store: Dict[str, SpotifyUser] = {}
         
         # PKCE verifier storage (temporary, during auth flow)
         self._verifier_store: Dict[str, str] = {}
+        
+        # Restore sessions from persistent storage
+        self._restore_sessions_from_db()
     
     @property
     def is_configured(self) -> bool:
@@ -226,12 +228,15 @@ class SpotifyService:
             token_type=token_data.get("token_type", "Bearer"),
         )
         
-        # Store tokens (keyed by state for now - replace with user session)
+        # Store tokens in memory
         self._token_store[state] = tokens
         
         # Fetch and store user info
         user = await self.get_current_user(tokens.access_token)
         self._user_store[state] = user
+        
+        # Persist to SQLite for survival across restarts
+        self._persist_session(state, tokens, user)
         
         return tokens
     
@@ -297,18 +302,95 @@ class SpotifyService:
             print(f"[SpotifyService] Token expired for session {session_id[:8]}..., refreshing...")
             try:
                 new_tokens = await self.refresh_access_token(tokens.refresh_token)
-                # Update stored tokens
+                # Update stored tokens in memory
                 self._token_store[session_id] = new_tokens
+                # Update in persistent storage too
+                self._update_tokens_in_db(session_id, new_tokens)
                 print(f"[SpotifyService] Token refreshed successfully, expires in {new_tokens.expires_in}s")
                 return new_tokens.access_token
             except Exception as e:
                 print(f"[SpotifyService] Failed to refresh token: {e}")
-                # Remove invalid tokens
+                # Remove invalid tokens from memory and database
                 self._token_store.pop(session_id, None)
                 self._user_store.pop(session_id, None)
+                self._delete_session_from_db(session_id)
                 return None
         
         return tokens.access_token
+    
+    # =========================================================================
+    # Session Persistence Helpers
+    # =========================================================================
+    
+    def _restore_sessions_from_db(self) -> None:
+        """
+        Restore all sessions from SQLite into memory caches.
+        
+        Called during __init__ to ensure sessions survive backend restarts.
+        """
+        try:
+            from services.spotify_sessions_db import get_all_sessions
+            
+            sessions = get_all_sessions()
+            restored_count = 0
+            
+            for stored in sessions:
+                tokens = SpotifyTokens(
+                    access_token=stored.access_token,
+                    refresh_token=stored.refresh_token,
+                    expires_in=3600,  # Will be recalculated from expires_at
+                    expires_at=stored.expires_at,
+                )
+                user = SpotifyUser(
+                    id=stored.user_id,
+                    display_name=stored.display_name,
+                    email=stored.email,
+                    product=stored.product,
+                )
+                
+                self._token_store[stored.session_id] = tokens
+                self._user_store[stored.session_id] = user
+                restored_count += 1
+            
+            if restored_count > 0:
+                print(f"[SpotifyService] Restored {restored_count} session(s) from database")
+        except Exception as e:
+            print(f"[SpotifyService] Could not restore sessions: {e}")
+    
+    def _persist_session(self, session_id: str, tokens: SpotifyTokens, user: SpotifyUser) -> None:
+        """Persist a session to SQLite."""
+        try:
+            from services.spotify_sessions_db import save_session, StoredSpotifySession
+            
+            stored = StoredSpotifySession(
+                session_id=session_id,
+                access_token=tokens.access_token,
+                refresh_token=tokens.refresh_token,
+                expires_at=tokens.expires_at,
+                user_id=user.id,
+                display_name=user.display_name,
+                email=user.email,
+                product=user.product,
+            )
+            save_session(stored)
+        except Exception as e:
+            print(f"[SpotifyService] Could not persist session: {e}")
+    
+    def _update_tokens_in_db(self, session_id: str, tokens: SpotifyTokens) -> None:
+        """Update tokens in SQLite after refresh."""
+        try:
+            from services.spotify_sessions_db import update_tokens
+            update_tokens(session_id, tokens.access_token, tokens.refresh_token, tokens.expires_at)
+        except Exception as e:
+            print(f"[SpotifyService] Could not update tokens in db: {e}")
+    
+    def _delete_session_from_db(self, session_id: str) -> None:
+        """Delete a session from SQLite when invalidated."""
+        try:
+            from services.spotify_sessions_db import delete_session
+            delete_session(session_id)
+        except Exception as e:
+            print(f"[SpotifyService] Could not delete session from db: {e}")
     
     async def get_current_user(self, access_token: str) -> SpotifyUser:
         """
