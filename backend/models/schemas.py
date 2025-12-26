@@ -128,11 +128,43 @@ class DailyReadingRequest(BaseModel):
         return v
 
 
+class DailySignal(BaseModel):
+    """
+    Structured daily reading signal (Resonance, Feedback, or Dissonance).
+    
+    Each signal represents one life area with audio engineering metaphors
+    and human-friendly context.
+    """
+    signal_type: str = Field(
+        ...,
+        description="Type: 'resonance' (positive), 'feedback' (warning), or 'dissonance' (challenge)"
+    )
+    category: str = Field(
+        ...,
+        description="Life area: Self, Communication, Love & Sex, Work, Creativity, etc."
+    )
+    category_meaning: str = Field(
+        ...,
+        description="Human-friendly explanation of the category"
+    )
+    message: str = Field(
+        ...,
+        description="The reading text with audio engineering metaphors"
+    )
+
+
 class DailyReadingResponse(BaseModel):
     """
     Response model for AI-generated daily reading.
+    
+    Includes both the legacy 'reading' field (for backward compatibility)
+    and the new 'signals' array for structured, categorized readings.
     """
-    reading: str = Field(..., description="Personalized horoscope text")
+    reading: str = Field(..., description="Personalized horoscope text (legacy)")
+    signals: list[DailySignal] = Field(
+        default=[],
+        description="Structured reading signals: Resonance, Feedback, Dissonance"
+    )
     playlist_params: PlaylistParams = Field(..., description="Playlist generation parameters")
     cosmic_weather: str = Field(..., description="Current cosmic weather summary")
     generated_at: str = Field(..., description="Generation timestamp ISO format")

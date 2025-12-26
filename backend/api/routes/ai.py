@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import (
     DailyReadingRequest,
     DailyReadingResponse,
+    DailySignal,
     AlignmentRequest,
     AlignmentInterpretation,
     CompatibilityRequest,
@@ -43,8 +44,20 @@ def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse
         ai_service = get_ai_service()
         result = ai_service.generate_daily_reading(birth_chart, current_transits, request.subject_name)
         
+        # Build signals from result
+        signals = [
+            DailySignal(
+                signal_type=s["signal_type"],
+                category=s["category"],
+                category_meaning=s["category_meaning"],
+                message=s["message"],
+            )
+            for s in result.get("signals", [])
+        ]
+        
         return DailyReadingResponse(
             reading=result["reading"],
+            signals=signals,
             playlist_params=PlaylistParams(**result["playlist_params"]),
             cosmic_weather=result["cosmic_weather"],
             generated_at=result["generated_at"],

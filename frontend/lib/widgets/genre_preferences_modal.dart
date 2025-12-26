@@ -191,7 +191,7 @@ class _GenrePreferencesModalState extends State<GenrePreferencesModal> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.backgroundDark.withAlpha(200),
+              color: AppColors.background.withAlpha(200),
               border: Border(
                 top: BorderSide(color: Colors.white.withAlpha(26)),
               ),

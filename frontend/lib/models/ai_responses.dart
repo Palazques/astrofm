@@ -39,15 +39,58 @@ class PlaylistParams {
   int get energyPercent => (energy * 100).round();
 }
 
+/// Structured daily signal (Resonance, Feedback, or Dissonance).
+/// 
+/// Each signal represents one life area with audio engineering metaphors
+/// and human-friendly context.
+class DailySignal {
+  final String signalType;      // "resonance", "feedback", or "dissonance"
+  final String category;        // e.g., "Self", "Communication", "Love & Sex"
+  final String categoryMeaning; // Human-friendly: "How in sync you are with partners"
+  final String message;         // The reading with audio metaphors
+
+  DailySignal({
+    required this.signalType,
+    required this.category,
+    required this.categoryMeaning,
+    required this.message,
+  });
+
+  factory DailySignal.fromJson(Map<String, dynamic> json) {
+    return DailySignal(
+      signalType: json['signal_type'] as String? ?? 'resonance',
+      category: json['category'] as String? ?? 'Self',
+      categoryMeaning: json['category_meaning'] as String? ?? 'Your daily energy',
+      message: json['message'] as String? ?? '',
+    );
+  }
+
+  /// Get icon for signal type
+  String get icon {
+    switch (signalType) {
+      case 'resonance':
+        return '✅';
+      case 'feedback':
+        return '⚠️';
+      case 'dissonance':
+        return '❌';
+      default:
+        return '•';
+    }
+  }
+}
+
 /// AI-generated daily reading with playlist parameters.
 class DailyReading {
   final String reading;
+  final List<DailySignal> signals; // NEW: structured reading signals
   final PlaylistParams playlistParams;
   final String cosmicWeather;
   final String generatedAt;
 
   DailyReading({
     required this.reading,
+    required this.signals,
     required this.playlistParams,
     required this.cosmicWeather,
     required this.generatedAt,
@@ -56,6 +99,10 @@ class DailyReading {
   factory DailyReading.fromJson(Map<String, dynamic> json) {
     return DailyReading(
       reading: json['reading'] as String,
+      signals: (json['signals'] as List<dynamic>?)
+              ?.map((s) => DailySignal.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          [],
       playlistParams: PlaylistParams.fromJson(
         json['playlist_params'] as Map<String, dynamic>,
       ),

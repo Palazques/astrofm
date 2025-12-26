@@ -43,43 +43,44 @@ class AIService:
     """
     AI service for generating astrological content.
     
-    Primary: Google Gemini (gemini-1.5-flash)
+    Primary: Google Gemini (gemini-2.5-flash)
     Fallback: OpenAI (gpt-4o-mini)
     """
     
-    # Astro.FM voice system prompt - references astrology_vibe_logic.md
-    SYSTEM_PROMPT = """You are the AI voice of Astro.FM, a cosmic audio experience app.
+    # Co-Star inspired system prompt with audio engineering terminology
+    SYSTEM_PROMPT = """You are an AI astrologer for Astro.FM, blending Co-Star's minimalist, blunt tone with professional audio engineering terminology.
 
-Your tone is:
-- Mystical but grounded - speak with cosmic wisdom, not vague mysticism
-- Music-literate - naturally reference BPM, genres, frequencies, textures, sonic qualities
-- Astrologically precise - reference specific planetary placements and their meanings
+CORE RULES:
+- Translate astrological 'Power/Positive' into 'Resonance' (clarity, flow, synchronization, clean signal)
+- Translate astrological 'Pressure/Warning' into 'Feedback' (ego loops, over-processing, clipping, too much gain)  
+- Translate astrological 'Trouble/Challenge' into 'Dissonance' (static, interference, out-of-tune, weak signal, phase issues)
 
-Planet-to-Music Mapping (from our sound signature system):
-- Sun (126.22 Hz, B): Identity, vitality - foundation/carrier tone
-- Moon (210.42 Hz, G#): Emotion, intuition - rhythmic/fluid modulation
-- Mercury (141.27 Hz, C#): Communication, clarity - high-frequency detail
-- Mars (144.72 Hz, C#): Drive, action - pulsing/percussive
-- Jupiter (183.58 Hz, F#): Expansion, optimism - harmonic layers
-- Saturn (147.85 Hz, D): Structure, discipline - low-frequency grounding
-- Uranus (207.36 Hz, G#): Innovation, disruption - glitch/unpredictable
-- Neptune (211.44 Hz, G#): Dreams, spirituality - reverb/echo ambient
-- Pluto (140.25 Hz, C#): Transformation, intensity - sub-bass/intense
+AUDIO TERMS TO USE:
+- gain, frequency, low-pass filter, reverb, bit-crush
+- mono/stereo, phase alignment, latency, room tone
+- signal clarity, clipping, compression, headroom
+- EQ, overtones, carrier wave, noise floor
 
-House Sound Qualities:
-- Angular houses (1,4,7,10): Lead, focused, authoritative
-- Succedent houses (2,5,8,11): Warm, bright, deep textures
-- Cadent houses (3,6,9,12): Fast patterns, rhythmic, ambient
+TONE:
+- Sharp, direct, slightly existential
+- No flowery 'New Age' language - be blunt like Co-Star
+- Use "you" and "your" - make it personal
+- Keep it short: 1-2 sentences max per signal
 
-When responding:
-1. Always ground your reading in the user's specific planetary placements
-2. Translate cosmic energy into sonic metaphors and playlist parameters
-3. Keep readings concise but meaningful (2-4 sentences for horoscopes)
-4. End with actionable musical guidance
-
-For playlist parameters, always include as JSON on a separate line:
+For playlist parameters, include as JSON on a separate line:
 {"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}
 """
+
+    # Life areas with human-friendly meanings
+    LIFE_AREAS = {
+        "Self": "How you're showing up today",
+        "Communication": "Your mental clarity and expression",
+        "Love & Sex": "How in sync you are with partners",
+        "Work & Career": "Your focus and productivity", 
+        "Creativity": "Your creative spark and expression",
+        "Social Life": "How you're connecting with others",
+        "Spirituality": "Your inner peace and grounding",
+    }
 
     # Cache TTLs
     DAILY_READING_TTL = timedelta(hours=6)
@@ -296,18 +297,21 @@ For playlist parameters, always include as JSON on a separate line:
         subject_name: str = None,
     ) -> dict:
         """
-        Generate personalized daily reading with playlist parameters.
+        Generate personalized daily reading with structured signals.
+        
+        Returns 3 signals (Resonance, Feedback, Dissonance) with life area categories,
+        plus backward-compatible 'reading' field.
         
         Args:
             birth_chart: User's natal chart data
             current_transits: Current planetary positions
-            subject_name: Optional name to use for third-person horoscope (e.g., friend's name)
+            subject_name: Optional name for third-person horoscope
             
         Returns:
-            DailyReadingResponse-compatible dict
+            DailyReadingResponse-compatible dict with 'signals' array
         """
         # Check cache
-        cache_key = self._generate_cache_key("daily", {
+        cache_key = self._generate_cache_key("daily_v2", {
             "chart": birth_chart.get("ascendant_sign", ""),
             "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subject": subject_name or "",
@@ -317,51 +321,122 @@ For playlist parameters, always include as JSON on a separate line:
         if cached:
             return cached
         
-        # Build prompt
+        # Extract chart data
         sun_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Sun"), {})
         moon_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Moon"), {})
+        mercury_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Mercury"), {})
+        venus_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Venus"), {})
+        mars_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Mars"), {})
         
-        # Adjust prompt for third-person (friend) or second-person (user)
-        if subject_name:
-            subject_intro = f"Generate a daily sonic horoscope for {subject_name}:"
-            perspective_note = f"IMPORTANT: Write this horoscope about {subject_name} in third-person perspective. Use \"{subject_name}\" or \"they/their\" pronouns, NOT \"you/your\"."
-        else:
-            subject_intro = "Generate a daily sonic horoscope for this user:"
-            perspective_note = ""
+        # Select 3 life areas based on prominent planets
+        life_areas_list = list(self.LIFE_AREAS.keys())
+        import random
+        random.seed(datetime.now(timezone.utc).strftime("%Y-%m-%d"))  # Same areas per day
+        selected_areas = random.sample(life_areas_list, 3)
         
-        prompt = f"""{subject_intro}
+        # Build the structured signals prompt
+        prompt = f"""Generate 3 daily signals for this user in Co-Star style with audio engineering metaphors.
 
-Birth Chart Summary:
+USER'S CHART:
 - Sun: {sun_planet.get('sign', 'Unknown')} in House {sun_planet.get('house', '?')}
 - Moon: {moon_planet.get('sign', 'Unknown')} in House {moon_planet.get('house', '?')}
+- Mercury: {mercury_planet.get('sign', 'Unknown')} in House {mercury_planet.get('house', '?')}
+- Venus: {venus_planet.get('sign', 'Unknown')} in House {venus_planet.get('house', '?')}
+- Mars: {mars_planet.get('sign', 'Unknown')} in House {mars_planet.get('house', '?')}
 - Ascendant: {birth_chart.get('ascendant_sign', 'Unknown')} Rising
 
-Today's Transits:
-- Current Moon: {current_transits.get('moon_sign', 'Unknown')}
+TODAY'S TRANSITS:
+- Moon: {current_transits.get('moon_sign', 'Unknown')}
 - Season: {current_transits.get('season', 'Unknown')}
-- Retrograde Planets: {', '.join(current_transits.get('retrograde_planets', [])) or 'None'}
+- Retrograde: {', '.join(current_transits.get('retrograde_planets', [])) or 'None'}
 
-{perspective_note}
+Generate EXACTLY 3 signals in this format:
 
-Provide:
-1. A 2-3 sentence personalized reading connecting their chart to today's energy
-2. Sonic/musical guidance for the day
-3. JSON playlist parameters on a separate line"""
+RESONANCE|{selected_areas[0]}|[1-2 sentence reading with audio terms like "clean signal", "phase aligned", "stereo clarity"]
+
+FEEDBACK|{selected_areas[1]}|[1-2 sentence reading with audio terms like "too much gain", "clipping", "ego loops", "over-processed"]
+
+DISSONANCE|{selected_areas[2]}|[1-2 sentence reading with audio terms like "static", "out of tune", "weak signal", "phase issues"]
+
+RULES:
+- Be blunt and direct like Co-Star - no flowery language
+- Use audio engineering metaphors naturally
+- Each signal is 1-2 sentences MAX
+- Use "you" and "your" pronouns
+- Reference the actual planet positions above
+
+After the signals, add playlist parameters as JSON:
+{{"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}}"""
 
         response = self._generate_response(prompt)
-        reading, params = self._parse_response(response)
         
-        # Determine cosmic weather from transits
+        # Parse the structured response
+        signals = []
+        lines = response.strip().split("\n")
+        
+        for line in lines:
+            line = line.strip()
+            if "|" in line and (line.startswith("RESONANCE") or line.startswith("FEEDBACK") or line.startswith("DISSONANCE")):
+                parts = line.split("|", 2)
+                if len(parts) >= 3:
+                    signal_type = parts[0].strip().lower()
+                    category = parts[1].strip()
+                    message = parts[2].strip()
+                    
+                    # Get human-friendly meaning
+                    category_meaning = self.LIFE_AREAS.get(category, "Your daily energy")
+                    
+                    signals.append({
+                        "signal_type": signal_type,
+                        "category": category,
+                        "category_meaning": category_meaning,
+                        "message": message,
+                    })
+        
+        # Fallback signals if parsing failed
+        if len(signals) < 3:
+            signals = [
+                {
+                    "signal_type": "resonance",
+                    "category": "Self",
+                    "category_meaning": "How you're showing up today",
+                    "message": f"Your {sun_planet.get('sign', 'Unknown')} Sun is broadcasting clearly. Signal is stable.",
+                },
+                {
+                    "signal_type": "feedback",
+                    "category": "Communication",
+                    "category_meaning": "Your mental clarity and expression", 
+                    "message": "Watch the gain on your words today. Easy to clip.",
+                },
+                {
+                    "signal_type": "dissonance",
+                    "category": "Work & Career",
+                    "category_meaning": "Your focus and productivity",
+                    "message": "Some static in your focus. Low-pass filter out the noise.",
+                },
+            ]
+        
+        # Parse playlist params from response
+        _, params = self._parse_response(response)
+        
+        # Build cosmic weather with audio engineering style
         retrograde_count = len(current_transits.get('retrograde_planets', []))
+        moon_sign = current_transits.get('moon_sign', 'Unknown')
         if retrograde_count >= 3:
-            cosmic_weather = "Mercury Retrograde vibes - reflective and introspective"
+            cosmic_weather = f"Heavy room tone. {retrograde_count} planets in retrograde—signal interference expected."
         elif retrograde_count > 0:
-            cosmic_weather = f"{current_transits.get('moon_sign', 'Unknown')} Moon - {', '.join(current_transits.get('retrograde_planets', []))} in retrograde"
+            retros = ', '.join(current_transits.get('retrograde_planets', []))
+            cosmic_weather = f"{moon_sign} Moon. {retros} retrograde—some latency in those channels."
         else:
-            cosmic_weather = f"{current_transits.get('moon_sign', 'Unknown')} Moon - flowing cosmic energy"
+            cosmic_weather = f"{moon_sign} Moon. Clean signal across all channels."
+        
+        # Build legacy reading from signals (backward compat)
+        reading_parts = [f"[{s['signal_type'].upper()}] {s['message']}" for s in signals[:3]]
+        legacy_reading = " ".join(reading_parts)
         
         result = {
-            "reading": reading,
+            "reading": legacy_reading,
+            "signals": signals[:3],  # Exactly 3 signals
             "playlist_params": params,
             "cosmic_weather": cosmic_weather,
             "generated_at": datetime.now(timezone.utc).isoformat(),
