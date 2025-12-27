@@ -272,3 +272,100 @@ class DatasetPlaylistResult {
 
   int get trackCount => tracks.length;
 }
+
+/// Track from the cosmic playlist API (AI-generated, resolved to Spotify).
+class CosmicTrack {
+  final String name;
+  final String artist;
+  final String url;
+  final String? albumArt;
+
+  CosmicTrack({
+    required this.name,
+    required this.artist,
+    required this.url,
+    this.albumArt,
+  });
+
+  factory CosmicTrack.fromJson(Map<String, dynamic> json) {
+    return CosmicTrack(
+      name: json['name'] as String,
+      artist: json['artist'] as String,
+      url: json['url'] as String,
+      albumArt: json['album_art'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'artist': artist,
+    'url': url,
+    'album_art': albumArt,
+  };
+}
+
+/// Result from the cosmic playlist API (app-owned Spotify account).
+class CosmicPlaylistResult {
+  final bool success;
+  final String? playlistUrl;
+  final String? playlistName;
+  final int trackCount;
+  final String? vibeSummary;
+  final String? sunSign;
+  final String? element;
+  final List<CosmicTrack> tracks;
+  final String? error;
+
+  CosmicPlaylistResult({
+    required this.success,
+    this.playlistUrl,
+    this.playlistName,
+    required this.trackCount,
+    this.vibeSummary,
+    this.sunSign,
+    this.element,
+    required this.tracks,
+    this.error,
+  });
+
+  factory CosmicPlaylistResult.fromJson(Map<String, dynamic> json) {
+    return CosmicPlaylistResult(
+      success: json['success'] as bool,
+      playlistUrl: json['playlist_url'] as String?,
+      playlistName: json['playlist_name'] as String?,
+      trackCount: json['track_count'] as int,
+      vibeSummary: json['vibe_summary'] as String?,
+      sunSign: json['sun_sign'] as String?,
+      element: json['element'] as String?,
+      tracks: (json['tracks'] as List?)
+          ?.map((t) => CosmicTrack.fromJson(t as Map<String, dynamic>))
+          .toList() ?? [],
+      error: json['error'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'success': success,
+    'playlist_url': playlistUrl,
+    'playlist_name': playlistName,
+    'track_count': trackCount,
+    'vibe_summary': vibeSummary,
+    'sun_sign': sunSign,
+    'element': element,
+    'tracks': tracks.map((t) => t.toJson()).toList(),
+    'error': error,
+  };
+
+  /// Get formatted duration (estimate based on 3.5 min per track)
+  String get formattedDuration {
+    final totalMinutes = (trackCount * 3.5).round();
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+}
+

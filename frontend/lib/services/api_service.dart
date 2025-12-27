@@ -707,6 +707,43 @@ class ApiService {
     }
   }
 
+  /// Generate a cosmic playlist using AI + app's Spotify account.
+  /// No user Spotify auth required.
+  ///
+  /// [sunSign] - User's Sun sign (e.g., "Capricorn")
+  /// [moonSign] - User's Moon sign
+  /// [risingSign] - User's Rising/Ascendant sign
+  /// [genrePreferences] - User's preferred genres
+  Future<CosmicPlaylistResult> generateCosmicPlaylist({
+    required String sunSign,
+    required String moonSign,
+    required String risingSign,
+    required List<String> genrePreferences,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/cosmic/generate'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'sun_sign': sunSign,
+            'moon_sign': moonSign,
+            'rising_sign': risingSign,
+            'genre_preferences': genrePreferences,
+          }),
+        )
+        .timeout(const Duration(seconds: 120)); // AI + Spotify takes time
+
+    if (response.statusCode == 200) {
+      return CosmicPlaylistResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to generate cosmic playlist',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   /// Export a playlist as formatted text.
   Future<String> exportPlaylistAsText({
     required String datetime,

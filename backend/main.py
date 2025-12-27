@@ -27,6 +27,7 @@ from api.routes.spotify import router as spotify_router
 from api.routes.attunement import router as attunement_router
 from api.routes.prescription import router as prescription_router
 from api.routes.user_library import router as user_library_router
+from api.routes.cosmic_playlist import router as cosmic_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
 
@@ -86,6 +87,7 @@ app.include_router(spotify_router)
 app.include_router(attunement_router)
 app.include_router(prescription_router)
 app.include_router(user_library_router)
+app.include_router(cosmic_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

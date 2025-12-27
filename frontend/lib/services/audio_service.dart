@@ -107,7 +107,29 @@ class AudioService {
       oscillator.type = 'sine';
       oscillator.frequency.value = planet.frequency;
 
-      // 2. Envelope Gain (Dynamics) - seamless looping envelope
+      // 2. Filter (Tonal Character) - NEW for unique sounds
+      web.BiquadFilterNode? filterNode;
+      if (planet.filterType != 'none' && planet.filterCutoff > 0) {
+        filterNode = ctx.createBiquadFilter();
+        // Map backend filter types to Web Audio filter types
+        switch (planet.filterType) {
+          case 'low_pass':
+            filterNode.type = 'lowpass';
+            break;
+          case 'high_pass':
+            filterNode.type = 'highpass';
+            break;
+          case 'band_pass':
+            filterNode.type = 'bandpass';
+            break;
+          default:
+            filterNode.type = 'lowpass';
+        }
+        filterNode.frequency.value = planet.filterCutoff;
+        filterNode.Q.value = 1.5; // Moderate resonance for tonal color
+      }
+
+      // 3. Envelope Gain (Dynamics) - seamless looping envelope
       final envelopeGain = ctx.createGain();
       final baseVolume = planet.intensity * 0.25;
 
@@ -117,17 +139,22 @@ class AudioService {
       envelopeGain.gain.setValueAtTime(baseVolume, now + loopDuration - 2.0);
       envelopeGain.gain.linearRampToValueAtTime(0.0, now + loopDuration); // 2s fade out
       
-      // 3. Mute Gain (Toggling)
+      // 4. Mute Gain (Toggling)
       final muteGain = ctx.createGain();
       final initialMuteGain = currentlyActive.contains(planetName) ? 1.0 : 0.0;
       muteGain.gain.setValueAtTime(initialMuteGain, now);
 
-      // 4. Panner (Space)
+      // 5. Panner (Space)
       final panner = ctx.createStereoPanner();
       panner.pan.value = planet.pan;
 
-      // Connect Chain: Osc -> Envelope -> Mute -> Panner -> Destination
-      oscillator.connect(envelopeGain);
+      // Connect Chain: Osc -> [Filter] -> Envelope -> Mute -> Panner -> Destination
+      if (filterNode != null) {
+        oscillator.connect(filterNode);
+        filterNode.connect(envelopeGain);
+      } else {
+        oscillator.connect(envelopeGain);
+      }
       envelopeGain.connect(muteGain);
       muteGain.connect(panner);
       panner.connect(ctx.destination);
@@ -141,6 +168,7 @@ class AudioService {
       _activeGains[planetName] = envelopeGain;
       _planetMuteNodes[planetName] = muteGain;
     }
+
 
     // Schedule the next loop iteration (with crossfade overlap)
     _loopTimer?.cancel();

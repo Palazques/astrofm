@@ -33,6 +33,7 @@ class StorageKeys {
   static const String dailyPlaylistUrl = 'daily_playlist_url';
   static const String dailyPlaylistDate = 'daily_playlist_date';
   static const String dailyDatasetPlaylist = 'daily_dataset_playlist'; // Full dataset playlist result
+  static const String dailyCosmicPlaylist = 'daily_cosmic_playlist'; // Cosmic (AI + Spotify) playlist
   
   // Monthly Zodiac Playlist Cache
   static const String monthlyZodiacPlaylist = 'monthly_zodiac_playlist';
@@ -340,6 +341,39 @@ class StorageService {
     
     // Load cached dataset playlist
     final playlistJson = prefs.getString(StorageKeys.dailyDatasetPlaylist);
+    if (playlistJson == null) return null;
+    
+    try {
+      return jsonDecode(playlistJson) as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Save the cosmic playlist result to cache with today's date.
+  Future<void> saveCosmicPlaylist(Map<String, dynamic> playlistData) async {
+    final prefs = await _getPrefs();
+    final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
+    
+    await prefs.setString(StorageKeys.dailyCosmicPlaylist, jsonEncode(playlistData));
+    await prefs.setString(StorageKeys.dailyPlaylistDate, today);
+  }
+
+  /// Load cached cosmic playlist if it's from today.
+  /// Returns null if no cache or cache is from a different day.
+  Future<Map<String, dynamic>?> loadCosmicPlaylist() async {
+    final prefs = await _getPrefs();
+    
+    // Check if cache is from today
+    final cachedDate = prefs.getString(StorageKeys.dailyPlaylistDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    if (cachedDate != today) {
+      return null; // Cache is stale (different day)
+    }
+    
+    // Load cached cosmic playlist
+    final playlistJson = prefs.getString(StorageKeys.dailyCosmicPlaylist);
     if (playlistJson == null) return null;
     
     try {

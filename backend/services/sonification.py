@@ -175,6 +175,24 @@ def calculate_pan_position(planet_name: str, house: int) -> float:
     return round(max(-1.0, min(1.0, base_pan + planet_offset)), 2)
 
 
+def calculate_degree_offset(zodiac_degree: float) -> float:
+    """
+    Calculate frequency offset based on zodiac degree position.
+    
+    Maps 0-360 degrees to ±1.5 Hz offset using sine wave.
+    This creates smooth variation without harsh jumps at sign boundaries,
+    making each user's sound signature unique based on exact planetary positions.
+    
+    Args:
+        zodiac_degree: Planet's ecliptic longitude position (0-360)
+        
+    Returns:
+        Frequency offset in Hz (-1.5 to +1.5)
+    """
+    # Normalize to 0-2π and apply sine for smooth variation
+    normalized = (zodiac_degree / 360.0) * 2 * math.pi
+    return round(math.sin(normalized) * 1.5, 4)  # ±1.5 Hz range
+
 def calculate_planet_sound(planet_position: dict) -> PlanetSound:
     """
     Calculate audio synthesis parameters for a single planet.
@@ -191,7 +209,13 @@ def calculate_planet_sound(planet_position: dict) -> PlanetSound:
     house_degree = planet_position["house_degree"]
     
     # Get base frequency from cosmic octave mapping
-    frequency = PLANET_FREQUENCIES.get(planet_name, 200.0)
+    base_frequency = PLANET_FREQUENCIES.get(planet_name, 200.0)
+    
+    # Apply micro-detuning based on zodiac degree for unique sound signature
+    zodiac_degree = planet_position.get("longitude", 0.0)
+    frequency_offset = calculate_degree_offset(zodiac_degree)
+    frequency = round(base_frequency + frequency_offset, 4)
+
     
     # Get house timbre parameters
     timbre = HOUSE_TIMBRES.get(house, HOUSE_TIMBRES[1])

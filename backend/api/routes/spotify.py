@@ -106,6 +106,103 @@ class MonthlyZodiacPlaylistResponse(BaseModel):
     cached_until: str  # ISO datetime of next zodiac period
 
 # =============================================================================
+# App Account OAuth (One-time setup for astrofm.official account)
+# =============================================================================
+
+@router.get("/app-auth")
+async def get_app_auth_url():
+    """
+    Get Spotify OAuth URL for one-time app account authorization.
+    Visit this URL to authorize the astrofm.official Spotify account.
+    """
+    from services.cosmic.app_spotify import get_app_spotify_service
+    
+    service = get_app_spotify_service()
+    
+    if not service.is_configured:
+        raise HTTPException(
+            status_code=503,
+            detail="Spotify credentials not configured in .env"
+        )
+    
+    auth_data = service.get_auth_url()
+    return RedirectResponse(url=auth_data["url"])
+
+
+@router.get("/app-token-callback")
+async def app_token_callback(
+    code: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    error: Optional[str] = Query(None),
+):
+    """
+    OAuth callback for app account authorization.
+    Displays the refresh token to copy to .env
+    """
+    from services.cosmic.app_spotify import get_app_spotify_service
+    
+    if error:
+        return HTMLResponse(content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Authorization Failed</title></head>
+        <body style="font-family: system-ui; text-align: center; padding: 50px; background: #1a1a2e; color: white;">
+            <h1>❌ Authorization Failed</h1>
+            <p>Error: {error}</p>
+        </body>
+        </html>
+        """, status_code=400)
+    
+    if not code:
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Invalid Request</title></head>
+        <body style="font-family: system-ui; text-align: center; padding: 50px; background: #1a1a2e; color: white;">
+            <h1>❌ Missing Code</h1>
+        </body>
+        </html>
+        """, status_code=400)
+    
+    service = get_app_spotify_service()
+    
+    try:
+        tokens = await service.exchange_code_for_tokens(code)
+        refresh_token = tokens["refresh_token"]
+        
+        return HTMLResponse(content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>App Account Authorized!</title></head>
+        <body style="font-family: system-ui; text-align: center; padding: 50px; background: #1a1a2e; color: white;">
+            <h1>✅ App Account Authorized!</h1>
+            <p>Copy this to your <code>.env</code> file:</p>
+            <div style="background: #333; padding: 20px; margin: 20px auto; max-width: 800px; border-radius: 8px; word-break: break-all;">
+                <code style="font-size: 14px; color: #00ff88;">ASTROFM_SPOTIFY_REFRESH_TOKEN={refresh_token}</code>
+            </div>
+            <button onclick="navigator.clipboard.writeText('ASTROFM_SPOTIFY_REFRESH_TOKEN={refresh_token}')" 
+                    style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #1DB954; color: white; border: none; border-radius: 20px;">
+                📋 Copy to Clipboard
+            </button>
+            <p style="color: #888; margin-top: 20px;">After adding to .env, restart the backend.</p>
+        </body>
+        </html>
+        """)
+    
+    except Exception as e:
+        return HTMLResponse(content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Error</title></head>
+        <body style="font-family: system-ui; text-align: center; padding: 50px; background: #1a1a2e; color: white;">
+            <h1>❌ Token Exchange Failed</h1>
+            <p style="color: #ff6b6b;">{str(e)}</p>
+        </body>
+        </html>
+        """, status_code=500)
+
+
+# =============================================================================
 # OAuth Endpoints
 # =============================================================================
 

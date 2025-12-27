@@ -41,14 +41,20 @@ class _BirthChartWheelState extends State<BirthChartWheel>
   late AnimationController _soundWaveController;
   late AnimationController _aspectPulseController;
 
-  // Wheel dimensions
-  static const double wheelSize = 340;
-  static const double outerRadius = 165;
-  static const double signRingRadius = 140;
-  static const double houseRingRadius = 100;
-  static const double innerRadius = 60;
-  static const double planetRadius = 115;
-  static const double signIconRadius = 152;
+  // Wheel dimensions (increased from 340 to 400 for better spacing)
+  static const double wheelSize = 400;
+  static const double outerRadius = 195;
+  static const double signRingRadius = 170;
+  static const double houseRingRadius = 125;
+  static const double innerRadius = 75;
+  static const double centerRadius = 55;
+  static const double signIconRadius = 182;
+  
+  // Planet radii for stacking (normal, inner, outer)
+  static const double planetRadiusNormal = 140;
+  static const double planetRadiusInner = 115;
+  static const double planetRadiusOuter = 165;
+  static const double overlapThreshold = 20.0; // degrees
 
   @override
   void initState() {
@@ -91,7 +97,53 @@ class _BirthChartWheelState extends State<BirthChartWheel>
         .map((p) => WheelPlanetData.fromPlanetSound(p))
         .toList();
     _aspects = AspectCalculator.calculateAspects(_planets);
+    _assignStackingRadii();
   }
+  
+  /// Assign stacking radii to planets that are close together.
+  void _assignStackingRadii() {
+    // Sort planets by angle for easier comparison
+    final sortedPlanets = List<WheelPlanetData>.from(_planets);
+    sortedPlanets.sort((a, b) => a.angle.compareTo(b.angle));
+    
+    // Track which radius each planet should use
+    _planetRadii.clear();
+    
+    for (var i = 0; i < sortedPlanets.length; i++) {
+      final planet = sortedPlanets[i];
+      var assignedRadius = planetRadiusNormal;
+      
+      // Check for nearby planets that already have assigned radii
+      for (var j = 0; j < i; j++) {
+        final other = sortedPlanets[j];
+        final distance = _angularDistance(planet.angle, other.angle);
+        
+        if (distance < overlapThreshold) {
+          // There's an overlap, find an available radius
+          final usedRadius = _planetRadii[other.name] ?? planetRadiusNormal;
+          
+          if (usedRadius == planetRadiusNormal) {
+            assignedRadius = planetRadiusInner;
+          } else if (usedRadius == planetRadiusInner) {
+            assignedRadius = planetRadiusOuter;
+          } else {
+            assignedRadius = planetRadiusNormal;
+          }
+        }
+      }
+      
+      _planetRadii[planet.name] = assignedRadius;
+    }
+  }
+  
+  double _angularDistance(double angle1, double angle2) {
+    var diff = (angle1 - angle2).abs();
+    if (diff > 180) diff = 360 - diff;
+    return diff;
+  }
+  
+  // Map of planet name to its stacking radius
+  final Map<String, double> _planetRadii = {};
 
   @override
   void dispose() {
@@ -187,7 +239,7 @@ class _BirthChartWheelState extends State<BirthChartWheel>
                   signRingRadius: signRingRadius,
                   houseRingRadius: houseRingRadius,
                   innerRadius: innerRadius,
-                  centerRadius: 50,
+                  centerRadius: centerRadius,
                 ),
               ),
               
@@ -202,7 +254,7 @@ class _BirthChartWheelState extends State<BirthChartWheel>
                     aspects: aspectsForSelected,
                     planets: _planets,
                     playingAspect: _playingAspect,
-                    radius: planetRadius,
+                    radius: planetRadiusNormal,
                     center: const Offset(wheelSize / 2, wheelSize / 2),
                   ),
                 ),
@@ -262,7 +314,9 @@ class _BirthChartWheelState extends State<BirthChartWheel>
 
   List<Widget> _buildPlanetOrbs() {
     return _planets.map((planet) {
-      final position = WheelGeometry.getPositionOnWheel(planet.angle, planetRadius);
+      // Use stacking radius if assigned, otherwise default
+      final radius = _planetRadii[planet.name] ?? planetRadiusNormal;
+      final position = WheelGeometry.getPositionOnWheel(planet.angle, radius);
       
       return Positioned(
         left: wheelSize / 2 + position.dx - 22,
