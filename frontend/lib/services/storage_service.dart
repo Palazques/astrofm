@@ -32,6 +32,7 @@ class StorageKeys {
   static const String dailyPlaylistTracks = 'daily_playlist_tracks';
   static const String dailyPlaylistUrl = 'daily_playlist_url';
   static const String dailyPlaylistDate = 'daily_playlist_date';
+  static const String dailyDatasetPlaylist = 'daily_dataset_playlist'; // Full dataset playlist result
   
   // Monthly Zodiac Playlist Cache
   static const String monthlyZodiacPlaylist = 'monthly_zodiac_playlist';
@@ -313,6 +314,39 @@ class StorageService {
     final cachedDate = prefs.getString(StorageKeys.dailyPlaylistDate);
     final today = DateTime.now().toIso8601String().split('T')[0];
     return cachedDate == today && prefs.containsKey(StorageKeys.dailyPlaylistTracks);
+  }
+
+  /// Save the full dataset playlist result to cache with today's date.
+  Future<void> saveDatasetPlaylist(Map<String, dynamic> playlistData) async {
+    final prefs = await _getPrefs();
+    final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
+    
+    await prefs.setString(StorageKeys.dailyDatasetPlaylist, jsonEncode(playlistData));
+    await prefs.setString(StorageKeys.dailyPlaylistDate, today);
+  }
+
+  /// Load cached dataset playlist if it's from today.
+  /// Returns null if no cache or cache is from a different day.
+  Future<Map<String, dynamic>?> loadDatasetPlaylist() async {
+    final prefs = await _getPrefs();
+    
+    // Check if cache is from today
+    final cachedDate = prefs.getString(StorageKeys.dailyPlaylistDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    if (cachedDate != today) {
+      return null; // Cache is stale (different day)
+    }
+    
+    // Load cached dataset playlist
+    final playlistJson = prefs.getString(StorageKeys.dailyDatasetPlaylist);
+    if (playlistJson == null) return null;
+    
+    try {
+      return jsonDecode(playlistJson) as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
   }
 
   // ================================

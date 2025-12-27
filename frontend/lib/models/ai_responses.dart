@@ -41,19 +41,27 @@ class PlaylistParams {
 
 /// Structured daily signal (Resonance, Feedback, or Dissonance).
 /// 
-/// Each signal represents one life area with audio engineering metaphors
-/// and human-friendly context.
+/// Each signal contains 3 message parts for visual hierarchy:
+/// - audioMessage: Music/audio engineering metaphor (prominent)
+/// - cosmicMessage: Light technical astrology (subtle)
+/// - adviceMessage: Relatable, actionable wisdom (bold)
 class DailySignal {
   final String signalType;      // "resonance", "feedback", or "dissonance"
   final String category;        // e.g., "Self", "Communication", "Love & Sex"
-  final String categoryMeaning; // Human-friendly: "How in sync you are with partners"
-  final String message;         // The reading with audio metaphors
+  final String categoryMeaning; // Human-friendly meaning
+  final String message;         // Legacy - backward compat
+  final String audioMessage;    // Music/engineering metaphor
+  final String cosmicMessage;   // Light technical astrology
+  final String adviceMessage;   // Relatable advice
 
   DailySignal({
     required this.signalType,
     required this.category,
     required this.categoryMeaning,
     required this.message,
+    this.audioMessage = '',
+    this.cosmicMessage = '',
+    this.adviceMessage = '',
   });
 
   factory DailySignal.fromJson(Map<String, dynamic> json) {
@@ -62,6 +70,9 @@ class DailySignal {
       category: json['category'] as String? ?? 'Self',
       categoryMeaning: json['category_meaning'] as String? ?? 'Your daily energy',
       message: json['message'] as String? ?? '',
+      audioMessage: json['audio_message'] as String? ?? '',
+      cosmicMessage: json['cosmic_message'] as String? ?? '',
+      adviceMessage: json['advice_message'] as String? ?? '',
     );
   }
 
@@ -69,11 +80,11 @@ class DailySignal {
   String get icon {
     switch (signalType) {
       case 'resonance':
-        return '✅';
+        return '✓';
       case 'feedback':
-        return '⚠️';
+        return '⚠';
       case 'dissonance':
-        return '❌';
+        return '✕';
       default:
         return '•';
     }

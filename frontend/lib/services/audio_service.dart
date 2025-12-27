@@ -206,6 +206,88 @@ class AudioService {
     });
   }
 
+  /// Play two frequencies simultaneously as a chord.
+  /// 
+  /// Creates two oscillators at [freq1] and [freq2] Hz, useful for
+  /// playing aspect connections between planets.
+  /// 
+  /// [freq1] - First frequency in Hz
+  /// [freq2] - Second frequency in Hz
+  /// [duration] - Playback duration in seconds
+  Future<void> playFrequencyChord(int freq1, int freq2, {double duration = 5.0}) async {
+    stop();
+    
+    _ensureContext();
+    final ctx = _audioContext!;
+    
+    if (ctx.state == 'suspended') ctx.resume();
+    _isPlaying = true;
+    _playingController.add(true);
+    
+    final now = ctx.currentTime;
+    
+    // First frequency oscillator
+    final osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.value = freq1.toDouble();
+    
+    // Second frequency oscillator
+    final osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = freq2.toDouble();
+    
+    // Gain nodes with envelope
+    final gain1 = ctx.createGain();
+    gain1.gain.setValueAtTime(0.0, now);
+    gain1.gain.linearRampToValueAtTime(0.2, now + 0.15);
+    gain1.gain.setValueAtTime(0.2, now + duration - 0.5);
+    gain1.gain.linearRampToValueAtTime(0.0, now + duration);
+    
+    final gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0.0, now);
+    gain2.gain.linearRampToValueAtTime(0.2, now + 0.15);
+    gain2.gain.setValueAtTime(0.2, now + duration - 0.5);
+    gain2.gain.linearRampToValueAtTime(0.0, now + duration);
+    
+    // Pan slightly left and right for stereo separation
+    final panner1 = ctx.createStereoPanner();
+    panner1.pan.value = -0.3;
+    
+    final panner2 = ctx.createStereoPanner();
+    panner2.pan.value = 0.3;
+    
+    // Connect chains
+    osc1.connect(gain1);
+    gain1.connect(panner1);
+    panner1.connect(ctx.destination);
+    
+    osc2.connect(gain2);
+    gain2.connect(panner2);
+    panner2.connect(ctx.destination);
+    
+    // Start oscillators
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + duration);
+    osc2.stop(now + duration);
+    
+    // Store references
+    _activeOscillators['chord_1'] = osc1;
+    _activeOscillators['chord_2'] = osc2;
+    _activeGains['chord_1'] = gain1;
+    _activeGains['chord_2'] = gain2;
+    
+    // Schedule cleanup
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = Timer(Duration(milliseconds: (duration * 1000).toInt()), () {
+      if (_isPlaying) {
+        _cleanup();
+        _isPlaying = false;
+        _playingController.add(false);
+      }
+    });
+  }
+
   /// Play a binaural beat for brainwave entrainment.
   /// 
   /// Creates a stereo effect where the left ear receives [carrierHz] and

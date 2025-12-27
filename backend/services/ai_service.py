@@ -334,8 +334,8 @@ For playlist parameters, include as JSON on a separate line:
         random.seed(datetime.now(timezone.utc).strftime("%Y-%m-%d"))  # Same areas per day
         selected_areas = random.sample(life_areas_list, 3)
         
-        # Build the structured signals prompt
-        prompt = f"""Generate 3 daily signals for this user in Co-Star style with audio engineering metaphors.
+        # Build the structured signals prompt with 3-part messages
+        prompt = f"""Generate 3 daily signals for this user. Each signal has 3 parts.
 
 USER'S CHART:
 - Sun: {sun_planet.get('sign', 'Unknown')} in House {sun_planet.get('house', '?')}
@@ -350,38 +350,45 @@ TODAY'S TRANSITS:
 - Season: {current_transits.get('season', 'Unknown')}
 - Retrograde: {', '.join(current_transits.get('retrograde_planets', [])) or 'None'}
 
-Generate EXACTLY 3 signals in this format:
+Generate EXACTLY 3 signals in this format (each on ONE line):
 
-RESONANCE|{selected_areas[0]}|[1-2 sentence reading with audio terms like "clean signal", "phase aligned", "stereo clarity"]
+RESONANCE|{selected_areas[0]}|AUDIO: [audio engineering metaphor]|COSMIC: [light astrology with planet name]|ADVICE: [relatable advice]
 
-FEEDBACK|{selected_areas[1]}|[1-2 sentence reading with audio terms like "too much gain", "clipping", "ego loops", "over-processed"]
+FEEDBACK|{selected_areas[1]}|AUDIO: [audio warning metaphor]|COSMIC: [light astrology with planet name]|ADVICE: [relatable caution]
 
-DISSONANCE|{selected_areas[2]}|[1-2 sentence reading with audio terms like "static", "out of tune", "weak signal", "phase issues"]
+DISSONANCE|{selected_areas[2]}|AUDIO: [audio problem metaphor]|COSMIC: [light astrology with planet name]|ADVICE: [helpful guidance]
+
+MESSAGE STYLE GUIDE:
+- AUDIO: Use terms like "signal clarity", "phase aligned", "clipping", "static", "low-pass filter", "gain"
+- COSMIC: Use planet name + feeling (e.g., "Venus energy is flowing" or "Mercury's influence is making thoughts race"). NO aspects, houses, or technical terms.
+- ADVICE: Simple, human advice anyone can relate to. No astrology or music terms.
 
 RULES:
-- Be blunt and direct like Co-Star - no flowery language
-- Use audio engineering metaphors naturally
-- Each signal is 1-2 sentences MAX
+- Be blunt and direct like Co-Star
+- Each part is 1 sentence MAX
 - Use "you" and "your" pronouns
-- Reference the actual planet positions above
 
 After the signals, add playlist parameters as JSON:
 {{"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}}"""
 
         response = self._generate_response(prompt)
         
-        # Parse the structured response
+        # Parse the structured 3-part response
         signals = []
         lines = response.strip().split("\n")
         
         for line in lines:
             line = line.strip()
             if "|" in line and (line.startswith("RESONANCE") or line.startswith("FEEDBACK") or line.startswith("DISSONANCE")):
-                parts = line.split("|", 2)
-                if len(parts) >= 3:
+                parts = line.split("|")
+                if len(parts) >= 5:
                     signal_type = parts[0].strip().lower()
                     category = parts[1].strip()
-                    message = parts[2].strip()
+                    
+                    # Extract the 3 message parts
+                    audio_msg = parts[2].replace("AUDIO:", "").strip() if len(parts) > 2 else ""
+                    cosmic_msg = parts[3].replace("COSMIC:", "").strip() if len(parts) > 3 else ""
+                    advice_msg = parts[4].replace("ADVICE:", "").strip() if len(parts) > 4 else ""
                     
                     # Get human-friendly meaning
                     category_meaning = self.LIFE_AREAS.get(category, "Your daily energy")
@@ -390,29 +397,42 @@ After the signals, add playlist parameters as JSON:
                         "signal_type": signal_type,
                         "category": category,
                         "category_meaning": category_meaning,
-                        "message": message,
+                        "message": audio_msg,  # Legacy field
+                        "audio_message": audio_msg,
+                        "cosmic_message": cosmic_msg,
+                        "advice_message": advice_msg,
                     })
         
         # Fallback signals if parsing failed
         if len(signals) < 3:
+            sun_sign = sun_planet.get('sign', 'Unknown')
             signals = [
                 {
                     "signal_type": "resonance",
                     "category": "Self",
                     "category_meaning": "How you're showing up today",
-                    "message": f"Your {sun_planet.get('sign', 'Unknown')} Sun is broadcasting clearly. Signal is stable.",
+                    "message": f"Your {sun_sign} signal is broadcasting clearly.",
+                    "audio_message": f"Your {sun_sign} signal is broadcasting clearly. Full stereo clarity.",
+                    "cosmic_message": f"Sun energy is amplifying your presence today.",
+                    "advice_message": "Take up space. You've earned the right to be seen.",
                 },
                 {
                     "signal_type": "feedback",
                     "category": "Communication",
                     "category_meaning": "Your mental clarity and expression", 
-                    "message": "Watch the gain on your words today. Easy to clip.",
+                    "message": "Watch the gain on your words today.",
+                    "audio_message": "Mercury's adding too much gain. Words are clipping.",
+                    "cosmic_message": "Mercury's influence is making thoughts move faster than words.",
+                    "advice_message": "Pause before you respond. Give yourself headroom.",
                 },
                 {
                     "signal_type": "dissonance",
                     "category": "Work & Career",
                     "category_meaning": "Your focus and productivity",
-                    "message": "Some static in your focus. Low-pass filter out the noise.",
+                    "message": "Some static in your focus.",
+                    "audio_message": "Saturn's low-pass filter is cutting the details.",
+                    "cosmic_message": "Saturn's weight is pressing down on your ambitions.",
+                    "advice_message": "Focus on one thing at a time. The clarity will come.",
                 },
             ]
         

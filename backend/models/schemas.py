@@ -132,8 +132,10 @@ class DailySignal(BaseModel):
     """
     Structured daily reading signal (Resonance, Feedback, or Dissonance).
     
-    Each signal represents one life area with audio engineering metaphors
-    and human-friendly context.
+    Each signal contains 3 message parts:
+    - audio_message: Music/engineering metaphor (prominent)
+    - cosmic_message: Light technical astrology (planet + feeling)
+    - advice_message: Relatable, actionable wisdom
     """
     signal_type: str = Field(
         ...,
@@ -149,7 +151,19 @@ class DailySignal(BaseModel):
     )
     message: str = Field(
         ...,
-        description="The reading text with audio engineering metaphors"
+        description="Legacy single message (backward compat)"
+    )
+    audio_message: str = Field(
+        default="",
+        description="Music/audio engineering metaphor"
+    )
+    cosmic_message: str = Field(
+        default="",
+        description="Light technical astrology (planet name + accessible feeling)"
+    )
+    advice_message: str = Field(
+        default="",
+        description="Relatable, actionable wisdom (no astro/music terms)"
     )
 
 

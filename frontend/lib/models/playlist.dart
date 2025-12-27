@@ -187,6 +187,22 @@ class DatasetTrack {
     final seconds = (durationMs % 60000) ~/ 1000;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
+
+  /// Serialize to JSON for storage.
+  Map<String, dynamic> toJson() => {
+    'track_id': trackId,
+    'track_name': trackName,
+    'artists': artists,
+    'album_name': albumName,
+    'duration_ms': durationMs,
+    'popularity': popularity,
+    'energy': energy,
+    'valence': valence,
+    'danceability': danceability,
+    'main_genre': mainGenre,
+    'subgenre': subgenre,
+    'element': element,
+  };
 }
 
 /// Playlist result from the 114K music dataset.
@@ -230,6 +246,17 @@ class DatasetPlaylistResult {
       generationMetadata: json['generation_metadata'] as Map<String, dynamic>,
     );
   }
+
+  /// Serialize to JSON for storage.
+  Map<String, dynamic> toJson() => {
+    'tracks': tracks.map((t) => t.toJson()).toList(),
+    'total_duration_ms': totalDurationMs,
+    'vibe_match_score': vibeMatchScore,
+    'energy_arc': energyArc,
+    'element_distribution': elementDistribution,
+    'genre_distribution': genreDistribution,
+    'generation_metadata': generationMetadata,
+  };
 
   /// Get formatted total duration (e.g., "1h 10m" or "45m")
   String get formattedDuration {

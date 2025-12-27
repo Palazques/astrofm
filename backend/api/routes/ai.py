@@ -44,13 +44,16 @@ def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse
         ai_service = get_ai_service()
         result = ai_service.generate_daily_reading(birth_chart, current_transits, request.subject_name)
         
-        # Build signals from result
+        # Build signals from result with 3-part messages
         signals = [
             DailySignal(
                 signal_type=s["signal_type"],
                 category=s["category"],
                 category_meaning=s["category_meaning"],
-                message=s["message"],
+                message=s.get("message", ""),
+                audio_message=s.get("audio_message", ""),
+                cosmic_message=s.get("cosmic_message", ""),
+                advice_message=s.get("advice_message", ""),
             )
             for s in result.get("signals", [])
         ]

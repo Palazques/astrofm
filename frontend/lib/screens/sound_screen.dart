@@ -7,6 +7,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/sound_orb.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/inline_error.dart';
+import '../widgets/birth_chart_wheel/birth_chart_wheel.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -49,14 +50,31 @@ class _SoundScreenState extends State<SoundScreen> {
       }
     : defaultTestBirthData;
     
+  // Sign to element mapping
+  static const Map<String, String> _signToElement = {
+    'Aries': 'Fire', 'Leo': 'Fire', 'Sagittarius': 'Fire',
+    'Taurus': 'Earth', 'Virgo': 'Earth', 'Capricorn': 'Earth',
+    'Gemini': 'Air', 'Libra': 'Air', 'Aquarius': 'Air',
+    'Cancer': 'Water', 'Scorpio': 'Water', 'Pisces': 'Water',
+  };
+  
+  /// Get the user's Sun sign from sonification data
+  String get _sunSign {
+    if (_sonification == null) return 'Cancer'; // Fallback
+    final sunPlanet = _sonification!.planets.where((p) => p.planet == 'Sun').firstOrNull;
+    return sunPlanet?.sign ?? 'Cancer';
+  }
+  
   Map<String, dynamic> get soundProfile => {
     'name': _birthData?.name ?? 'Paul',
-    'sign': 'Cancer',
+    'sign': _sunSign,
     'createdFrom': _birthData != null 
         ? '${_birthData!.formattedDate} • ${_birthData!.formattedTime} • ${_birthData!.locationName}'
         : 'July 15, 1990 • 3:42 PM • Los Angeles, CA',
-    'dominantFrequency': '528 Hz',
-    'element': 'Water',
+    'dominantFrequency': _sonification != null 
+        ? '${_sonification!.dominantFrequency.toStringAsFixed(0)} Hz'
+        : '528 Hz',
+    'element': _signToElement[_sunSign] ?? 'Water',
   };
 
   List<Map<String, dynamic>> get frequencyBreakdown {
@@ -307,8 +325,19 @@ class _SoundScreenState extends State<SoundScreen> {
             _buildTodaysInfluence(),
             const SizedBox(height: 24),
 
-            // Frequency Breakdown
-            _buildFrequencyBreakdown(),
+            // Birth Chart Wheel
+            if (_sonification != null)
+              Center(
+                child: BirthChartWheel(
+                  sonification: _sonification!,
+                  audioService: _audioService,
+                  onPlanetSelected: (planet) {
+                    if (planet != null) {
+                      setState(() => _isPlaying = true);
+                    }
+                  },
+                ),
+              ),
           ],
         ),
       ),

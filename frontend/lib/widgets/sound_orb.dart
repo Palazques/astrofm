@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../config/design_tokens.dart';
 
-/// An animated gradient orb with glow effect.
+/// An animated gradient orb with glow effect and optional orbital ring.
 class SoundOrb extends StatefulWidget {
   final double size;
   final List<Color> colors;
   final bool animate;
   final bool showWaveform;
+  final bool showOrbitalRing;
   final Widget? child;
 
   const SoundOrb({
@@ -19,6 +21,7 @@ class SoundOrb extends StatefulWidget {
     ],
     this.animate = true,
     this.showWaveform = true,
+    this.showOrbitalRing = false,
     this.child,
   });
 
@@ -27,36 +30,69 @@ class SoundOrb extends StatefulWidget {
 }
 
 class _SoundOrbState extends State<SoundOrb>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+    with TickerProviderStateMixin {
+  late AnimationController _floatController;
+  late AnimationController _ringController;
   late Animation<double> _floatAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _floatController = AnimationController(
       duration: const Duration(seconds: 6),
       vsync: this,
     );
 
+    _ringController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
     _floatAnimation = Tween<double>(begin: 0, end: 10).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
 
     if (widget.animate) {
-      _controller.repeat(reverse: true);
+      _floatController.repeat(reverse: true);
+    }
+    
+    if (widget.showOrbitalRing) {
+      _ringController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(SoundOrb oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Handle animation state changes
+    if (widget.animate != oldWidget.animate) {
+      if (widget.animate) {
+        _floatController.repeat(reverse: true);
+      } else {
+        _floatController.stop();
+      }
+    }
+    
+    if (widget.showOrbitalRing != oldWidget.showOrbitalRing) {
+      if (widget.showOrbitalRing) {
+        _ringController.repeat();
+      } else {
+        _ringController.stop();
+      }
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _floatController.dispose();
+    _ringController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    final orbWidget = AnimatedBuilder(
       animation: _floatAnimation,
       builder: (context, child) {
         return Transform.translate(
@@ -84,6 +120,44 @@ class _SoundOrbState extends State<SoundOrb>
         ),
         child: widget.child ??
             (widget.showWaveform ? _buildWaveform() : null),
+      ),
+    );
+
+    if (!widget.showOrbitalRing) {
+      return orbWidget;
+    }
+
+    // Wrap with orbital ring
+    final ringSize = widget.size + 30;
+    return SizedBox(
+      width: ringSize,
+      height: ringSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Rotating orbital ring
+          AnimatedBuilder(
+            animation: _ringController,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _ringController.value * 2 * math.pi,
+                child: Container(
+                  width: ringSize,
+                  height: ringSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withAlpha(26),
+                      width: 1,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // The orb itself
+          orbWidget,
+        ],
       ),
     );
   }
