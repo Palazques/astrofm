@@ -32,20 +32,31 @@ class WheelPlanetData {
       symbol: _planetSymbols[planet.planet] ?? '★',
       sign: planet.sign,
       house: planet.house,
-      angle: _calculateAngle(planet.house, planet.houseDegree),
+      angle: _calculateAngleFromSign(planet.sign, planet.houseDegree),
       frequency: planet.frequency.round(),
       intensity: (planet.intensity * 100).round(),
       color: _planetColors[planet.planet] ?? AppColors.electricYellow,
     );
   }
 
-  /// Calculate wheel angle from house and degree position.
-  static double _calculateAngle(int house, double houseDegree) {
-    // Each house is 30 degrees, starting from house 1 at the left (180°)
-    // Houses go counter-clockwise in traditional charts
-    final baseAngle = ((house - 1) * 30.0) + 180.0;
-    final degreeOffset = (houseDegree / 30.0) * 30.0;
-    return (baseAngle + degreeOffset) % 360;
+  /// Calculate wheel angle from zodiac sign and degree within the sign.
+  /// 
+  /// The wheel displays zodiac signs in order starting with Aries.
+  /// Each sign occupies 30 degrees of the wheel.
+  static double _calculateAngleFromSign(String sign, double degreeInSign) {
+    // Map sign names to their index (0-11)
+    const signOrder = [
+      'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+      'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+    ];
+    
+    final signIndex = signOrder.indexOf(sign);
+    if (signIndex == -1) return 0;
+    
+    // Each sign is 30 degrees, starting from Aries at index 0
+    // Add the degree offset within the sign (clamped to 0-30)
+    final clampedDegree = degreeInSign.clamp(0.0, 30.0);
+    return (signIndex * 30.0) + clampedDegree;
   }
 
   static const Map<String, String> _planetSymbols = {
