@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
+import '../../controllers/onboarding_controller.dart';
 import '../../models/onboarding_data.dart';
 import '../../models/ai_responses.dart';
 import '../../services/api_service.dart';
@@ -14,11 +15,13 @@ import '../../widgets/glass_card.dart';
 /// Screen 10: Sound ready - completion celebration with waveform orb.
 class SoundReadyScreen extends StatefulWidget {
   final OnboardingData data;
+  final OnboardingController? onboardingController;
   final VoidCallback onComplete;
 
   const SoundReadyScreen({
     super.key,
     required this.data,
+    this.onboardingController,
     required this.onComplete,
   });
 
@@ -90,7 +93,36 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
     
     // Load user-specific data
     _loadUserData();
-    _loadWelcomeMessage();
+    
+    // Check if welcome message was preloaded by the controller
+    if (widget.onboardingController?.preloadedWelcomeMessage != null) {
+      _welcomeMessage = widget.onboardingController!.preloadedWelcomeMessage;
+      _isLoadingWelcome = false;
+    } else if (widget.onboardingController?.isLoadingWelcomeMessage == true) {
+      // Still loading - listen for updates
+      _isLoadingWelcome = true;
+      widget.onboardingController!.addListener(_onControllerUpdate);
+    } else {
+      // No preloaded message - load it now
+      _loadWelcomeMessage();
+    }
+  }
+
+  void _onControllerUpdate() {
+    final controller = widget.onboardingController;
+    if (controller != null && !_isLoadingWelcome) return;
+    
+    if (controller?.preloadedWelcomeMessage != null) {
+      setState(() {
+        _welcomeMessage = controller!.preloadedWelcomeMessage;
+        _isLoadingWelcome = false;
+      });
+      controller?.removeListener(_onControllerUpdate);
+    } else if (controller?.isLoadingWelcomeMessage == false) {
+      // Loading finished but no message - trigger fallback
+      _loadWelcomeMessage();
+      controller?.removeListener(_onControllerUpdate);
+    }
   }
 
   /// Load natal chart and calculate dynamic stats
@@ -175,6 +207,7 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
 
   @override
   void dispose() {
+    widget.onboardingController?.removeListener(_onControllerUpdate);
     _contentController.dispose();
     _statsController.dispose();
     _waveformController.dispose();
@@ -435,11 +468,20 @@ class _SoundReadyScreenState extends State<SoundReadyScreen>
             if (_isLoadingWelcome)
               Column(
                 children: [
-                  Container(height: 24, width: 200, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(4))),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 200),
+                    child: Container(height: 24, width: double.infinity, decoration: BoxDecoration(color: Colors.white.withAlpha(20), borderRadius: BorderRadius.circular(4))),
+                  ),
                   const SizedBox(height: 12),
-                  Container(height: 14, width: 280, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(4))),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 280),
+                    child: Container(height: 14, width: double.infinity, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(4))),
+                  ),
                   const SizedBox(height: 6),
-                  Container(height: 14, width: 200, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(4))),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 200),
+                    child: Container(height: 14, width: double.infinity, decoration: BoxDecoration(color: Colors.white.withAlpha(15), borderRadius: BorderRadius.circular(4))),
+                  ),
                 ],
               )
             else if (_welcomeMessage != null)

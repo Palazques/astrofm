@@ -3,8 +3,10 @@ import '../models/onboarding_data.dart';
 import '../models/location.dart';
 import '../models/birth_data.dart';
 import '../models/user_profile.dart';
+import '../models/ai_responses.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 
 /// State management for the onboarding flow.
 class OnboardingController extends ChangeNotifier {
@@ -12,6 +14,11 @@ class OnboardingController extends ChangeNotifier {
   int _currentStep = 0;
   bool _isLoading = false;
   String? _error;
+
+  // Preloaded welcome message (fetched after birth data is entered)
+  WelcomeMessage? _preloadedWelcomeMessage;
+  bool _isLoadingWelcomeMessage = false;
+  String? _welcomeMessageError;
 
   /// Current onboarding data.
   OnboardingData get data => _data;
@@ -27,6 +34,15 @@ class OnboardingController extends ChangeNotifier {
 
   /// Error message if any.
   String? get error => _error;
+
+  /// Preloaded welcome message for the final screen.
+  WelcomeMessage? get preloadedWelcomeMessage => _preloadedWelcomeMessage;
+
+  /// Whether welcome message is currently being preloaded.
+  bool get isLoadingWelcomeMessage => _isLoadingWelcomeMessage;
+
+  /// Error from welcome message preload (if any).
+  String? get welcomeMessageError => _welcomeMessageError;
 
   /// Update display name (Screen 2).
   void updateName(String name) {
@@ -54,6 +70,40 @@ class OnboardingController extends ChangeNotifier {
       birthTimeUnknown: timeUnknown ?? _data.birthTimeUnknown,
     );
     notifyListeners();
+
+    // Preload welcome message in background when birth data is complete
+    if (_data.formattedBirthDatetime != null && _data.birthLocation != null) {
+      preloadWelcomeMessage();
+    }
+  }
+
+  /// Preload the AI welcome message in the background.
+  /// Called automatically when birth data is submitted.
+  Future<void> preloadWelcomeMessage() async {
+    if (_data.formattedBirthDatetime == null || _data.birthLocation == null) return;
+    if (_isLoadingWelcomeMessage || _preloadedWelcomeMessage != null) return;
+
+    _isLoadingWelcomeMessage = true;
+    _welcomeMessageError = null;
+    notifyListeners();
+
+    try {
+      final apiService = ApiService();
+      final message = await apiService.getWelcomeMessage(
+        datetime: _data.formattedBirthDatetime!,
+        latitude: _data.birthLocation!.latitude,
+        longitude: _data.birthLocation!.longitude,
+      );
+      apiService.dispose();
+
+      _preloadedWelcomeMessage = message;
+      _isLoadingWelcomeMessage = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoadingWelcomeMessage = false;
+      _welcomeMessageError = e.toString();
+      notifyListeners();
+    }
   }
 
   /// Update how found us selections (Screen 4).
@@ -241,6 +291,9 @@ class OnboardingController extends ChangeNotifier {
     _currentStep = 0;
     _isLoading = false;
     _error = null;
+    _preloadedWelcomeMessage = null;
+    _isLoadingWelcomeMessage = false;
+    _welcomeMessageError = null;
     notifyListeners();
   }
 }

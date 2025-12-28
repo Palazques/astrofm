@@ -208,6 +208,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             // Screen 11: Sound Ready
             SoundReadyScreen(
               data: _controller.data,
+              onboardingController: _controller,
               onComplete: () async {
                 await _controller.completeOnboarding();
                 widget.onComplete();

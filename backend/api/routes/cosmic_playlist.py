@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
 from services.cosmic.app_spotify import get_app_spotify_service
+from models.cosmic_models import CosmicPlaylistRequest, CosmicPlaylistResponse, TrackInfo
 
 
 router = APIRouter(prefix="/api/cosmic", tags=["cosmic-playlist"])
@@ -178,7 +179,7 @@ async def app_auth_callback(
 # =============================================================================
 
 @router.post("/generate")
-async def generate_cosmic_playlist(request: "CosmicPlaylistRequest"):
+async def generate_cosmic_playlist(request: CosmicPlaylistRequest):
     """
     Generate a cosmic playlist based on astrological birth data and genres.
     
@@ -190,7 +191,7 @@ async def generate_cosmic_playlist(request: "CosmicPlaylistRequest"):
     Returns:
         CosmicPlaylistResponse with playlist URL and track info
     """
-    from models.cosmic_models import CosmicPlaylistRequest, CosmicPlaylistResponse, TrackInfo
+    # Models imported at top of file
     from services.cosmic.playlist_builder import get_playlist_builder
     from services.transits import get_current_moon_sign
     
@@ -245,7 +246,4 @@ async def generate_cosmic_playlist(request: "CosmicPlaylistRequest"):
         ],
     )
 
-
-# Import models for type hints
-from models.cosmic_models import CosmicPlaylistRequest, CosmicPlaylistResponse
 

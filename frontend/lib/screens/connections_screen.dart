@@ -4,7 +4,11 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/add_friend_sheet.dart';
+import '../widgets/connections/constellation_map.dart';
+import '../widgets/connections/friend_detail_card.dart';
+import '../widgets/connections/background_stars.dart';
 import '../models/friend_data.dart';
+import '../services/compatibility_service.dart';
 
 /// Connections (Friends) screen.
 class ConnectionsScreen extends StatefulWidget {
@@ -18,25 +22,80 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   String _filter = 'all';
   String _searchQuery = '';
   final _searchController = TextEditingController();
+  final _compatibilityService = CompatibilityService();
 
-  // Mutable lists for connections and requests
-  late List<Map<String, dynamic>> _connections;
+  // Constellation selection state
+  FriendData? _selectedFriend;
+  FriendData? _hoveredFriend;
+
+  // Friends data as FriendData objects
+  late List<FriendData> _friends;
   late List<Map<String, dynamic>> _pendingRequests;
 
   @override
   void initState() {
     super.initState();
-    _connections = [
-      {'id': 1, 'name': 'Maya Chen', 'sign': 'Pisces', 'color1': AppColors.hotPink, 'color2': AppColors.cosmicPurple, 'compatibility': 91, 'lastAligned': '2 hours ago', 'status': 'online', 'mutualPlanets': ['Moon', 'Venus']},
-      {'id': 2, 'name': 'Jordan Rivera', 'sign': 'Aries', 'color1': AppColors.electricYellow, 'color2': AppColors.hotPink, 'compatibility': 78, 'lastAligned': 'Yesterday', 'status': 'online', 'mutualPlanets': ['Mars', 'Sun']},
-      {'id': 3, 'name': 'Alex Kim', 'sign': 'Scorpio', 'color1': AppColors.cosmicPurple, 'color2': AppColors.teal, 'compatibility': 87, 'lastAligned': '3 days ago', 'status': 'offline', 'mutualPlanets': ['Pluto', 'Moon']},
-      {'id': 4, 'name': 'Sam Taylor', 'sign': 'Leo', 'color1': AppColors.teal, 'color2': AppColors.electricYellow, 'compatibility': 65, 'lastAligned': '1 week ago', 'status': 'offline', 'mutualPlanets': ['Sun']},
-      {'id': 5, 'name': 'Riley Morgan', 'sign': 'Libra', 'color1': AppColors.orange, 'color2': AppColors.hotPink, 'compatibility': 82, 'lastAligned': '4 days ago', 'status': 'online', 'mutualPlanets': ['Venus', 'Mercury']},
+    _friends = [
+      FriendData(
+        id: 1, name: 'Maya Chen', username: '@mayachen',
+        avatarColors: [AppColors.hotPink.value, AppColors.cosmicPurple.value],
+        sunSign: 'Pisces', moonSign: 'Cancer', risingSign: 'Scorpio',
+        dominantFrequency: '432 Hz', element: 'Water', modality: 'Mutable',
+        compatibilityScore: 91, status: 'online', lastAligned: '2 hours ago',
+        mutualPlanets: ['Moon', 'Venus'],
+      ),
+      FriendData(
+        id: 2, name: 'Jordan Rivera', username: '@jordanrivera',
+        avatarColors: [AppColors.electricYellow.value, AppColors.hotPink.value],
+        sunSign: 'Aries', moonSign: 'Leo', risingSign: 'Sagittarius',
+        dominantFrequency: '528 Hz', element: 'Fire', modality: 'Cardinal',
+        compatibilityScore: 78, status: 'online', lastAligned: 'Yesterday',
+        mutualPlanets: ['Mars', 'Sun'],
+      ),
+      FriendData(
+        id: 3, name: 'Alex Kim', username: '@alexkim',
+        avatarColors: [AppColors.cosmicPurple.value, AppColors.teal.value],
+        sunSign: 'Scorpio', moonSign: 'Pisces', risingSign: 'Cancer',
+        dominantFrequency: '396 Hz', element: 'Water', modality: 'Fixed',
+        compatibilityScore: 87, status: 'offline', lastAligned: '3 days ago',
+        mutualPlanets: ['Pluto', 'Moon'],
+      ),
+      FriendData(
+        id: 4, name: 'Sam Taylor', username: '@samtaylor',
+        avatarColors: [AppColors.teal.value, AppColors.electricYellow.value],
+        sunSign: 'Leo', moonSign: 'Aries', risingSign: 'Leo',
+        dominantFrequency: '639 Hz', element: 'Fire', modality: 'Fixed',
+        compatibilityScore: 65, status: 'offline', lastAligned: '1 week ago',
+        mutualPlanets: ['Sun'],
+      ),
+      FriendData(
+        id: 5, name: 'Riley Morgan', username: '@rileymorgan',
+        avatarColors: [AppColors.orange.value, AppColors.hotPink.value],
+        sunSign: 'Libra', moonSign: 'Gemini', risingSign: 'Aquarius',
+        dominantFrequency: '741 Hz', element: 'Air', modality: 'Cardinal',
+        compatibilityScore: 82, status: 'online', lastAligned: '4 days ago',
+        mutualPlanets: ['Venus', 'Mercury'],
+      ),
+      FriendData(
+        id: 6, name: 'Casey Jones', username: '@caseyjones',
+        avatarColors: [0xFFE84855, AppColors.cosmicPurple.value],
+        sunSign: 'Virgo', moonSign: 'Capricorn', risingSign: 'Taurus',
+        dominantFrequency: '852 Hz', element: 'Earth', modality: 'Mutable',
+        compatibilityScore: 73, status: 'offline', lastAligned: '5 days ago',
+        mutualPlanets: ['Mercury'],
+      ),
+      FriendData(
+        id: 7, name: 'Drew Park', username: '@drewpark',
+        avatarColors: [0xFF00B4D8, AppColors.electricYellow.value],
+        sunSign: 'Aquarius', moonSign: 'Libra', risingSign: 'Gemini',
+        dominantFrequency: '963 Hz', element: 'Air', modality: 'Fixed',
+        compatibilityScore: 88, status: 'online', lastAligned: '1 day ago',
+        mutualPlanets: ['Uranus', 'Moon'],
+      ),
     ];
     
     _pendingRequests = [
       {'id': 101, 'name': 'Chris Lee', 'sign': 'Capricorn', 'color1': AppColors.cosmicPurple, 'color2': AppColors.electricYellow},
-      {'id': 102, 'name': 'Pat Johnson', 'sign': 'Gemini', 'color1': AppColors.hotPink, 'color2': AppColors.teal},
     ];
   }
 
@@ -53,27 +112,29 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     return AppColors.red;
   }
 
-  List<Map<String, dynamic>> get filteredConnections {
-    var list = List<Map<String, dynamic>>.from(_connections);
+  List<FriendData> get filteredFriends {
+    var list = List<FriendData>.from(_friends);
     
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
-      list = list.where((c) {
-        final name = (c['name'] as String).toLowerCase();
-        return name.contains(_searchQuery.toLowerCase());
-      }).toList();
+      list = list.where((f) => f.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
     }
     
     // Apply sort filter
     if (_filter == 'compatible') {
-      list.sort((a, b) => (b['compatibility'] as int).compareTo(a['compatibility'] as int));
+      list.sort((a, b) => b.compatibilityScore.compareTo(a.compatibilityScore));
     } else if (_filter == 'recent') {
       // Sort by lastAligned - simplified for mock data
-      final order = ['2 hours ago', 'Yesterday', '3 days ago', '4 days ago', '1 week ago'];
-      list.sort((a, b) => order.indexOf(a['lastAligned'] as String).compareTo(order.indexOf(b['lastAligned'] as String)));
+      final order = ['2 hours ago', 'Yesterday', '1 day ago', '3 days ago', '4 days ago', '5 days ago', '1 week ago'];
+      list.sort((a, b) => order.indexOf(a.lastAligned ?? '').compareTo(order.indexOf(b.lastAligned ?? '')));
     }
     
     return list;
+  }
+
+  List<FriendData> _getConnectedFriends(FriendData friend) {
+    final connections = _compatibilityService.buildConnections(_friends);
+    return _compatibilityService.getConnectedFriends(friend, connections);
   }
 
   void _showAddFriendSheet() {
@@ -93,14 +154,23 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   void _acceptRequest(Map<String, dynamic> request) {
     setState(() {
       _pendingRequests.removeWhere((r) => r['id'] == request['id']);
-      // Add to connections with default values
-      _connections.insert(0, {
-        ...request,
-        'compatibility': 75, // Would be calculated by API
-        'lastAligned': 'Just now',
-        'status': 'online',
-        'mutualPlanets': ['Moon'],
-      });
+      // Add to friends list as FriendData
+      _friends.insert(0, FriendData(
+        id: request['id'] as int,
+        name: request['name'] as String,
+        username: '@${(request['name'] as String).toLowerCase().replaceAll(' ', '')}',
+        avatarColors: [(request['color1'] as Color).value, (request['color2'] as Color).value],
+        sunSign: request['sign'] as String,
+        moonSign: 'Unknown',
+        risingSign: 'Unknown',
+        dominantFrequency: '432 Hz',
+        element: 'Unknown',
+        modality: 'Unknown',
+        compatibilityScore: 75, // Would be calculated by API
+        status: 'online',
+        lastAligned: 'Just now',
+        mutualPlanets: ['Moon'],
+      ));
     });
     
     ScaffoldMessenger.of(context).showSnackBar(
@@ -149,13 +219,14 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     );
   }
 
-  void _quickAlign(Map<String, dynamic> connection) {
-    // Navigate to align screen with friend pre-selected
-    // Since AlignScreen uses internal state, we'll navigate and show a snackbar
-    // In a full implementation, you'd pass arguments to pre-select the friend
+
+
+  void _navigateToFriendProfileFromData(FriendData friend) {
+    Navigator.pushNamed(context, '/friend-profile', arguments: friend);
+  }
+
+  void _quickAlignFriend(FriendData friend) {
     Navigator.pushNamed(context, '/align');
-    
-    // Show feedback
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -163,10 +234,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             const Icon(Icons.access_time_rounded, color: AppColors.cosmicPurple, size: 20),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Starting alignment with ${connection['name']}...',
-                style: GoogleFonts.spaceGrotesk(color: Colors.white),
-              ),
+              child: Text('Starting alignment with ${friend.name}...', style: GoogleFonts.spaceGrotesk(color: Colors.white)),
             ),
           ],
         ),
@@ -180,48 +248,93 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppHeader(
-              showBackButton: false,
-              showMenuButton: true,
-              title: 'Connections',
-              rightAction: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
-                  borderRadius: BorderRadius.circular(12),
+    final friends = filteredFriends;
+    
+    return Stack(
+      children: [
+        // Background stars
+        const Positioned.fill(child: BackgroundStars()),
+        const Positioned.fill(child: NebulaOverlay()),
+        
+        // Main content
+        SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppHeader(
+                  showBackButton: false,
+                  showMenuButton: true,
+                  title: 'Connections',
+                  rightAction: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.person_add_rounded, color: Colors.white, size: 20),
+                      onPressed: _showAddFriendSheet,
+                    ),
+                  ),
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.person_add_rounded, color: Colors.white, size: 20),
-                  onPressed: _showAddFriendSheet,
+                const SizedBox(height: 16),
+
+                // Search Bar
+                _buildSearchBar(),
+                const SizedBox(height: 20),
+
+                // Filter Buttons
+                _buildFilterButtons(),
+                const SizedBox(height: 20),
+
+                // Pending Requests (compact)
+                if (_pendingRequests.isNotEmpty) ...[
+                  _buildPendingRequests(),
+                  const SizedBox(height: 20),
+                ],
+
+                // Constellation Map Section Header
+                Row(
+                  children: [
+                    Text('✦', style: TextStyle(color: AppColors.electricYellow, fontSize: 12)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Your Constellation',
+                      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(153)),
+                    ),
+                    Text(
+                      ' · ${friends.length} stars',
+                      style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(77)),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 12),
+
+                // Constellation Map
+                ConstellationMap(
+                  friends: friends,
+                  selectedFriend: _selectedFriend,
+                  hoveredFriend: _hoveredFriend,
+                  onFriendSelected: (friend) => setState(() => _selectedFriend = friend),
+                  onFriendHovered: (friend) => setState(() => _hoveredFriend = friend),
+                ),
+                const SizedBox(height: 16),
+
+                // Friend Detail Card (shown when a friend is selected)
+                if (_selectedFriend != null)
+                  FriendDetailCard(
+                    friend: _selectedFriend!,
+                    connectedFriends: _getConnectedFriends(_selectedFriend!),
+                    onProfileTap: () => _navigateToFriendProfileFromData(_selectedFriend!),
+                    onAlignTap: () => _quickAlignFriend(_selectedFriend!),
+                    onConnectedFriendTap: (friend) => setState(() => _selectedFriend = friend),
+                  ),
+              ],
             ),
-            const SizedBox(height: 16),
-
-            // Search Bar
-            _buildSearchBar(),
-            const SizedBox(height: 20),
-
-            // Filter Buttons
-            _buildFilterButtons(),
-            const SizedBox(height: 24),
-
-            // Pending Requests
-            if (_pendingRequests.isNotEmpty) ...[
-              _buildPendingRequests(),
-              const SizedBox(height: 24),
-            ],
-
-            // Connections List
-            _buildConnectionsList(),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -292,227 +405,55 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 180,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _pendingRequests.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _buildPendingRequestCard(_pendingRequests[index]),
-          ),
-        ),
+        // Compact single pending request card
+        if (_pendingRequests.isNotEmpty)
+          _buildPendingRequestCard(_pendingRequests.first),
       ],
     );
   }
 
   Widget _buildPendingRequestCard(Map<String, dynamic> request) {
     return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: 140,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [request['color1'] as Color, request['color2'] as Color]),
-              ),
-              child: Center(child: Text((request['name'] as String)[0], style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
-            ),
-            const SizedBox(height: 12),
-            Text(request['name'] as String, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-            Text(request['sign'] as String, style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128))),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _ActionButton(
-                  icon: Icons.close_rounded,
-                  color: Colors.white.withAlpha(26),
-                  onPressed: () => _declineRequest(request),
-                ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  icon: Icons.check_rounded,
-                  color: AppColors.teal,
-                  onPressed: () => _acceptRequest(request),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectionsList() {
-    final connections = filteredConnections;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Cosmic Circle (${connections.length})',
-          style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(179)),
-        ),
-        const SizedBox(height: 12),
-        if (connections.isEmpty)
-          GlassCard(
-            padding: const EdgeInsets.all(32),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(Icons.search_off_rounded, size: 40, color: Colors.white.withAlpha(51)),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No connections found',
-                    style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(102)),
-                  ),
-                  Text(
-                    'Try a different search term',
-                    style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(77)),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          ...connections.map((connection) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildConnectionCard(connection),
-          )),
-      ],
-    );
-  }
-
-  void _navigateToFriendProfile(Map<String, dynamic> connection) {
-    final friendData = FriendData(
-      id: connection['id'] as int,
-      name: connection['name'] as String,
-      username: '@${(connection['name'] as String).toLowerCase().replaceAll(' ', '')}',
-      avatarColors: [(connection['color1'] as Color).value, (connection['color2'] as Color).value],
-      sunSign: connection['sign'] as String,
-      moonSign: 'Cancer',
-      risingSign: 'Scorpio',
-      dominantFrequency: '432 Hz',
-      element: 'Water',
-      modality: 'Mutable',
-      compatibilityScore: connection['compatibility'] as int,
-      status: connection['status'] as String,
-      lastAligned: connection['lastAligned'] as String?,
-      mutualPlanets: (connection['mutualPlanets'] as List).cast<String>(),
-    );
-    Navigator.pushNamed(context, '/friend-profile', arguments: friendData);
-  }
-
-  Widget _buildConnectionCard(Map<String, dynamic> connection) {
-    final compatColor = _getCompatibilityColor(connection['compatibility'] as int);
-    return GestureDetector(
-      onTap: () => _navigateToFriendProfile(connection),
-      child: GlassCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          Stack(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(colors: [connection['color1'] as Color, connection['color2'] as Color]),
-                ),
-                child: Center(
-                  child: Text(
-                    (connection['name'] as String).split(' ').map((n) => n[0]).join(''),
-                    style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
-                  ),
-                ),
-              ),
-              if (connection['status'] == 'online')
-                Positioned(
-                  right: 2,
-                  bottom: 2,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: AppColors.teal,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.backgroundMid, width: 3),
-                    ),
-                  ),
-                ),
-            ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: [request['color1'] as Color, request['color2'] as Color]),
+            ),
+            child: Center(child: Text((request['name'] as String)[0], style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white))),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(connection['name'] as String, style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.white.withAlpha(13), borderRadius: BorderRadius.circular(10)),
-                      child: Text(connection['sign'] as String, style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(102))),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(width: 8, height: 8, decoration: BoxDecoration(color: compatColor, shape: BoxShape.circle)),
-                    const SizedBox(width: 4),
-                    Text('${connection['compatibility']}%', style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: compatColor)),
-                    const SizedBox(width: 12),
-                    Text('Aligned ${connection['lastAligned']}', style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(102))),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  children: (connection['mutualPlanets'] as List).map((planet) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.white.withAlpha(13), borderRadius: BorderRadius.circular(8)),
-                    child: Text('${_getPlanetSymbol(planet)} $planet', style: GoogleFonts.spaceGrotesk(fontSize: 10, color: Colors.white.withAlpha(128))),
-                  )).toList(),
-                ),
+                Text(request['name'] as String, style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                Text('wants to connect', style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128))),
               ],
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: AppColors.cosmicPurple.withAlpha(77), blurRadius: 16, offset: const Offset(0, 4))],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.access_time_rounded, color: Colors.white, size: 18),
-              onPressed: () => _quickAlign(connection),
-            ),
+          Row(
+            children: [
+              _ActionButton(
+                icon: Icons.close_rounded,
+                color: Colors.white.withAlpha(26),
+                onPressed: () => _declineRequest(request),
+              ),
+              const SizedBox(width: 8),
+              _ActionButton(
+                icon: Icons.check_rounded,
+                color: AppColors.teal,
+                onPressed: () => _acceptRequest(request),
+              ),
+            ],
           ),
         ],
       ),
-      ),
     );
-  }
-
-  String _getPlanetSymbol(String planet) {
-    switch (planet) {
-      case 'Moon': return '☽';
-      case 'Sun': return '☉';
-      case 'Venus': return '♀';
-      case 'Mars': return '♂';
-      case 'Mercury': return '☿';
-      case 'Pluto': return '♇';
-      default: return '✦';
-    }
   }
 }
 

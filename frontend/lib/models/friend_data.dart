@@ -54,6 +54,18 @@ class FriendData {
     return avatarColors.map((hex) => hex).toList();
   }
 
+  /// Get initials from name (e.g., "Maya Chen" -> "MC")
+  String get initials {
+    final parts = name.split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  /// Get primary color as int (first avatar color)
+  int get primaryColorValue => avatarColors.isNotEmpty ? avatarColors[0] : 0xFFFF59D0;
+
   /// Create from JSON (for future API integration)
   factory FriendData.fromJson(Map<String, dynamic> json) {
     return FriendData(
