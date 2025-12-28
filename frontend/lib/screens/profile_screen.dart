@@ -6,9 +6,12 @@ import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/genre_preferences_modal.dart';
 import '../services/storage_service.dart';
+import '../services/api_service.dart';
 import '../models/birth_data.dart';
+import '../models/sonification.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// Profile screen with user info, stats, and settings.
+/// Profile screen with user info, preferences, and settings.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -17,16 +20,36 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _notificationsEnabled = true;
-  bool _dailyAlignReminder = true;
-  bool _shareActivity = false;
+  final ApiService _apiService = ApiService();
   
   // Birth data from storage
   BirthData? _birthData;
   
+  // Chart sonification data (contains zodiac signs)
+  ChartSonification? _chartData;
+  bool _isLoadingChart = true;
+  
   // Genre preferences
   List<String> _selectedGenres = [];
   List<String> _selectedSubgenres = [];
+  
+  // Extract zodiac signs from chart data
+  String get _sunSign {
+    if (_chartData == null) return 'Loading...';
+    final sun = _chartData!.planets.where((p) => p.planet == 'Sun').firstOrNull;
+    return sun?.sign ?? 'Unknown';
+  }
+  
+  String get _moonSign {
+    if (_chartData == null) return 'Loading...';
+    final moon = _chartData!.planets.where((p) => p.planet == 'Moon').firstOrNull;
+    return moon?.sign ?? 'Unknown';
+  }
+  
+  String get _risingSign {
+    if (_chartData == null) return 'Loading...';
+    return _chartData!.ascendantSign;
+  }
   
   Map<String, dynamic> get user => {
     'name': _birthData?.name ?? 'Paul',
@@ -35,33 +58,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'birthDate': _birthData?.formattedDate ?? 'July 15, 1990',
     'birthTime': _birthData?.formattedTime ?? '3:42 PM',
     'birthLocation': _birthData?.locationName ?? 'Los Angeles, CA',
-    'sign': 'Cancer',
-    'rising': 'Libra',
-    'moon': 'Scorpio',
-    'dominantFrequency': '528 Hz',
-    'element': 'Water',
+    'sign': _sunSign,
+    'rising': _risingSign,
+    'moon': _moonSign,
+    'dominantFrequency': _chartData != null 
+        ? '${_chartData!.dominantFrequency.toStringAsFixed(0)} Hz' 
+        : '--- Hz',
     'joinedDate': 'November 2024',
   };
-
-  final stats = [
-    {'label': 'Total Alignments', 'value': '247', 'icon': '⟳'},
-    {'label': 'Streak', 'value': '12 days', 'icon': '🔥'},
-    {'label': 'Connections', 'value': '23', 'icon': '✦'},
-    {'label': 'Saved Moments', 'value': '89', 'icon': '💾'},
-  ];
-
-  final achievements = [
-    {'name': 'Early Riser', 'description': 'Aligned before 7 AM', 'icon': '🌅', 'color': AppColors.electricYellow},
-    {'name': 'Social Butterfly', 'description': 'Aligned with 10 friends', 'icon': '🦋', 'color': AppColors.hotPink},
-    {'name': 'Full Moon Master', 'description': 'Aligned during 5 full moons', 'icon': '🌕', 'color': AppColors.cosmicPurple},
-  ];
 
   final menuItems = [
     {'id': 'edit-birth', 'label': 'Edit Birth Data', 'icon': Icons.edit_rounded},
     {'id': 'sound-settings', 'label': 'Sound Preferences', 'icon': Icons.volume_up_rounded},
-    {'id': 'connected-apps', 'label': 'Connected Apps', 'icon': Icons.link_rounded},
-    {'id': 'privacy', 'label': 'Privacy & Security', 'icon': Icons.lock_rounded},
-    {'id': 'help', 'label': 'Help & Support', 'icon': Icons.help_outline_rounded},
+    {'id': 'music-services', 'label': 'Music Services', 'icon': Icons.music_note_rounded},
   ];
   
   @override
@@ -75,6 +84,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final stored = await storageService.loadBirthData();
     if (mounted && stored != null) {
       setState(() => _birthData = stored);
+      // After loading birth data, fetch the chart
+      _loadChartData(stored);
+    } else {
+      setState(() => _isLoadingChart = false);
+    }
+  }
+  
+  Future<void> _loadChartData(BirthData birthData) async {
+    try {
+      final chart = await _apiService.getUserSonification(
+        datetime: birthData.datetime,
+        latitude: birthData.latitude,
+        longitude: birthData.longitude,
+        timezone: birthData.timezone,
+      );
+      if (mounted) {
+        setState(() {
+          _chartData = chart;
+          _isLoadingChart = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingChart = false);
+      }
     }
   }
   
@@ -109,30 +143,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Navigate to main shell with sound tab selected
         Navigator.pushNamed(context, '/sound');
         break;
-      case 'connected-apps':
-      case 'privacy':
-      case 'help':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Coming soon!'),
-            backgroundColor: AppColors.cosmicPurple,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+      case 'music-services':
+        // Open Spotify app directly
+        _openSpotify();
         break;
     }
   }
 
-  void _showAllAchievements() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Achievements screen coming soon!'),
-        backgroundColor: AppColors.cosmicPurple,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+  Future<void> _openSpotify() async {
+    // Try to open Spotify app first, fall back to web
+    final spotifyAppUri = Uri.parse('spotify://');
+    final spotifyWebUri = Uri.parse('https://open.spotify.com');
+    
+    if (await canLaunchUrl(spotifyAppUri)) {
+      await launchUrl(spotifyAppUri);
+    } else {
+      await launchUrl(spotifyWebUri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -155,20 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildProfileHeader(),
             const SizedBox(height: 20),
 
-            // Stats Grid
-            _buildStatsGrid(),
-            const SizedBox(height: 20),
-
-            // Achievements
-            _buildAchievements(),
-            const SizedBox(height: 20),
-
             // Genre Preferences
             _buildGenrePreferences(),
-            const SizedBox(height: 20),
-
-            // Settings Toggles
-            _buildSettingsToggles(),
             const SizedBox(height: 20),
 
             // Menu Items
@@ -259,91 +274,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(sign, style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatsGrid() {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.3,
-      children: stats.map((stat) => GlassCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(stat['icon'] as String, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 8),
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(colors: [AppColors.electricYellow, AppColors.hotPink]).createShader(bounds),
-              child: Text(stat['value'] as String, style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-            ),
-            Text(
-              (stat['label'] as String).toUpperCase(),
-              style: GoogleFonts.spaceGrotesk(fontSize: 10, color: Colors.white.withAlpha(128), letterSpacing: 1),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      )).toList(),
-    );
-  }
-
-  Widget _buildAchievements() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Recent Achievements', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-            TextButton(
-              onPressed: _showAllAchievements,
-              child: Text('View All', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.cosmicPurple)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 150,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: achievements.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final achievement = achievements[index];
-              return Container(
-                width: 140,
-                decoration: BoxDecoration(
-                  color: AppColors.glassBackground,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: AppColors.glassBorder),
-                  boxShadow: [BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 32, offset: const Offset(0, 8))],
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: achievement['color'] as Color, width: 3)),
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(achievement['icon'] as String, style: const TextStyle(fontSize: 32)),
-                      const SizedBox(height: 10),
-                      Text(achievement['name'] as String, style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white), textAlign: TextAlign.center),
-                      Text(achievement['description'] as String, style: GoogleFonts.spaceGrotesk(fontSize: 10, color: Colors.white.withAlpha(128)), textAlign: TextAlign.center),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -478,55 +408,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSettingsToggles() {
-    return GlassCard(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          _buildToggleItem('Notifications', 'Push notifications', Icons.notifications_rounded, AppColors.electricYellow, _notificationsEnabled, (v) => setState(() => _notificationsEnabled = v)),
-          const Divider(color: Colors.white12, height: 1),
-          _buildToggleItem('Daily Align Reminder', '9:00 AM every day', Icons.access_time_rounded, AppColors.cosmicPurple, _dailyAlignReminder, (v) => setState(() => _dailyAlignReminder = v)),
-          const Divider(color: Colors.white12, height: 1),
-          _buildToggleItem('Share Activity', 'Let friends see your alignments', Icons.people_rounded, AppColors.hotPink, _shareActivity, (v) => setState(() => _shareActivity = v)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleItem(String title, String subtitle, IconData icon, Color color, bool value, ValueChanged<bool> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: color.withAlpha(26), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                Text(subtitle, style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128))),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            thumbColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected) ? AppColors.cosmicPurple : Colors.white),
-            trackColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected) ? AppColors.hotPink.withAlpha(128) : Colors.white.withAlpha(26)),
-          ),
-        ],
-      ),
     );
   }
 

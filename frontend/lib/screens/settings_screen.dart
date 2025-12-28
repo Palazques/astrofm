@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/onboarding/gradient_toggle.dart';
 import '../services/spotify_service.dart';
+import '../services/storage_service.dart';
 
 /// Settings screen with subscription, notifications, account, and app preferences.
 class SettingsScreen extends StatefulWidget {
@@ -72,6 +74,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _checkSpotifyConnection();
+    _loadNotificationPreferences();
+  }
+
+  Future<void> _loadNotificationPreferences() async {
+    final prefs = await storageService.loadNotificationPreferences();
+    if (mounted) {
+      setState(() {
+        _notifications['daily'] = prefs['daily'] ?? true;
+        _notifications['moon'] = prefs['moon'] ?? true;
+        _notifications['transit'] = prefs['transit'] ?? false;
+        _notifications['friend'] = prefs['friend'] ?? true;
+      });
+    }
+  }
+
+  Future<void> _saveNotificationPreferences() async {
+    await storageService.saveNotificationPreferences(_notifications);
   }
 
   Future<void> _checkSpotifyConnection() async {
@@ -333,6 +352,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _notifications[key] = true;
       }
     });
+    _saveNotificationPreferences();
   }
 
   void _disableAllNotifications() {
@@ -341,6 +361,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _notifications[key] = false;
       }
     });
+    _saveNotificationPreferences();
+  }
+
+  void _showDataPrivacyDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.backgroundMid,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Your Data',
+              style: GoogleFonts.syne(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'ASTRO.FM stores the following data locally on your device:',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 14,
+                color: Colors.white.withAlpha(179),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildDataItem('Birth Information', 'Date, time, and location'),
+            _buildDataItem('Music Preferences', 'Your selected genres'),
+            _buildDataItem('Notification Settings', 'Your notification choices'),
+            _buildDataItem('Spotify Connection', 'Session data if connected'),
+            _buildDataItem('Cached Playlists', 'Today\'s generated playlists'),
+            const SizedBox(height: 20),
+            Text(
+              'Your data is stored locally on your device and is used to personalize your cosmic experience.',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12,
+                color: Colors.white.withAlpha(128),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showDeleteAccountDialog();
+                },
+                icon: const Icon(Icons.delete_outline, color: AppColors.red, size: 18),
+                label: Text(
+                  'Clear All Data',
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.red,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.red.withAlpha(77)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataItem(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline, color: AppColors.teal, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    color: Colors.white.withAlpha(128),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showComingSoon(String feature) {
@@ -383,7 +525,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         content: Text(
-          'This action is permanent and cannot be undone. All your data, including your birth chart, alignments, and connections will be permanently deleted.',
+          'This action is permanent and cannot be undone. All your data, including your birth chart, playlists, and preferences will be permanently deleted.',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 14,
             color: Colors.white.withAlpha(179),
@@ -408,9 +550,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               border: Border.all(color: AppColors.red.withAlpha(51)),
             ),
             child: TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
-                _showComingSoon('Account deletion');
+                // Clear all local data
+                await storageService.clearAll();
+                // Disconnect Spotify
+                await _spotifyService.disconnect();
+                // Navigate to onboarding
+                if (mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/welcome',
+                    (route) => false,
+                  );
+                }
               },
               child: Text(
                 'Delete Account',
@@ -812,6 +965,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           activeGradient: const [AppColors.cosmicPurple, AppColors.hotPink],
                           onChanged: (value) {
                             setState(() => _notifications[id] = value);
+                            _saveNotificationPreferences();
                           },
                         ),
                       ],
@@ -918,7 +1072,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.shield_outlined,
                 label: 'Data & Privacy',
                 color: AppColors.cosmicPurple,
-                onTap: () => _showComingSoon('Data & privacy settings'),
+                onTap: _showDataPrivacyDialog,
               ),
             ],
           ),
@@ -940,14 +1094,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.description_outlined,
                 label: 'Terms of Service',
                 color: Colors.white.withAlpha(153),
-                onTap: () => _showComingSoon('Terms of Service'),
+                onTap: () => launchUrl(Uri.parse('https://astrofm.app/terms'), mode: LaunchMode.externalApplication),
               ),
               const Divider(color: Colors.white12, height: 1, indent: 16, endIndent: 16),
               _buildMenuItem(
                 icon: Icons.privacy_tip_outlined,
                 label: 'Privacy Policy',
                 color: Colors.white.withAlpha(153),
-                onTap: () => _showComingSoon('Privacy Policy'),
+                onTap: () => launchUrl(Uri.parse('https://astrofm.app/privacy'), mode: LaunchMode.externalApplication),
               ),
               const Divider(color: Colors.white12, height: 1, indent: 16, endIndent: 16),
               _buildMenuItem(

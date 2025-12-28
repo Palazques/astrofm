@@ -38,6 +38,12 @@ class StorageKeys {
   // Monthly Zodiac Playlist Cache
   static const String monthlyZodiacPlaylist = 'monthly_zodiac_playlist';
   static const String monthlyZodiacMonth = 'monthly_zodiac_month'; // Format: "YYYY-MM"
+  
+  // Notification Preferences
+  static const String notifDaily = 'notif_daily';
+  static const String notifMoon = 'notif_moon';
+  static const String notifTransit = 'notif_transit';
+  static const String notifFriend = 'notif_friend';
 }
 
 /// Service for managing local storage operations.
@@ -429,6 +435,30 @@ class StorageService {
     final now = DateTime.now();
     final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
     return cachedMonth == currentMonth && prefs.containsKey(StorageKeys.monthlyZodiacPlaylist);
+  }
+
+  // ================================
+  // Notification Preferences
+  // ================================
+
+  /// Save notification preferences.
+  Future<void> saveNotificationPreferences(Map<String, bool> prefs) async {
+    final storage = await _getPrefs();
+    await storage.setBool(StorageKeys.notifDaily, prefs['daily'] ?? true);
+    await storage.setBool(StorageKeys.notifMoon, prefs['moon'] ?? true);
+    await storage.setBool(StorageKeys.notifTransit, prefs['transit'] ?? false);
+    await storage.setBool(StorageKeys.notifFriend, prefs['friend'] ?? true);
+  }
+
+  /// Load notification preferences.
+  Future<Map<String, bool>> loadNotificationPreferences() async {
+    final prefs = await _getPrefs();
+    return {
+      'daily': prefs.getBool(StorageKeys.notifDaily) ?? true,
+      'moon': prefs.getBool(StorageKeys.notifMoon) ?? true,
+      'transit': prefs.getBool(StorageKeys.notifTransit) ?? false,
+      'friend': prefs.getBool(StorageKeys.notifFriend) ?? true,
+    };
   }
 }
 
