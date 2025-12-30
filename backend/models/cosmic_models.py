@@ -74,3 +74,68 @@ class CosmicPlaylistResponse(BaseModel):
                 ]
             }
         }
+
+
+class ZodiacSeasonRequest(BaseModel):
+    """Request to generate a zodiac season playlist."""
+    
+    sun_sign: str = Field(..., description="User's Sun sign")
+    moon_sign: str = Field(..., description="User's Moon sign")
+    rising_sign: str = Field(..., description="User's Rising/Ascendant sign")
+    genre_preferences: List[str] = Field(
+        default=["indie rock", "electronic", "pop"],
+        min_items=1,
+        max_items=10,
+        description="User's preferred music genres"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "sun_sign": "Leo",
+                "moon_sign": "Pisces",
+                "rising_sign": "Scorpio",
+                "genre_preferences": ["indie rock", "electronic", "ambient"],
+            }
+        }
+
+
+class ZodiacSeasonResponse(BaseModel):
+    """Response for zodiac season playlist."""
+    
+    success: bool
+    zodiac_sign: str = Field(..., description="Current zodiac season sign")
+    symbol: str = Field(..., description="Zodiac symbol emoji")
+    element: str = Field(..., description="Element (Fire/Earth/Air/Water)")
+    date_range: str = Field(..., description="Date range for this zodiac season")
+    element_qualities: str = Field(..., description="User-facing description of element qualities")
+    horoscope: str = Field(..., description="AI-generated horoscope for the season")
+    vibe_summary: str = Field(..., description="Music vibe description")
+    playlist_url: Optional[str] = None
+    playlist_id: Optional[str] = None
+    track_count: int = 0
+    tracks: List[TrackInfo] = []
+    zodiac_season_key: str = Field(..., description="Cache key like 'Capricorn_2024'")
+    cached_until: str = Field(..., description="ISO date when cache expires")
+    error: Optional[str] = None
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "zodiac_sign": "Capricorn",
+                "symbol": "♑",
+                "element": "Earth",
+                "date_range": "Dec 22 - Jan 19",
+                "element_qualities": "Grounded, sensual, and steady...",
+                "horoscope": "This Capricorn season invites you to...",
+                "vibe_summary": "Grounded ambition meets steady rhythm",
+                "playlist_url": "https://open.spotify.com/playlist/xyz",
+                "playlist_id": "xyz123",
+                "track_count": 20,
+                "zodiac_season_key": "Capricorn_2024",
+                "cached_until": "2025-01-19",
+                "tracks": []
+            }
+        }
+

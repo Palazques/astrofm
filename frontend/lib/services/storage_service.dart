@@ -35,9 +35,9 @@ class StorageKeys {
   static const String dailyDatasetPlaylist = 'daily_dataset_playlist'; // Full dataset playlist result
   static const String dailyCosmicPlaylist = 'daily_cosmic_playlist'; // Cosmic (AI + Spotify) playlist
   
-  // Monthly Zodiac Playlist Cache
-  static const String monthlyZodiacPlaylist = 'monthly_zodiac_playlist';
-  static const String monthlyZodiacMonth = 'monthly_zodiac_month'; // Format: "YYYY-MM"
+  // Zodiac Season Playlist Cache
+  static const String zodiacSeasonPlaylist = 'zodiac_season_playlist';
+  static const String zodiacSeasonKey = 'zodiac_season_key'; // Format: "Capricorn_2024"
   
   // Notification Preferences
   static const String notifDaily = 'notif_daily';
@@ -390,35 +390,36 @@ class StorageService {
   }
 
   // ================================
-  // Monthly Zodiac Playlist Cache
+  // Zodiac Season Playlist Cache
   // ================================
 
-  /// Save monthly zodiac playlist to cache with current month.
-  Future<void> saveMonthlyZodiacPlaylist(Map<String, dynamic> playlistData) async {
+  /// Save zodiac season playlist to cache with season key.
+  /// The season key is like "Capricorn_2024" and changes when the zodiac changes.
+  Future<void> saveZodiacSeasonPlaylist(Map<String, dynamic> playlistData) async {
     final prefs = await _getPrefs();
-    final now = DateTime.now();
-    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}'; // YYYY-MM
+    // Extract the zodiac_season_key from the playlist data
+    final seasonKey = playlistData['zodiac_season_key'] as String? ?? '';
     
-    await prefs.setString(StorageKeys.monthlyZodiacPlaylist, jsonEncode(playlistData));
-    await prefs.setString(StorageKeys.monthlyZodiacMonth, currentMonth);
+    await prefs.setString(StorageKeys.zodiacSeasonPlaylist, jsonEncode(playlistData));
+    await prefs.setString(StorageKeys.zodiacSeasonKey, seasonKey);
   }
 
-  /// Load cached monthly zodiac playlist if it's from the current month.
-  /// Returns null if no cache or cache is from a different month.
-  Future<Map<String, dynamic>?> loadMonthlyZodiacPlaylist() async {
+  /// Load cached zodiac season playlist if the season key matches.
+  /// Returns null if no cache or cache is from a different zodiac season.
+  /// 
+  /// @param currentSeasonKey - The current zodiac season key (e.g., "Capricorn_2024")
+  Future<Map<String, dynamic>?> loadZodiacSeasonPlaylist(String currentSeasonKey) async {
     final prefs = await _getPrefs();
     
-    // Check if cache is from current month
-    final cachedMonth = prefs.getString(StorageKeys.monthlyZodiacMonth);
-    final now = DateTime.now();
-    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    // Check if cache is from current zodiac season
+    final cachedKey = prefs.getString(StorageKeys.zodiacSeasonKey);
     
-    if (cachedMonth != currentMonth) {
-      return null; // Cache is stale (different month)
+    if (cachedKey != currentSeasonKey) {
+      return null; // Cache is stale (different zodiac season)
     }
     
     // Load cached playlist data
-    final playlistJson = prefs.getString(StorageKeys.monthlyZodiacPlaylist);
+    final playlistJson = prefs.getString(StorageKeys.zodiacSeasonPlaylist);
     if (playlistJson == null) return null;
     
     try {
@@ -428,13 +429,13 @@ class StorageService {
     }
   }
 
-  /// Check if we have a valid monthly zodiac playlist cached for current month.
-  Future<bool> hasCurrentMonthPlaylist() async {
+  /// Check if we have a valid zodiac season playlist cached.
+  /// 
+  /// @param currentSeasonKey - The current zodiac season key (e.g., "Capricorn_2024")
+  Future<bool> hasCurrentSeasonPlaylist(String currentSeasonKey) async {
     final prefs = await _getPrefs();
-    final cachedMonth = prefs.getString(StorageKeys.monthlyZodiacMonth);
-    final now = DateTime.now();
-    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-    return cachedMonth == currentMonth && prefs.containsKey(StorageKeys.monthlyZodiacPlaylist);
+    final cachedKey = prefs.getString(StorageKeys.zodiacSeasonKey);
+    return cachedKey == currentSeasonKey && prefs.containsKey(StorageKeys.zodiacSeasonPlaylist);
   }
 
   // ================================

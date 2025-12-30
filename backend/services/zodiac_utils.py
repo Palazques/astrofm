@@ -125,6 +125,15 @@ ELEMENT_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
 }
 
 
+# Season qualities for user-facing display
+ELEMENT_QUALITIES: Dict[str, str] = {
+    "Fire": "Bold, passionate, and energetic. Music that empowers and ignites your inner flame with driving beats and anthemic energy.",
+    "Earth": "Grounded, sensual, and steady. Rich textures and rhythms that anchor you in the present moment with acoustic warmth.",
+    "Air": "Curious, social, and cerebral. Eclectic sounds that spark new ideas and keep your mind dancing with clever lyrics.",
+    "Water": "Emotional, intuitive, and dreamy. Atmospheric melodies that flow deep into your soul with introspective textures.",
+}
+
+
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
@@ -205,6 +214,19 @@ def get_element_description(element: str) -> Dict[str, str]:
         Dict with keys: mood, sound, advice_tone
     """
     return ELEMENT_DESCRIPTIONS.get(element, ELEMENT_DESCRIPTIONS["Fire"])
+
+
+def get_element_qualities(element: str) -> str:
+    """
+    Get user-facing quality description for an element.
+    
+    Args:
+        element: "Fire", "Earth", "Air", or "Water"
+        
+    Returns:
+        Human-readable description of element's musical qualities
+    """
+    return ELEMENT_QUALITIES.get(element, ELEMENT_QUALITIES["Fire"])
 
 
 def get_next_zodiac_change_date(from_date: Optional[date] = None) -> date:

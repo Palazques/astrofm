@@ -247,25 +247,17 @@ class _ZodiacPlaylistCardState extends State<ZodiacPlaylistCard>
           ),
           const SizedBox(width: 16),
           
-          // Title and subtitle
+          // Element badge and track count row + date range subtitle
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Element badge + track count inline
                 Row(
                   children: [
-                    Text(
-                      '${playlist.zodiacSign} Season',
-                      style: GoogleFonts.syne(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     // Element badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: gradientColors[0].withAlpha(51),
                         borderRadius: BorderRadius.circular(12),
@@ -276,20 +268,31 @@ class _ZodiacPlaylistCardState extends State<ZodiacPlaylistCard>
                       child: Text(
                         playlist.element,
                         style: GoogleFonts.spaceGrotesk(
-                          fontSize: 10,
+                          fontSize: 12,
                           color: gradientColors[0],
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    // Track count
+                    Text(
+                      '${playlist.tracks.length} tracks',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        color: Colors.white.withAlpha(179),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
+                // Date range
                 Text(
                   playlist.dateRange,
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 12,
-                    color: Colors.white.withAlpha(153),
+                    color: Colors.white.withAlpha(128),
                   ),
                 ),
               ],
@@ -335,9 +338,54 @@ class _ZodiacPlaylistCardState extends State<ZodiacPlaylistCard>
           ),
           const SizedBox(height: 16),
           
+          // Season Qualities section
+          Text(
+            'SEASON QUALITIES',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              color: Colors.white.withAlpha(128),
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: gradientColors[0].withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: gradientColors[0].withAlpha(38),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: gradientColors[0],
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    playlist.elementQualities.isNotEmpty 
+                        ? playlist.elementQualities
+                        : _getDefaultElementQualities(playlist.element),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      color: Colors.white.withAlpha(204),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
           // Horoscope text
           Text(
-            'MONTHLY HOROSCOPE',
+            'SEASON HOROSCOPE',
             style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
               color: Colors.white.withAlpha(128),
@@ -493,5 +541,21 @@ class _ZodiacPlaylistCardState extends State<ZodiacPlaylistCard>
         ],
       ),
     );
+  }
+
+  /// Get default element qualities description for fallback.
+  String _getDefaultElementQualities(String element) {
+    switch (element.toLowerCase()) {
+      case 'fire':
+        return 'Bold, passionate, and energetic. Music that empowers and ignites your inner flame with driving beats and anthemic energy.';
+      case 'earth':
+        return 'Grounded, sensual, and steady. Rich textures and rhythms that anchor you in the present moment with acoustic warmth.';
+      case 'air':
+        return 'Curious, social, and cerebral. Eclectic sounds that spark new ideas and keep your mind dancing with clever lyrics.';
+      case 'water':
+        return 'Emotional, intuitive, and dreamy. Atmospheric melodies that flow deep into your soul with introspective textures.';
+      default:
+        return 'Curated music that matches the energy of this cosmic season.';
+    }
   }
 }

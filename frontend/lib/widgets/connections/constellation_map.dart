@@ -90,52 +90,61 @@ class _ConstellationMapState extends State<ConstellationMap> {
       ),
       child: Column(
         children: [
-          // Constellation container
-          SizedBox(
-            width: containerWidth,
-            height: containerHeight,
-            child: Stack(
-              children: [
-                // Connection lines
-                CustomPaint(
-                  size: const Size(containerWidth, containerHeight),
-                  painter: _ConnectionLinesPainter(
-                    connections: _connections,
-                    positions: _positions,
-                    hasActiveSelection: hasActiveSelection,
-                    isLineHighlighted: _isLineHighlighted,
-                  ),
-                ),
-                
-                // Friend orbs
-                ...widget.friends.map((friend) {
-                  final position = _positions[friend.id];
-                  if (position == null) return const SizedBox.shrink();
-                  
-                  final size = _positionService.calculateOrbSize(friend.compatibilityScore);
-                  final isSelected = widget.selectedFriend?.id == friend.id;
-                  final isHighlighted = _isConnectedToActive(friend) || 
-                                        friend.id == widget.selectedFriend?.id ||
-                                        friend.id == widget.hoveredFriend?.id;
-                  final isDimmed = hasActiveSelection && !isHighlighted && !isSelected;
-                  
-                  return Positioned(
-                    left: position.dx - (size + 20) / 2,
-                    top: position.dy - (size + 30) / 2,
-                    child: FriendOrb(
-                      friend: friend,
-                      isSelected: isSelected,
-                      isHighlighted: isHighlighted,
-                      isDimmed: isDimmed,
-                      onTap: () {
-                        widget.onFriendSelected(isSelected ? null : friend);
-                      },
-                      onHover: () => widget.onFriendHovered(friend),
-                      onHoverExit: () => widget.onFriendHovered(null),
+          // Zoomable constellation container
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: InteractiveViewer(
+              minScale: 1.0,
+              maxScale: 2.5,
+              constrained: true,
+              boundaryMargin: EdgeInsets.zero,
+              child: SizedBox(
+                width: containerWidth,
+                height: containerHeight,
+                child: Stack(
+                  children: [
+                    // Connection lines
+                    CustomPaint(
+                      size: const Size(containerWidth, containerHeight),
+                      painter: _ConnectionLinesPainter(
+                        connections: _connections,
+                        positions: _positions,
+                        hasActiveSelection: hasActiveSelection,
+                        isLineHighlighted: _isLineHighlighted,
+                      ),
                     ),
-                  );
-                }),
-              ],
+                    
+                    // Friend orbs
+                    ...widget.friends.map((friend) {
+                      final position = _positions[friend.id];
+                      if (position == null) return const SizedBox.shrink();
+                      
+                      final size = _positionService.calculateOrbSize(friend.compatibilityScore);
+                      final isSelected = widget.selectedFriend?.id == friend.id;
+                      final isHighlighted = _isConnectedToActive(friend) || 
+                                            friend.id == widget.selectedFriend?.id ||
+                                            friend.id == widget.hoveredFriend?.id;
+                      final isDimmed = hasActiveSelection && !isHighlighted && !isSelected;
+                      
+                      return Positioned(
+                        left: position.dx - (size + 20) / 2,
+                        top: position.dy - (size + 30) / 2,
+                        child: FriendOrb(
+                          friend: friend,
+                          isSelected: isSelected,
+                          isHighlighted: isHighlighted,
+                          isDimmed: isDimmed,
+                          onTap: () {
+                            widget.onFriendSelected(isSelected ? null : friend);
+                          },
+                          onHover: () => widget.onFriendHovered(friend),
+                          onHoverExit: () => widget.onFriendHovered(null),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
             ),
           ),
           

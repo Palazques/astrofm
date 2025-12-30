@@ -7,12 +7,14 @@ class MonthlyZodiacPlaylist {
   final String symbol;
   final String element;
   final String dateRange;
+  final String elementQualities;  // New: Element quality description
   final String horoscope;
   final String vibeSummary;
   final int energyLevel;
   final String? playlistId;
   final String? playlistUrl;
   final List<SpotifyTrack> tracks;
+  final String zodiacSeasonKey;  // New: Cache key like "Capricorn_2024"
   final DateTime cachedUntil;
 
   MonthlyZodiacPlaylist({
@@ -21,12 +23,14 @@ class MonthlyZodiacPlaylist {
     required this.symbol,
     required this.element,
     required this.dateRange,
+    required this.elementQualities,
     required this.horoscope,
     required this.vibeSummary,
     required this.energyLevel,
     this.playlistId,
     this.playlistUrl,
     required this.tracks,
+    required this.zodiacSeasonKey,
     required this.cachedUntil,
   });
 
@@ -37,6 +41,7 @@ class MonthlyZodiacPlaylist {
       symbol: json['symbol'] as String? ?? '♈',
       element: json['element'] as String? ?? 'Fire',
       dateRange: json['date_range'] as String? ?? '',
+      elementQualities: json['element_qualities'] as String? ?? '',
       horoscope: json['horoscope'] as String? ?? '',
       vibeSummary: json['vibe_summary'] as String? ?? '',
       energyLevel: json['energy_level'] as int? ?? 50,
@@ -46,6 +51,7 @@ class MonthlyZodiacPlaylist {
               ?.map((t) => SpotifyTrack.fromJson(t as Map<String, dynamic>))
               .toList() ??
           [],
+      zodiacSeasonKey: json['zodiac_season_key'] as String? ?? '',
       cachedUntil: DateTime.tryParse(json['cached_until'] as String? ?? '') ??
           DateTime.now().add(const Duration(days: 30)),
     );
@@ -58,12 +64,14 @@ class MonthlyZodiacPlaylist {
       'symbol': symbol,
       'element': element,
       'date_range': dateRange,
+      'element_qualities': elementQualities,
       'horoscope': horoscope,
       'vibe_summary': vibeSummary,
       'energy_level': energyLevel,
       'playlist_id': playlistId,
       'playlist_url': playlistUrl,
       'tracks': tracks.map((t) => t.toJson()).toList(),
+      'zodiac_season_key': zodiacSeasonKey,
       'cached_until': cachedUntil.toIso8601String(),
     };
   }
@@ -85,3 +93,4 @@ class MonthlyZodiacPlaylist {
     }
   }
 }
+

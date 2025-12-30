@@ -744,6 +744,43 @@ class ApiService {
     }
   }
 
+  /// Generate a zodiac season playlist using AI + app's Spotify account.
+  /// No user Spotify auth required. Cached per zodiac season (~30 days).
+  ///
+  /// [sunSign] - User's Sun sign (e.g., "Capricorn")
+  /// [moonSign] - User's Moon sign
+  /// [risingSign] - User's Rising/Ascendant sign
+  /// [genrePreferences] - User's preferred genres
+  Future<ZodiacSeasonPlaylistResult> getZodiacSeasonPlaylist({
+    required String sunSign,
+    required String moonSign,
+    required String risingSign,
+    required List<String> genrePreferences,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.zodiacSeasonEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'sun_sign': sunSign,
+            'moon_sign': moonSign,
+            'rising_sign': risingSign,
+            'genre_preferences': genrePreferences,
+          }),
+        )
+        .timeout(const Duration(seconds: 120)); // AI + Spotify takes time
+
+    if (response.statusCode == 200) {
+      return ZodiacSeasonPlaylistResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to generate zodiac season playlist',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   /// Export a playlist as formatted text.
   Future<String> exportPlaylistAsText({
     required String datetime,
@@ -1117,6 +1154,120 @@ class BlendedPlaylistMetadata {
 
   /// Check if playlist is blended (has tracks from both sources).
   bool get isBlended => source == 'blended';
+}
+
+/// Result from zodiac season playlist generation.
+/// Contains zodiac info, element qualities, horoscope, and playlist tracks.
+class ZodiacSeasonPlaylistResult {
+  final bool success;
+  final String zodiacSign;
+  final String symbol;
+  final String element;
+  final String dateRange;
+  final String elementQualities;
+  final String horoscope;
+  final String vibeSummary;
+  final String? playlistUrl;
+  final String? playlistId;
+  final int trackCount;
+  final List<ZodiacSeasonTrack> tracks;
+  final String zodiacSeasonKey;
+  final String cachedUntil;
+  final String? error;
+
+  ZodiacSeasonPlaylistResult({
+    required this.success,
+    required this.zodiacSign,
+    required this.symbol,
+    required this.element,
+    required this.dateRange,
+    required this.elementQualities,
+    required this.horoscope,
+    required this.vibeSummary,
+    this.playlistUrl,
+    this.playlistId,
+    required this.trackCount,
+    required this.tracks,
+    required this.zodiacSeasonKey,
+    required this.cachedUntil,
+    this.error,
+  });
+
+  factory ZodiacSeasonPlaylistResult.fromJson(Map<String, dynamic> json) {
+    return ZodiacSeasonPlaylistResult(
+      success: json['success'] ?? false,
+      zodiacSign: json['zodiac_sign'] ?? '',
+      symbol: json['symbol'] ?? '♈',
+      element: json['element'] ?? 'Fire',
+      dateRange: json['date_range'] ?? '',
+      elementQualities: json['element_qualities'] ?? '',
+      horoscope: json['horoscope'] ?? '',
+      vibeSummary: json['vibe_summary'] ?? '',
+      playlistUrl: json['playlist_url'],
+      playlistId: json['playlist_id'],
+      trackCount: json['track_count'] ?? 0,
+      tracks: (json['tracks'] as List<dynamic>?)
+              ?.map((t) => ZodiacSeasonTrack.fromJson(t))
+              .toList() ??
+          [],
+      zodiacSeasonKey: json['zodiac_season_key'] ?? '',
+      cachedUntil: json['cached_until'] ?? '',
+      error: json['error'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'success': success,
+      'zodiac_sign': zodiacSign,
+      'symbol': symbol,
+      'element': element,
+      'date_range': dateRange,
+      'element_qualities': elementQualities,
+      'horoscope': horoscope,
+      'vibe_summary': vibeSummary,
+      'playlist_url': playlistUrl,
+      'playlist_id': playlistId,
+      'track_count': trackCount,
+      'tracks': tracks.map((t) => t.toJson()).toList(),
+      'zodiac_season_key': zodiacSeasonKey,
+      'cached_until': cachedUntil,
+      'error': error,
+    };
+  }
+}
+
+/// A track in a zodiac season playlist.
+class ZodiacSeasonTrack {
+  final String name;
+  final String artist;
+  final String url;
+  final String? albumArt;
+
+  ZodiacSeasonTrack({
+    required this.name,
+    required this.artist,
+    required this.url,
+    this.albumArt,
+  });
+
+  factory ZodiacSeasonTrack.fromJson(Map<String, dynamic> json) {
+    return ZodiacSeasonTrack(
+      name: json['name'] ?? '',
+      artist: json['artist'] ?? '',
+      url: json['url'] ?? '',
+      albumArt: json['album_art'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'artist': artist,
+      'url': url,
+      'album_art': albumArt,
+    };
+  }
 }
 
 /// Exception for API errors.

@@ -12,7 +12,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
 from services.cosmic.app_spotify import get_app_spotify_service
-from models.cosmic_models import CosmicPlaylistRequest, CosmicPlaylistResponse, TrackInfo
+from models.cosmic_models import (
+    CosmicPlaylistRequest, 
+    CosmicPlaylistResponse, 
+    TrackInfo,
+    ZodiacSeasonRequest,
+    ZodiacSeasonResponse,
+)
 
 
 router = APIRouter(prefix="/api/cosmic", tags=["cosmic-playlist"])
@@ -247,3 +253,123 @@ async def generate_cosmic_playlist(request: CosmicPlaylistRequest):
     )
 
 
+# =============================================================================
+# Zodiac Season Playlist Endpoint
+# =============================================================================
+
+@router.post("/zodiac-season", response_model=ZodiacSeasonResponse)
+async def generate_zodiac_season_playlist(request: ZodiacSeasonRequest):
+    """
+    Generate a zodiac season playlist based on the current astrological season.
+    
+    Uses AI to curate tracks that match the current zodiac's element energy.
+    No Spotify auth required - uses the app's own Spotify account.
+    
+    The playlist is designed to be cached for the entire zodiac season (~30 days).
+    
+    Args:
+        request: User's chart data and genre preferences
+        
+    Returns:
+        ZodiacSeasonResponse with zodiac info, element qualities, horoscope,
+        playlist URL, and track info
+    """
+    from datetime import datetime
+    from services.cosmic.playlist_builder import get_playlist_builder
+    from services.transits import get_current_moon_sign
+    from services.zodiac_utils import (
+        get_current_zodiac,
+        get_element_qualities,
+        get_next_zodiac_change_date,
+        ZODIAC_ELEMENTS,
+    )
+    from services.ai_service import get_ai_service
+    
+    service = get_app_spotify_service()
+    
+    if not service.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="App Spotify account not configured. Contact support."
+        )
+    
+    try:
+        # Get current zodiac info
+        zodiac_sign, element, date_range, symbol = get_current_zodiac()
+        element_qualities = get_element_qualities(element)
+        
+        # Generate cache key for this season
+        today = datetime.now()
+        zodiac_season_key = f"{zodiac_sign}_{today.year}"
+        cached_until = get_next_zodiac_change_date()
+        
+        # Get month/year for horoscope context
+        month_year = today.strftime("%B %Y")
+        
+        # Generate AI horoscope for the zodiac season
+        ai_service = get_ai_service()
+        horoscope_data = ai_service.generate_monthly_horoscope(
+            zodiac_sign=zodiac_sign,
+            element=element,
+            date_range=date_range,
+            month_year=month_year,
+        )
+        
+        # Get current Moon sign for playlist variation
+        try:
+            current_moon_sign, _ = get_current_moon_sign()
+        except Exception:
+            current_moon_sign = "Capricorn"  # Fallback
+        
+        # Generate the playlist using CosmicPlaylistBuilder
+        builder = get_playlist_builder()
+        
+        result = await builder.generate_playlist(
+            sun_sign=request.sun_sign,
+            moon_sign=request.moon_sign,
+            rising_sign=request.rising_sign,
+            current_moon_sign=current_moon_sign,
+            genre_preferences=request.genre_preferences,
+            target_tracks=20,
+        )
+        
+        if not result.success:
+            raise HTTPException(
+                status_code=500,
+                detail=result.error or "Failed to generate zodiac season playlist"
+            )
+        
+        return ZodiacSeasonResponse(
+            success=True,
+            zodiac_sign=zodiac_sign,
+            symbol=symbol,
+            element=element,
+            date_range=date_range,
+            element_qualities=element_qualities,
+            horoscope=horoscope_data["horoscope"],
+            vibe_summary=horoscope_data.get("vibe_summary", result.vibe_summary),
+            playlist_url=result.playlist_url,
+            playlist_id=result.playlist_url.split("/")[-1] if result.playlist_url else None,
+            track_count=result.track_count,
+            tracks=[
+                TrackInfo(
+                    name=t["name"],
+                    artist=t["artist"],
+                    url=t["url"],
+                    album_art=t.get("album_art"),
+                )
+                for t in result.tracks
+            ],
+            zodiac_season_key=zodiac_season_key,
+            cached_until=cached_until.isoformat(),
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating zodiac season playlist: {str(e)}"
+        )

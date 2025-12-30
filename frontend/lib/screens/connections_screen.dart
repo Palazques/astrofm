@@ -7,6 +7,7 @@ import '../widgets/add_friend_sheet.dart';
 import '../widgets/connections/constellation_map.dart';
 import '../widgets/connections/friend_detail_card.dart';
 import '../widgets/connections/background_stars.dart';
+import '../widgets/connections/connections_empty_state.dart';
 import '../models/friend_data.dart';
 import '../services/compatibility_service.dart';
 
@@ -294,42 +295,47 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // Constellation Map Section Header
-                Row(
-                  children: [
-                    Text('✦', style: TextStyle(color: AppColors.electricYellow, fontSize: 12)),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Your Constellation',
-                      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(153)),
-                    ),
-                    Text(
-                      ' · ${friends.length} stars',
-                      style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(77)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Constellation Map
-                ConstellationMap(
-                  friends: friends,
-                  selectedFriend: _selectedFriend,
-                  hoveredFriend: _hoveredFriend,
-                  onFriendSelected: (friend) => setState(() => _selectedFriend = friend),
-                  onFriendHovered: (friend) => setState(() => _hoveredFriend = friend),
-                ),
-                const SizedBox(height: 16),
-
-                // Friend Detail Card (shown when a friend is selected)
-                if (_selectedFriend != null)
-                  FriendDetailCard(
-                    friend: _selectedFriend!,
-                    connectedFriends: _getConnectedFriends(_selectedFriend!),
-                    onProfileTap: () => _navigateToFriendProfileFromData(_selectedFriend!),
-                    onAlignTap: () => _quickAlignFriend(_selectedFriend!),
-                    onConnectedFriendTap: (friend) => setState(() => _selectedFriend = friend),
+                // Constellation Map or Empty State
+                if (friends.isEmpty) ...[
+                  ConnectionsEmptyState(onAddFriend: _showAddFriendSheet),
+                ] else ...[
+                  // Constellation Map Section Header
+                  Row(
+                    children: [
+                      Text('✦', style: TextStyle(color: AppColors.electricYellow, fontSize: 12)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Your Constellation',
+                        style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(153)),
+                      ),
+                      Text(
+                        ' · ${friends.length} stars',
+                        style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(77)),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 12),
+
+                  // Constellation Map
+                  ConstellationMap(
+                    friends: friends,
+                    selectedFriend: _selectedFriend,
+                    hoveredFriend: _hoveredFriend,
+                    onFriendSelected: (friend) => setState(() => _selectedFriend = friend),
+                    onFriendHovered: (friend) => setState(() => _hoveredFriend = friend),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Friend Detail Card (shown when a friend is selected)
+                  if (_selectedFriend != null)
+                    FriendDetailCard(
+                      friend: _selectedFriend!,
+                      connectedFriends: _getConnectedFriends(_selectedFriend!),
+                      onProfileTap: () => _navigateToFriendProfileFromData(_selectedFriend!),
+                      onAlignTap: () => _quickAlignFriend(_selectedFriend!),
+                      onConnectedFriendTap: (friend) => setState(() => _selectedFriend = friend),
+                    ),
+                ],
               ],
             ),
           ),

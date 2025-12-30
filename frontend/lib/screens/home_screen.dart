@@ -257,17 +257,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Load monthly zodiac playlist from user's Spotify library.
+  /// Load zodiac season playlist using AI + app's Spotify account.
   /// Uses cache to avoid reloading every time user navigates.
-  /// Only regenerates once per month.
+  /// Only regenerates once per zodiac season (~30 days).
+  /// No user Spotify auth required.
   Future<void> _loadMonthlyZodiacPlaylist() async {
     if (_isLoadingMonthlyZodiac) return;
     
     // If we already have the playlist loaded in memory, skip
     if (_monthlyZodiacPlaylist != null) return;
     
-    // Check for cached playlist from current month
-    final cached = await storageService.loadMonthlyZodiacPlaylist();
+    // Generate current zodiac season key (e.g., "Capricorn_2024")
+    final now = DateTime.now();
+    final currentSeasonKey = '${_getCurrentZodiacSign()}_${now.year}';
+    
+    // Check for cached playlist from current zodiac season
+    final cached = await storageService.loadZodiacSeasonPlaylist(currentSeasonKey);
     if (cached != null && mounted) {
       setState(() {
         _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(cached);
@@ -276,41 +281,58 @@ class _HomeScreenState extends State<HomeScreen> {
       return; // Use cached version
     }
     
-    // Check if Spotify is connected - directly query the service to avoid race condition
-    final spotifyStatus = await _spotifyService.getConnectionStatus();
-    
-    if (!spotifyStatus.connected) {
-      setState(() {
-        _monthlyZodiacError = 'Connect Spotify to see your monthly playlist';
-      });
-      return;
-    }
-    
-    // Update state if it was stale
-    if (!_isSpotifyConnected && mounted) {
-      setState(() => _isSpotifyConnected = true);
-    }
-    
+    // No valid cache - fetch from API (no Spotify auth required!)
     setState(() {
       _isLoadingMonthlyZodiac = true;
       _monthlyZodiacError = null;
     });
     
     try {
-      final data = await _spotifyService.getMonthlyZodiacPlaylist();
-      if (mounted) {
+      // Get user's chart info for personalization
+      String sunSign = _getCurrentZodiacSign();
+      String moonSign = 'Pisces';
+      String risingSign = 'Scorpio';
+      
+      if (_userSonification != null) {
+        for (final planet in _userSonification!.planets) {
+          if (planet.planet == 'Sun') sunSign = planet.sign;
+          if (planet.planet == 'Moon') moonSign = planet.sign;
+        }
+      }
+      
+      // Get genre preferences
+      final genres = _userMainGenres.isNotEmpty 
+          ? _userMainGenres 
+          : ['indie rock', 'electronic', 'pop'];
+      
+      // Call the new zodiac season API (no user Spotify auth needed)
+      final result = await _apiService.getZodiacSeasonPlaylist(
+        sunSign: sunSign,
+        moonSign: moonSign,
+        risingSign: risingSign,
+        genrePreferences: genres,
+      );
+      
+      if (mounted && result.success) {
+        // Convert to MonthlyZodiacPlaylist format for the widget
+        final playlistData = result.toJson();
+        // Add track_count which may differ from tracks list length
+        playlistData['track_count'] = result.trackCount;
+        
         setState(() {
-          _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(data);
+          _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(playlistData);
           _isLoadingMonthlyZodiac = false;
         });
         
-        // Save to cache for the month
-        await storageService.saveMonthlyZodiacPlaylist(data);
+        // Save to cache for the entire zodiac season
+        await storageService.saveZodiacSeasonPlaylist(playlistData);
+      } else {
+        throw Exception(result.error ?? 'Failed to generate playlist');
       }
     } catch (e) {
       if (mounted) {
         String error = 'Failed to load zodiac playlist';
-        if (e is SpotifyException) {
+        if (e is ApiException) {
           error = e.message;
         }
         setState(() {
@@ -321,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Open the monthly zodiac playlist in Spotify.
+  /// Open the zodiac season playlist in Spotify.
   Future<void> _openMonthlyZodiacPlaylist() async {
     if (_monthlyZodiacPlaylist?.playlistUrl != null) {
       await _spotifyService.openPlaylist(_monthlyZodiacPlaylist!.playlistUrl!);
