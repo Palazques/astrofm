@@ -50,10 +50,10 @@ class AudioService {
     });
   }
 
-  /// Play a chart sonification.
+  /// Play a chart sonification using the Steiner Sound Signature.
   ///
-  /// Creates layered oscillators for each planet and plays them
-  /// with the calculated frequencies, intensities, and panning.
+  /// Creates a 5-note chord from the Sound Signature with
+  /// optional texture layer and aspect modulations.
   /// Loops continuously until stop() is called.
   Future<void> playChartSound(ChartSonification sonification, {Set<String>? activePlanets}) async {
     // Stop any existing playback
@@ -70,8 +70,10 @@ class AudioService {
     _isPlaying = true;
     _playingController.add(true);
 
-    // Default to all active if not specified
-    final currentlyActive = activePlanets ?? sonification.planets.map((p) => p.planet).toSet();
+    // For new Steiner model, activePlanets controls which notes are audible
+    // Default: all notes in sound signature are active
+    final currentlyActive = activePlanets ?? 
+        sonification.soundSignature.map((n) => n.note).toSet();
 
     // Store the sonification for looping
     _currentSonification = sonification;
@@ -86,7 +88,10 @@ class AudioService {
   Timer? _loopTimer;
   Timer? _singlePlayTimer; // Timer for single planet playback cleanup
 
-  /// Start looped playback of the sonification
+  /// Start looped playback of the Steiner Sound Signature.
+  /// 
+  /// Plays the 5-note chord from soundSignature with octave spread,
+  /// plus quiet texture layer notes as background.
   void _startLoopedPlayback(ChartSonification sonification, Set<String> currentlyActive) {
     if (!_isPlaying || _audioContext == null) return;
 
@@ -95,66 +100,42 @@ class AudioService {
     
     // Use a longer loop duration for smoother ambient playback
     const loopDuration = 30.0; // 30 second loops
+    
+    // Pan positions for 5-note chord spread
+    final panPositions = [-0.6, -0.3, 0.0, 0.3, 0.6];
 
-    // Create a node chain for each planet
-    for (final planet in sonification.planets) {
-      if (planet.intensity < 0.05) continue; // Skip very quiet planets
-
-      final planetName = planet.planet;
+    // Play Sound Signature notes (the 5-note chord)
+    for (var i = 0; i < sonification.soundSignature.length; i++) {
+      final note = sonification.soundSignature[i];
+      final noteKey = 'sig_${note.note}_$i';
 
       // 1. Oscillator (Source)
       final oscillator = ctx.createOscillator();
       oscillator.type = 'sine';
-      oscillator.frequency.value = planet.frequency;
+      oscillator.frequency.value = note.frequency;
 
-      // 2. Filter (Tonal Character) - NEW for unique sounds
-      web.BiquadFilterNode? filterNode;
-      if (planet.filterType != 'none' && planet.filterCutoff > 0) {
-        filterNode = ctx.createBiquadFilter();
-        // Map backend filter types to Web Audio filter types
-        switch (planet.filterType) {
-          case 'low_pass':
-            filterNode.type = 'lowpass';
-            break;
-          case 'high_pass':
-            filterNode.type = 'highpass';
-            break;
-          case 'band_pass':
-            filterNode.type = 'bandpass';
-            break;
-          default:
-            filterNode.type = 'lowpass';
-        }
-        filterNode.frequency.value = planet.filterCutoff;
-        filterNode.Q.value = 1.5; // Moderate resonance for tonal color
-      }
-
-      // 3. Envelope Gain (Dynamics) - seamless looping envelope
+      // 2. Envelope Gain (Dynamics) - seamless looping envelope
       final envelopeGain = ctx.createGain();
-      final baseVolume = planet.intensity * 0.25;
+      // Volume based on weight, normalized
+      final baseVolume = (note.weight * 0.3).clamp(0.05, 0.3);
 
       // Smooth fade in, sustain, smooth fade out for seamless loop
       envelopeGain.gain.setValueAtTime(0.0, now);
-      envelopeGain.gain.linearRampToValueAtTime(baseVolume, now + 2.0); // 2s fade in
+      envelopeGain.gain.linearRampToValueAtTime(baseVolume, now + 2.0);
       envelopeGain.gain.setValueAtTime(baseVolume, now + loopDuration - 2.0);
-      envelopeGain.gain.linearRampToValueAtTime(0.0, now + loopDuration); // 2s fade out
+      envelopeGain.gain.linearRampToValueAtTime(0.0, now + loopDuration);
       
-      // 4. Mute Gain (Toggling)
+      // 3. Mute Gain (Toggling)
       final muteGain = ctx.createGain();
-      final initialMuteGain = currentlyActive.contains(planetName) ? 1.0 : 0.0;
-      muteGain.gain.setValueAtTime(initialMuteGain, now);
+      final isActive = currentlyActive.isEmpty || currentlyActive.contains(note.note);
+      muteGain.gain.setValueAtTime(isActive ? 1.0 : 0.0, now);
 
-      // 5. Panner (Space)
+      // 4. Panner (Space) - spread across stereo field
       final panner = ctx.createStereoPanner();
-      panner.pan.value = planet.pan;
+      panner.pan.value = i < panPositions.length ? panPositions[i] : 0.0;
 
-      // Connect Chain: Osc -> [Filter] -> Envelope -> Mute -> Panner -> Destination
-      if (filterNode != null) {
-        oscillator.connect(filterNode);
-        filterNode.connect(envelopeGain);
-      } else {
-        oscillator.connect(envelopeGain);
-      }
+      // Connect Chain: Osc -> Envelope -> Mute -> Panner -> Destination
+      oscillator.connect(envelopeGain);
       envelopeGain.connect(muteGain);
       muteGain.connect(panner);
       panner.connect(ctx.destination);
@@ -164,16 +145,48 @@ class AudioService {
       oscillator.stop(now + loopDuration);
 
       // Store references
-      _activeOscillators[planetName] = oscillator;
-      _activeGains[planetName] = envelopeGain;
-      _planetMuteNodes[planetName] = muteGain;
+      _activeOscillators[noteKey] = oscillator;
+      _activeGains[noteKey] = envelopeGain;
+      _planetMuteNodes[noteKey] = muteGain;
     }
 
+    // Play texture layer notes (quiet background from other planets)
+    for (var i = 0; i < sonification.textureLayer.length; i++) {
+      final texture = sonification.textureLayer[i];
+      final textureKey = 'tex_${texture.planet}_$i';
+
+      final oscillator = ctx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = texture.frequency;
+
+      final envelopeGain = ctx.createGain();
+      // Very quiet for background texture
+      const textureVolume = 0.05;
+
+      envelopeGain.gain.setValueAtTime(0.0, now);
+      envelopeGain.gain.linearRampToValueAtTime(textureVolume, now + 3.0);
+      envelopeGain.gain.setValueAtTime(textureVolume, now + loopDuration - 3.0);
+      envelopeGain.gain.linearRampToValueAtTime(0.0, now + loopDuration);
+
+      // Spread texture notes across stereo field
+      final panner = ctx.createStereoPanner();
+      panner.pan.value = (i / (sonification.textureLayer.length + 1)) * 2 - 1;
+
+      oscillator.connect(envelopeGain);
+      envelopeGain.connect(panner);
+      panner.connect(ctx.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + loopDuration);
+
+      _activeOscillators[textureKey] = oscillator;
+      _activeGains[textureKey] = envelopeGain;
+    }
 
     // Schedule the next loop iteration (with crossfade overlap)
     _loopTimer?.cancel();
     _loopTimer = Timer(
-      Duration(milliseconds: ((loopDuration - 2.0) * 1000).toInt()), // Start next loop 2s before current ends
+      Duration(milliseconds: ((loopDuration - 2.0) * 1000).toInt()),
       () {
         if (_isPlaying && _currentSonification != null) {
           _cleanup();
@@ -224,6 +237,66 @@ class AudioService {
     _activeGains['single'] = gainNode;
     
     // Schedule cleanup after duration using cancellable Timer
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = Timer(Duration(milliseconds: (duration * 1000).toInt()), () {
+      if (_isPlaying) {
+        _cleanup();
+        _isPlaying = false;
+        _playingController.add(false);
+      }
+    });
+  }
+
+  /// Play a planet's chord (3-note Steiner triad).
+  ///
+  /// Creates 3 oscillators at root, third, and fifth frequencies,
+  /// playing the sign's major triad for a rich, harmonic sound.
+  Future<void> playPlanetChord(PlanetChord chord, {double duration = 3.0}) async {
+    stop();
+
+    _ensureContext();
+    final ctx = _audioContext!;
+
+    if (ctx.state == 'suspended') ctx.resume();
+    _isPlaying = true;
+    _playingController.add(true);
+
+    final now = ctx.currentTime;
+    final frequencies = chord.frequencies;
+    final panPositions = [-0.3, 0.0, 0.3]; // Spread across stereo field
+
+    for (var i = 0; i < frequencies.length; i++) {
+      final freq = frequencies[i];
+      final key = 'chord_$i';
+
+      final oscillator = ctx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = freq;
+
+      final gainNode = ctx.createGain();
+      // Root note slightly louder, third and fifth slightly softer
+      final volume = (chord.intensity * 0.25) * (i == 0 ? 1.0 : 0.8);
+
+      gainNode.gain.setValueAtTime(0.0, now);
+      gainNode.gain.linearRampToValueAtTime(volume, now + 0.15);
+      gainNode.gain.setValueAtTime(volume, now + duration - 0.4);
+      gainNode.gain.linearRampToValueAtTime(0.0, now + duration);
+
+      final panner = ctx.createStereoPanner();
+      panner.pan.value = panPositions[i];
+
+      oscillator.connect(gainNode);
+      gainNode.connect(panner);
+      panner.connect(ctx.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+
+      _activeOscillators[key] = oscillator;
+      _activeGains[key] = gainNode;
+    }
+
+    // Schedule cleanup
     _singlePlayTimer?.cancel();
     _singlePlayTimer = Timer(Duration(milliseconds: (duration * 1000).toInt()), () {
       if (_isPlaying) {
@@ -450,6 +523,130 @@ class AudioService {
     _activeOscillators.clear();
     _activeGains.clear();
     _planetMuteNodes.clear();
+  }
+
+  /// Play an alignment meditation sound.
+  /// 
+  /// Plays the anchor notes (shared) at full volume as a stable base,
+  /// attune notes (daily-unique) with gentle pulsing to encourage attunement,
+  /// and the bridge note (if present) with slow modulation to resolve tensions.
+  Future<void> playAlignmentSound(AlignmentSound sound) async {
+    stop();
+
+    _ensureContext();
+    final ctx = _audioContext!;
+
+    if (ctx.state == 'suspended') {
+      ctx.resume();
+    }
+
+    _isPlaying = true;
+    _playingController.add(true);
+
+    final now = ctx.currentTime;
+    final duration = sound.suggestedDuration;
+
+    // Play anchor notes (full volume, stable drone)
+    for (var i = 0; i < sound.anchorNotes.length; i++) {
+      final note = sound.anchorNotes[i];
+      final key = 'anchor_$i';
+
+      final oscillator = ctx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = note.frequency;
+
+      final gainNode = ctx.createGain();
+      gainNode.gain.setValueAtTime(0.0, now);
+      gainNode.gain.linearRampToValueAtTime(0.25, now + 3.0);
+      gainNode.gain.setValueAtTime(0.25, now + duration - 5.0);
+      gainNode.gain.linearRampToValueAtTime(0.0, now + duration);
+
+      // Pan spread for stereo field
+      final panner = ctx.createStereoPanner();
+      panner.pan.value = i == 0 ? -0.3 : (i == 1 ? 0.3 : 0.0);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(panner);
+      panner.connect(ctx.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+
+      _activeOscillators[key] = oscillator;
+      _activeGains[key] = gainNode;
+    }
+
+    // Play attune notes (lower volume with gentle pulsing)
+    for (var i = 0; i < sound.attuneNotes.length; i++) {
+      final note = sound.attuneNotes[i];
+      final key = 'attune_$i';
+
+      final oscillator = ctx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = note.frequency;
+
+      final gainNode = ctx.createGain();
+      // Start quieter with gentle envelope
+      gainNode.gain.setValueAtTime(0.0, now);
+      gainNode.gain.linearRampToValueAtTime(0.12, now + 5.0);
+      gainNode.gain.setValueAtTime(0.12, now + duration - 5.0);
+      gainNode.gain.linearRampToValueAtTime(0.0, now + duration);
+
+      final panner = ctx.createStereoPanner();
+      // Pan opposite to anchor for separation
+      panner.pan.value = i == 0 ? 0.5 : -0.5;
+
+      oscillator.connect(gainNode);
+      gainNode.connect(panner);
+      panner.connect(ctx.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+
+      _activeOscillators[key] = oscillator;
+      _activeGains[key] = gainNode;
+    }
+
+    // Play bridge note if present (grounding, low octave)
+    if (sound.bridgeNote != null) {
+      final bridge = sound.bridgeNote!;
+      const key = 'bridge';
+
+      final oscillator = ctx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = bridge.frequency;
+
+      final gainNode = ctx.createGain();
+      // Very gentle, long fade in for grounding effect
+      gainNode.gain.setValueAtTime(0.0, now);
+      gainNode.gain.linearRampToValueAtTime(0.15, now + 8.0);
+      gainNode.gain.setValueAtTime(0.15, now + duration - 8.0);
+      gainNode.gain.linearRampToValueAtTime(0.0, now + duration);
+
+      // Center pan for grounding
+      final panner = ctx.createStereoPanner();
+      panner.pan.value = 0.0;
+
+      oscillator.connect(gainNode);
+      gainNode.connect(panner);
+      panner.connect(ctx.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+
+      _activeOscillators[key] = oscillator;
+      _activeGains[key] = gainNode;
+    }
+
+    // Schedule stop after duration
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = Timer(Duration(seconds: duration.toInt()), () {
+      if (_isPlaying) {
+        _cleanup();
+        _isPlaying = false;
+        _playingController.add(false);
+      }
+    });
   }
 
   /// Dispose the audio service.

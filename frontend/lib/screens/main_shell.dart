@@ -18,20 +18,20 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   String _activeTab = 'home';
 
-  Widget _getScreen() {
-    switch (_activeTab) {
+  int _getTabIndex(String tab) {
+    switch (tab) {
       case 'home':
-        return const HomeScreen();
+        return 0;
       case 'sound':
-        return const SoundScreen();
+        return 1;
       case 'align':
-        return const AlignScreen();
+        return 2;
       case 'friends':
-        return const ConnectionsScreen();
+        return 3;
       case 'profile':
-        return const ProfileScreen();
+        return 4;
       default:
-        return const HomeScreen();
+        return 0;
     }
   }
 
@@ -44,8 +44,19 @@ class _MainShellState extends State<MainShell> {
         ),
         child: Stack(
           children: [
-            // Main content
-            _getScreen(),
+            // Main content with state persistence
+            Positioned.fill(
+              child: IndexedStack(
+                index: _getTabIndex(_activeTab),
+                children: const [
+                  HomeScreen(),
+                  SoundScreen(),
+                  AlignScreen(),
+                  ConnectionsScreen(),
+                  ProfileScreen(),
+                ],
+              ),
+            ),
 
             // Bottom navigation
             Positioned(

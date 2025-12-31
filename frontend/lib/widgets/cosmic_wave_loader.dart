@@ -82,163 +82,175 @@ class _CosmicWaveLoaderState extends State<CosmicWaveLoader>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Wave and orb container
-          SizedBox(
-            width: 200,
-            height: 150,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Animated waves
-                AnimatedBuilder(
-                  animation: _waveController,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      size: const Size(200, 100),
-                      painter: _WavePainter(
-                        progress: _waveController.value,
-                      ),
-                    );
-                  },
-                ),
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Wave and orb container - Flexible scale
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Determine optimal size based on available space
+                final availableWidth = constraints.maxWidth;
+                final size = availableWidth > 200 ? 200.0 : availableWidth;
                 
-                // Center pulsing note
-                AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, child) {
-                    final scale = 1.0 + (_pulseController.value * 0.4);
-                    return Transform.scale(
-                      scale: scale,
+                return SizedBox(
+                  width: size,
+                  height: size * 0.75, // Aspect ratio 4:3
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Animated waves
+                      AnimatedBuilder(
+                        animation: _waveController,
+                        builder: (context, child) {
+                          return CustomPaint(
+                            size: Size(size, size * 0.5),
+                            painter: _WavePainter(
+                              progress: _waveController.value,
+                            ),
+                          );
+                        },
+                      ),
+                      
+                      // Center pulsing note
+                      AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          final scale = 1.0 + (_pulseController.value * 0.4);
+                          return Transform.scale(
+                            scale: scale,
+                            child: Container(
+                              width: size * 0.3, // Proportional size
+                              height: size * 0.3,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.electricYellow,
+                                    AppColors.hotPink,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.electricYellow.withAlpha(64),
+                                    blurRadius: 30,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '♪',
+                                  style: TextStyle(
+                                    fontSize: size * 0.12, // Proportional font
+                                    color: const Color(0xFF0A0A0F),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      
+                      // Orbiting music notes
+                      AnimatedBuilder(
+                        animation: _orbitController,
+                        builder: (context, child) {
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              _buildOrbitingNote(
+                                symbol: '♪',
+                                radius: size * 0.25,
+                                duration: 3,
+                                initialAngle: 0,
+                                color: AppColors.cosmicPurple,
+                                fontSize: size * 0.09,
+                              ),
+                              _buildOrbitingNote(
+                                symbol: '♫',
+                                radius: size * 0.35,
+                                duration: 4,
+                                initialAngle: 120,
+                                color: AppColors.hotPink,
+                                fontSize: size * 0.08,
+                              ),
+                              _buildOrbitingNote(
+                                symbol: '♪',
+                                radius: size * 0.45,
+                                duration: 5,
+                                initialAngle: 240,
+                                color: const Color(0xFF00D4AA),
+                                fontSize: size * 0.07,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              }
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Loading message with fade animation
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: Text(
+                _loadingMessages[_currentMessageIndex],
+                key: ValueKey<int>(_currentMessageIndex),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.syne(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.electricYellow,
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Progress bar
+            AnimatedBuilder(
+              animation: _progressController,
+              builder: (context, child) {
+                return Container(
+                  width: 150,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(26),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: _progressController.value,
                       child: Container(
-                        width: 60,
-                        height: 60,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
                           gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
                             colors: [
                               AppColors.electricYellow,
                               AppColors.hotPink,
+                              AppColors.cosmicPurple,
                             ],
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.electricYellow.withAlpha(64),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        child: const Center(
-                          child: Text(
-                            '♪',
-                            style: TextStyle(
-                              fontSize: 24,
-                              color: Color(0xFF0A0A0F),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                
-                // Orbiting music notes
-                AnimatedBuilder(
-                  animation: _orbitController,
-                  builder: (context, child) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        _buildOrbitingNote(
-                          symbol: '♪',
-                          radius: 50,
-                          duration: 3,
-                          initialAngle: 0,
-                          color: AppColors.cosmicPurple,
-                          fontSize: 18,
-                        ),
-                        _buildOrbitingNote(
-                          symbol: '♫',
-                          radius: 70,
-                          duration: 4,
-                          initialAngle: 120,
-                          color: AppColors.hotPink,
-                          fontSize: 16,
-                        ),
-                        _buildOrbitingNote(
-                          symbol: '♪',
-                          radius: 90,
-                          duration: 5,
-                          initialAngle: 240,
-                          color: const Color(0xFF00D4AA),
-                          fontSize: 14,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Loading message with fade animation
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            child: Text(
-              _loadingMessages[_currentMessageIndex],
-              key: ValueKey<int>(_currentMessageIndex),
-              style: GoogleFonts.syne(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.electricYellow,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Progress bar
-          AnimatedBuilder(
-            animation: _progressController,
-            builder: (context, child) {
-              return Container(
-                width: 150,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(26),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FractionallySizedBox(
-                    widthFactor: _progressController.value,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            AppColors.electricYellow,
-                            AppColors.hotPink,
-                            AppColors.cosmicPurple,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

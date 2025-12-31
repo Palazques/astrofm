@@ -34,6 +34,7 @@ class ApiConfig {
   static const String spotifyStatusEndpoint = '/api/spotify/status';
   static const String spotifyCreatePlaylistEndpoint = '/api/spotify/create-playlist';
   static const String spotifyGenerateFromLibraryEndpoint = '/api/spotify/generate-from-library';
+  static const String spotifyMonthlyZodiacEndpoint = '/api/spotify/monthly-zodiac';
   
   // Cosmic playlist endpoints (no user Spotify auth required)
   static const String cosmicGenerateEndpoint = '/api/cosmic/generate';

@@ -49,6 +49,75 @@ def get_current_moon_sign() -> tuple[str, float]:
     return get_zodiac_sign(moon_longitude)
 
 
+def get_retrograde_period(planet_name: str) -> dict:
+    """
+    Calculate retrograde period for a planet if it's currently retrograde.
+    Searches backwards/forwards from current date to find start/end.
+    
+    Args:
+        planet_name: Name of the planet (e.g., "Mercury", "Mars")
+        
+    Returns:
+        Dictionary with retrograde_start and retrograde_end ISO date strings,
+        or empty dict if planet is not retrograde
+    """
+    import swisseph as swe
+    from datetime import timedelta
+    
+    planet_ids = {
+        "Mercury": swe.MERCURY,
+        "Venus": swe.VENUS,
+        "Mars": swe.MARS,
+        "Jupiter": swe.JUPITER,
+        "Saturn": swe.SATURN,
+        "Uranus": swe.URANUS,
+        "Neptune": swe.NEPTUNE,
+        "Pluto": swe.PLUTO,
+    }
+    
+    if planet_name not in planet_ids:
+        return {}
+    
+    planet_id = planet_ids[planet_name]
+    now = datetime.now(timezone.utc)
+    jd_now = datetime_to_julian(now)
+    
+    # Check current retrograde status
+    result, _ = swe.calc_ut(jd_now, planet_id)
+    current_speed = result[3]
+    
+    if current_speed >= 0:
+        # Not retrograde
+        return {}
+    
+    # Search backwards for retrograde start (when speed went negative)
+    retrograde_start = None
+    for days_back in range(1, 120):
+        check_date = now - timedelta(days=days_back)
+        jd_check = datetime_to_julian(check_date)
+        result, _ = swe.calc_ut(jd_check, planet_id)
+        if result[3] >= 0:
+            # Found the day before retrograde started
+            retrograde_start = (now - timedelta(days=days_back - 1)).strftime("%Y-%m-%d")
+            break
+    
+    # Search forwards for retrograde end (when speed goes positive)
+    retrograde_end = None
+    for days_forward in range(1, 120):
+        check_date = now + timedelta(days=days_forward)
+        jd_check = datetime_to_julian(check_date)
+        result, _ = swe.calc_ut(jd_check, planet_id)
+        if result[3] >= 0:
+            # Found the day retrograde ends
+            retrograde_end = check_date.strftime("%Y-%m-%d")
+            break
+    
+    return {
+        "retrograde_start": retrograde_start,
+        "retrograde_end": retrograde_end
+    }
+
+
 def get_transit_summary() -> dict:
     """
     Get a summary of current transits for AI context.

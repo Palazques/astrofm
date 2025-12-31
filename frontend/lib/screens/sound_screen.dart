@@ -11,6 +11,7 @@ import '../widgets/birth_chart_wheel/birth_chart_wheel.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../services/session_cache_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/birth_data.dart';
@@ -172,6 +173,21 @@ class _SoundScreenState extends State<SoundScreen> {
   }
 
   Future<void> _loadSonification() async {
+    // Check cache first
+    final cache = SessionCacheService();
+    if (cache.userSonification != null) {
+      final sonification = cache.userSonification!;
+      setState(() {
+        _sonification = sonification;
+        _selectedPlanets.clear();
+        _selectedPlanets.addAll(sonification.planets.map((p) => p.planet));
+        _isLoading = false;
+      });
+      // Still load AI interpretation
+      _loadSoundInterpretation();
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -186,6 +202,9 @@ class _SoundScreenState extends State<SoundScreen> {
       );
       
       if (mounted) {
+        // Store in cache
+        cache.cacheUserSonification(sonification);
+        
         setState(() {
           _sonification = sonification;
           // Select all planets by default
@@ -209,6 +228,16 @@ class _SoundScreenState extends State<SoundScreen> {
   Future<void> _loadSoundInterpretation() async {
     if (_sonification == null) return;
     
+    // Check cache first
+    final cache = SessionCacheService();
+    if (cache.hasAiReading('sound_interpretation')) {
+      setState(() {
+        _soundInterpretation = cache.getAiReading('sound_interpretation') as SoundInterpretation;
+        _isLoadingSoundInterpretation = false;
+      });
+      return;
+    }
+    
     setState(() => _isLoadingSoundInterpretation = true);
     
     try {
@@ -229,6 +258,9 @@ class _SoundScreenState extends State<SoundScreen> {
       );
       
       if (mounted) {
+        // Store in cache
+        cache.cacheAiReading('sound_interpretation', interpretation);
+        
         setState(() {
           _soundInterpretation = interpretation;
           _isLoadingSoundInterpretation = false;

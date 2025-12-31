@@ -162,6 +162,84 @@ class ApiService {
     }
   }
 
+  /// Get Sound Signature alignment between personal and daily charts.
+  /// 
+  /// Compares user's natal Sound Signature with today's transit Sound Signature,
+  /// identifies alignments/tensions, and returns an alignment meditation sound.
+  Future<AlignmentResponse> getSoundSignatureAlignment({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/sonification/alignment'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return AlignmentResponse.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get Sound Signature alignment',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get Sound Signature alignment between user and friend.
+  /// 
+  /// Compares user's natal Sound Signature with friend's natal Sound Signature,
+  /// identifies alignments/tensions, and returns an alignment meditation sound.
+  Future<AlignmentResponse> getFriendSoundSignatureAlignment({
+    required String userDatetime,
+    required double userLatitude,
+    required double userLongitude,
+    String userTimezone = 'UTC',
+    required String friendDatetime,
+    required double friendLatitude,
+    required double friendLongitude,
+    String friendTimezone = 'UTC',
+    String? friendName,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/sonification/friend-alignment'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_datetime': userDatetime,
+            'user_latitude': userLatitude,
+            'user_longitude': userLongitude,
+            'user_timezone': userTimezone,
+            'friend_datetime': friendDatetime,
+            'friend_latitude': friendLatitude,
+            'friend_longitude': friendLongitude,
+            'friend_timezone': friendTimezone,
+            if (friendName != null) 'friend_name': friendName,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return AlignmentResponse.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get friend Sound Signature alignment',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   /// Get AI-generated daily reading with playlist parameters.
   ///
   /// [datetime] - Birth date and time in ISO format

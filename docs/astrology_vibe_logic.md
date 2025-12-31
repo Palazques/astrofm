@@ -1,59 +1,191 @@
-# Astrology Vibe Logic and Custom Sound Signature Rules
+# Astrology Vibe Logic: Steiner Zodiac Tone Circle Sound Signature
 
 ## I. Astrological Calculation Directives
 * **Engine Source:** Swiss Ephemeris data must be used for planetary positions.
-* **House System:** **Whole Sign Houses** must be used for all calculations mapping positions to sound parameters (each house is a full 30 degrees).
-* **Orb of Influence:** Use a standard orb of $8^\circ$ for major aspects (Conjunction, Opposition, Square, Trine) and $3^\circ$ for minor aspects.
+* **House System:** **Whole Sign Houses** must be used (each house is a full 30 degrees).
+* **Orb of Influence:** 8° for major aspects (Conjunction, Opposition, Square, Trine), 3° for minor aspects.
 
 ---
 
-## II. Planet-to-Tone Mapping (Sound Signature Foundation)
+## II. Sound Signature Architecture
 
-The core sound signature is a **pure tone** based on the planet's orbital frequency (Cosmic Octave method). The output is a raw, filtered sine wave with NO instrumental timbre. 
-
-| Planet | Core Energy/Vibe Code | Calculated Frequency (Hz) | Musical Note/Pitch (Fixed) | Tone Output Role |
-| :--- | :--- | :--- | :--- | :--- |
-| **Sun** | Identity, Vitality | $126.22\text{ Hz}$ | **B** | Carrier/Foundation Tone |
-| **Moon** | Emotion, Intuition | $210.42\text{ Hz}$ | **G#** | Rhythmic/Fluid Modulator |
-| **Mercury** | Communication, Clarity | $141.27\text{ Hz}$ | **C#** | High-Frequency Detail Tone |
-| **Mars** | Drive, Action | $144.72\text{ Hz}$ | **C#** | Pulsing/Percussive Tone |
-| **Jupiter** | Expansion, Optimism | $183.58\text{ Hz}$ | **F#** | Harmonic Layer Tone |
-| **Saturn** | Structure, Discipline | $147.85\text{ Hz}$ | **D** | Low-Frequency Grounding Drone |
-| **Uranus** | Innovation, Disruption | $207.36\text{ Hz}$ | **G#** | Glitch/Unpredictable Filter Tone |
-| **Neptune** | Dreams, Spirituality | $211.44\text{ Hz}$ | **G#** | Reverb/Echo Ambient Tone |
-| **Pluto** | Transformation, Intensity | $140.25\text{ Hz}$ | **C#** | Sub-Bass/Intense Filter Tone |
-
-*Directive:* The Agent must use the **exact calculated frequency** (or its highest octave equivalent) as the fundamental tone. The **Tone Output Role** defines how the filter (VCF) and volume envelope (VCA) are applied to the pure sine wave.
+The Sound Signature is a **5-note chord** built from the **Big Four** astrological points:
+1. **Sun** - Core identity
+2. **Moon** - Emotional self  
+3. **Rising (Ascendant)** - Outer appearance (always 100% weight)
+4. **Chart Ruler** - Planet ruling the Rising sign
 
 ---
 
-## III. House-to-Sound/Timbre Mapping (The Context Layer)
+## III. Layer 1: Planet Root Notes
 
-Each house represents a life area and must be sonified by a unique sound quality (Timbre/Texture). This timbre filters the planet's base note, providing the context for its energy.
+Each planet has a fixed root note derived from its ruling sign's position on the Circle of Fifths.
 
-| House | Life Area (Context) | Quality/Modality | Sound Quality / Timbre | Purpose in Mix |
-| :--- | :--- | :--- | :--- | :--- |
-| **1st** | Self, Appearance | Angular (Action) | **Lead, Focused** | High-pass filter, clear, singular melodic line. |
-| **2nd** | Money, Self-Worth | Succedent (Security) | **Warm, Resonant** | Rich mid-bass frequencies, smooth attack. |
-| **3rd** | Communication, Mind | Cadent (Learning) | **Fast, Repeating** | Quick arpeggios, staccato notes. |
-| **4th** | Home, Roots | Angular (Action) | **Deep, Substantial** | Low-end resonance, steady bass drone. |
-| **5th** | Creativity, Pleasure | Succedent (Security) | **Bright, Expansive** | Layered synths, wide stereo field. |
-| **6th** | Service, Health | Cadent (Learning) | **Rhythmic, Structured** | Looping percussion, complex time signature. |
-| **7th** | Partnership | Angular (Action) | **Layered, Counterpoint** | Two interwoven, harmonizing melodic lines. |
-| **8th** | Transformation, Shared Resources | Succedent (Security) | **Deep, Unsettling** | Filtered noise, reversed sounds, sub-bass pulse. |
-| **9th** | Philosophy, Travel | Cadent (Learning) | **Ascending, Open** | Rising pitch bends, open fifths, sustained reverb. |
-| **10th**| Career, Public Status | Angular (Action) | **Apex, Authoritative** | Sharp attack, high volume, clear structure. |
-| **11th**| Groups, Hopes | Succedent (Security) | **Synthetic, Interconnected** | Complex chord clusters, digital timbre. |
-| **12th**| Subconscious, Hidden | Cadent (Learning) | **Ambient, Dissolving** | Heavy delay/echo, minimal attack, sustained pads. |
+| Planet | Rules | Root Note | Frequency (A=440) |
+| :--- | :--- | :--- | :--- |
+| Sun | Leo | E | 329.63 Hz |
+| Moon | Cancer | A | 440.00 Hz |
+| Mercury | Gemini | D | 293.66 Hz |
+| Venus | Taurus | G | 392.00 Hz |
+| Mars | Aries | C | 261.63 Hz |
+| Jupiter | Sagittarius | A♭ | 415.30 Hz |
+| Saturn | Capricorn | E♭ | 311.13 Hz |
+| Uranus | Aquarius | B♭ | 466.16 Hz |
+| Neptune | Pisces | F | 349.23 Hz |
+| Pluto | Scorpio | D♭ | 277.18 Hz |
 
 ---
 
-## IV. Intensity and Distinctness Dynamic (The Volume Rule)
+## IV. Layer 2: Sign Chords
 
-The distinctness of the planet's sound signature (volume/filter) must change dynamically based on its angular distance within the house. 
+The sign a planet occupies determines the harmonic chord (major triad).
 
-* **Mid-House Distinctness:** When a planet is near the **center of the house** (around $15^\circ$ into the 30-degree segment), its sound must be at **maximum volume/distinctness**. This is the "most distinct sound."
-* **Cusp Fading:** As a planet approaches either cusp (the $0^\circ$ or $30^\circ$ mark), its sound must **fade out or become heavily filtered** (e.g., volume decreases, a low-pass filter is applied) to represent its energy blending with the adjacent house.
-* **Rule:** The intensity function must be implemented as a **smooth curve** (e.g., bell curve or sine wave segment) from $0^\circ \rightarrow \text{Max Distinctness} \rightarrow 30^\circ$.
+| Sign | Major Chord | Notes |
+| :--- | :--- | :--- |
+| Aries | C Major | C - E - G |
+| Taurus | G Major | G - B - D |
+| Gemini | D Major | D - F# - A |
+| Cancer | A Major | A - C# - E |
+| Leo | E Major | E - G# - B |
+| Virgo | B Major | B - D# - F# |
+| Libra | F# Major | F# - A# - C# |
+| Scorpio | D♭ Major | D♭ - F - A♭ |
+| Sagittarius | A♭ Major | A♭ - C - E♭ |
+| Capricorn | E♭ Major | E♭ - G - B♭ |
+| Aquarius | B♭ Major | B♭ - D - F |
+| Pisces | F Major | F - A - C |
 
 ---
+
+## V. Layer 3: House Degree (Weight & Inversion)
+
+### Weight Calculation (Bell Curve)
+```
+weight = sin(degree_in_house / 30 × π)
+```
+
+| Degree | Weight |
+| :--- | :--- |
+| 0° | 0% |
+| 5° | 50% |
+| 10° | 87% |
+| 15° | 100% |
+| 20° | 87% |
+| 25° | 50% |
+| 30° | 0% |
+
+### Chord Inversion by Degree
+| Degree Range | Inversion | Structure |
+| :--- | :--- | :--- |
+| 0° - 10° | Root position | 1 - 3 - 5 |
+| 10° - 20° | First inversion | 3 - 5 - 1 |
+| 20° - 30° | Second inversion | 5 - 1 - 3 |
+
+---
+
+## VI. Layer 4: Aspect Interactions
+
+### Interval Relationships
+| Aspect | Degrees | Musical Interval | Quality |
+| :--- | :--- | :--- | :--- |
+| Conjunction | 0° | Unison | Reinforced, powerful |
+| Semi-sextile | 30° | Perfect 5th | Stable |
+| Sextile | 60° | Major 2nd | Bright, open |
+| Square | 90° | Minor 3rd | Tension, friction |
+| Trine | 120° | Major 3rd | Harmony, ease |
+| Quincunx | 150° | Perfect 4th | Awkward, suspended |
+| Opposition | 180° | Tritone | Maximum tension |
+
+### Aspect Sound Modulation
+| Aspect | Sound Effect |
+| :--- | :--- |
+| Conjunction | Unison, slightly detuned, thick |
+| Sextile | Gentle LFO cross-modulation, shimmer |
+| Square | Ring modulation, harsh, metallic |
+| Trine | Chorus, warm blend |
+| Opposition | Phase cancellation, push-pull |
+
+### Orb Intensity
+| Orb | Effect Strength |
+| :--- | :--- |
+| 0° (exact) | 100% |
+| 1-3° | 75% |
+| 4-6° | 50% |
+| 7-8° | 25% |
+| 9°+ | 0% (no aspect) |
+
+---
+
+## VII. Chart Ruler Table
+
+| Rising Sign | Chart Ruler |
+| :--- | :--- |
+| Aries | Mars |
+| Taurus | Venus |
+| Gemini | Mercury |
+| Cancer | Moon |
+| Leo | Sun |
+| Virgo | Mercury |
+| Libra | Venus |
+| Scorpio | Pluto |
+| Sagittarius | Jupiter |
+| Capricorn | Saturn |
+| Aquarius | Uranus |
+| Pisces | Neptune |
+
+**Special Case:** If Chart Ruler is Sun or Moon, that planet is counted twice (extra weight).
+
+---
+
+## VIII. Building the Sound Signature
+
+### Step 1: Collect Notes from Big Four
+For each source, collect:
+- Planet root note (1 note)
+- Sign chord notes (3 notes)
+
+Total: Up to 16 notes (4 sources × 4 notes each)
+
+### Step 2: Calculate Weighted Contribution
+| Source | Weight Calculation |
+| :--- | :--- |
+| Sun | sin(sun_degree / 30 × π) |
+| Moon | sin(moon_degree / 30 × π) |
+| Rising | 1.0 (fixed 100%) |
+| Chart Ruler | sin(chart_ruler_degree / 30 × π) |
+
+### Step 3: Count Weighted Notes
+Multiply each note's occurrence by its source's weight.
+
+### Step 4: Select Top 5 Notes
+Take the 5 notes with highest weighted count.
+
+### Step 5: Tie-Breaker Rules
+| Priority | Rule |
+| :--- | :--- |
+| 1st | Sun's notes win |
+| 2nd | Moon's notes win |
+| 3rd | Rising's notes win |
+| 4th | Chart Ruler's notes win |
+
+---
+
+## IX. Sound Signature Voicing (Octave Spread)
+
+| Position | Note | Octave |
+| :--- | :--- | :--- |
+| 1st (root) | Most common | Octave 3 (low) |
+| 2nd | Second most | Octave 3 (low) |
+| 3rd | Third most | Octave 4 (middle) |
+| 4th | Fourth most | Octave 4 (middle) |
+| 5th | Fifth most | Octave 5 (high) |
+
+---
+
+## X. Texture Layer (Other Planets)
+
+Planets not in the Big Four become background texture:
+- Play root notes only (not full chords)
+- Arpeggiate slowly (one note every 1-2 seconds)
+- Volume: 20%
+- Adds movement without clutter

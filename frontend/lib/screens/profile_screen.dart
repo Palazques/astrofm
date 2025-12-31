@@ -7,6 +7,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/genre_preferences_modal.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
+import '../services/session_cache_service.dart';
 import '../models/birth_data.dart';
 import '../models/sonification.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -92,6 +93,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
   
   Future<void> _loadChartData(BirthData birthData) async {
+    // Check cache first
+    final cache = SessionCacheService();
+    if (cache.userSonification != null) {
+      setState(() {
+        _chartData = cache.userSonification;
+        _isLoadingChart = false;
+      });
+      return;
+    }
+    
     try {
       final chart = await _apiService.getUserSonification(
         datetime: birthData.datetime,
@@ -100,6 +111,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         timezone: birthData.timezone,
       );
       if (mounted) {
+        // Store in cache
+        cache.cacheUserSonification(chart);
+        
         setState(() {
           _chartData = chart;
           _isLoadingChart = false;

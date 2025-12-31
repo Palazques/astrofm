@@ -16,6 +16,7 @@ from models.schemas import (
     AspectData,
 )
 from services.ephemeris import calculate_natal_chart
+from services.transits import get_retrograde_period
 from services.alignment import (
     get_current_transits,
     calculate_daily_alignment,
@@ -209,17 +210,19 @@ async def get_transits() -> TransitsResponse:
         # Get list of retrograde planets
         retrograde = [t["name"] for t in transits if t["retrograde"]]
         
-        # Build response
-        planets = [
-            TransitPosition(
+        # Build response with retrograde period data
+        planets = []
+        for t in transits:
+            retro_period = get_retrograde_period(t["name"]) if t["retrograde"] else {}
+            planets.append(TransitPosition(
                 name=t["name"],
                 sign=t["sign"],
                 degree=t["sign_degree"],
                 house=None,  # No house without natal chart
-                retrograde=t["retrograde"]
-            )
-            for t in transits
-        ]
+                retrograde=t["retrograde"],
+                retrograde_start=retro_period.get("retrograde_start"),
+                retrograde_end=retro_period.get("retrograde_end")
+            ))
         
         return TransitsResponse(
             planets=planets,

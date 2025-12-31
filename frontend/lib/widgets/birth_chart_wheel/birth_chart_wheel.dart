@@ -164,10 +164,19 @@ class _BirthChartWheelState extends State<BirthChartWheel>
       _soundWaveController.stop();
       _soundWaveController.reset();
     } else {
-      // Start playback
-      final planetSound = widget.sonification.planets
-          .firstWhere((p) => p.planet == planet.name);
-      widget.audioService.playSinglePlanet(planetSound);
+      // Start chord playback using new Steiner model
+      final planetChord = widget.sonification.planetChords
+          .where((c) => c.planet == planet.name)
+          .firstOrNull;
+      
+      if (planetChord != null) {
+        widget.audioService.playPlanetChord(planetChord);
+      } else {
+        // Fallback to legacy single tone
+        final planetSound = widget.sonification.planets
+            .firstWhere((p) => p.planet == planet.name);
+        widget.audioService.playSinglePlanet(planetSound);
+      }
       
       setState(() {
         _selectedPlanet = planet;

@@ -19,6 +19,7 @@ import '../models/attunement.dart';
 import '../models/sonification.dart';
 import '../models/prescription.dart';
 import '../widgets/prescribe_tab.dart';
+import '../widgets/transit_wheel/transit_wheel.dart';
 import '../data/test_users.dart';
 
 /// Align screen for frequency alignment.
@@ -32,7 +33,7 @@ class AlignScreen extends StatefulWidget {
 class _AlignScreenState extends State<AlignScreen> {
   final ApiService _apiService = ApiService();
   
-  String _alignTarget = 'today';
+  String _alignTarget = 'transit';
   bool _isAligning = false;
   double _alignmentProgress = 0;
   int _resonanceScore = 0;
@@ -63,6 +64,10 @@ class _AlignScreenState extends State<AlignScreen> {
   String _attunementDuration = 'standard'; // 'quick', 'standard', 'meditate'
   Set<String> _selectedAttunementPlanets = {};
   bool _isPlayingAttunement = false;
+  
+  // Sound Signature alignment data
+  AlignmentResponse? _soundSignatureAlignment;
+  bool _isPlayingAlignmentSound = false;
   
   // Prescription data
   CosmicPrescription? _prescriptionData;
@@ -241,24 +246,26 @@ class _AlignScreenState extends State<AlignScreen> {
           orElse: () => testFriends.first,
         );
         
-        // Call AI interpretation with friend's birth data
-        final aiResult = await _apiService.getAlignmentInterpretation(
+        // Call Sound Signature alignment API for friend
+        final alignmentResult = await _apiService.getFriendSoundSignatureAlignment(
           userDatetime: _birthDataMap['datetime'] as String,
           userLatitude: _birthDataMap['latitude'] as double,
           userLongitude: _birthDataMap['longitude'] as double,
-          targetDatetime: friend.birthDatetime ?? '1992-03-21T14:30:00',
-          targetLatitude: friend.birthLatitude ?? 40.7128,
-          targetLongitude: friend.birthLongitude ?? -74.0060,
+          userTimezone: _birthDataMap['timezone'] as String? ?? 'UTC',
+          friendDatetime: friend.birthDatetime ?? '1992-03-21T14:30:00',
+          friendLatitude: friend.birthLatitude ?? 40.7128,
+          friendLongitude: friend.birthLongitude ?? -74.0060,
+          friendName: friend.name.split(' ')[0],
         );
         
         if (mounted) {
           setState(() {
             _alignmentProgress = 1.0;
-            _resonanceScore = aiResult.resonanceScore;
-            _dominantEnergy = aiResult.isHarmonious ? 'Harmonious' : 'Dynamic';
-            _alignmentDescription = aiResult.interpretation;
-            _aiInterpretation = aiResult;
-            _harmoniousAspects = aiResult.harmoniousAspects;
+            _resonanceScore = alignmentResult.analysis.alignmentScore;
+            _dominantEnergy = alignmentResult.analysis.alignmentScore >= 70 ? 'Harmonious' : 'Dynamic';
+            _alignmentDescription = alignmentResult.explanation;
+            _soundSignatureAlignment = alignmentResult;
+            _harmoniousAspects = alignmentResult.analysis.sharedNotes;
           });
         }
       } else {
@@ -325,14 +332,52 @@ class _AlignScreenState extends State<AlignScreen> {
   }
 
   void _playBlend() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('🎵 Audio blend coming soon!'),
-        backgroundColor: AppColors.cosmicPurple,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    // If we have a Sound Signature alignment, play it
+    if (_soundSignatureAlignment != null) {
+      if (_isPlayingAlignmentSound) {
+        // Stop if already playing
+        _audioService.stop();
+        setState(() => _isPlayingAlignmentSound = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('🔇 Alignment sound stopped'),
+            backgroundColor: AppColors.cosmicPurple,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else {
+        // Start playing alignment sound
+        _audioService.playAlignmentSound(_soundSignatureAlignment!.sound);
+        setState(() => _isPlayingAlignmentSound = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🎵 Playing alignment meditation (${(_soundSignatureAlignment!.sound.suggestedDuration / 60).toStringAsFixed(0)} min)'),
+            backgroundColor: AppColors.teal,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        
+        // Listen for playback completion
+        _audioService.playingStream.listen((isPlaying) {
+          if (!isPlaying && mounted && _isPlayingAlignmentSound) {
+            setState(() => _isPlayingAlignmentSound = false);
+          }
+        });
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('🎵 Audio blend coming soon!'),
+          backgroundColor: AppColors.cosmicPurple,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   Future<void> _saveMoment() async {
@@ -889,9 +934,6 @@ class _AlignScreenState extends State<AlignScreen> {
       padding: const EdgeInsets.all(6),
       child: Row(
         children: [
-          _TabButton(label: 'Today', isActive: _alignTarget == 'today', onPressed: () {
-            setState(() { _alignTarget = 'today'; _resetAlignment(); });
-          }),
           _TabButton(label: 'Friend', isActive: _alignTarget == 'friend', onPressed: () {
             setState(() { _alignTarget = 'friend'; _resetAlignment(); });
           }),
@@ -908,7 +950,6 @@ class _AlignScreenState extends State<AlignScreen> {
   }
 
   Widget _buildTargetContent() {
-    if (_alignTarget == 'today') return _buildTodayContent();
     if (_alignTarget == 'friend') return _buildFriendContent();
     if (_alignTarget == 'attune') return _buildAttuneContent();
     return _buildTransitContent();
@@ -1052,98 +1093,20 @@ class _AlignScreenState extends State<AlignScreen> {
       );
     }
     
-    // Build transit list from real API data
+    // Build transit wheel with AI insight card
     return Column(
       children: [
         // AI Cosmic Weather Insight
         _buildTransitInsightCard(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         
-        // Moon phase card
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: GlassCard(
-            padding: const EdgeInsets.all(16),
-            borderColor: AppColors.electricYellow.withAlpha(51),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: const LinearGradient(colors: [AppColors.electricYellow, AppColors.hotPink]),
-                  ),
-                  child: const Icon(Icons.nights_stay_rounded, color: AppColors.background, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Moon Phase', style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(128), letterSpacing: 1)),
-                      Text(_transitsData!.moonPhase, style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        // Transit Wheel
+        Center(
+          child: TransitWheel(
+            transits: _transitsData!,
+            highlightPlanet: 'Sun', // Today's highlight is always Sun
           ),
         ),
-        
-        // Planet positions
-        ...(_transitsData!.planets.take(6).map((planet) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: GlassCard(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: const LinearGradient(colors: [AppColors.cosmicPurple, AppColors.hotPink]),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _getPlanetSymbol(planet.name),
-                      style: const TextStyle(fontSize: 22, color: Colors.white),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(planet.name, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                      Text('${planet.sign} ${planet.degree.toStringAsFixed(1)}°', style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white.withAlpha(128))),
-                    ],
-                  ),
-                ),
-                if (_transitsData!.isRetrograde(planet.name))
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.hotPink.withAlpha(38),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('℞ Rx', style: GoogleFonts.syne(fontSize: 11, color: AppColors.hotPink)),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.teal.withAlpha(38),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('Direct', style: GoogleFonts.syne(fontSize: 11, color: AppColors.teal)),
-                  ),
-              ],
-            ),
-          ),
-        ))),
       ],
     );
   }

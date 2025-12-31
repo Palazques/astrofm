@@ -49,6 +49,8 @@ class TransitPosition {
   final double degree;
   final int? house;
   final bool retrograde;
+  final String? retrogradeStart;
+  final String? retrogradeEnd;
 
   TransitPosition({
     required this.name,
@@ -56,6 +58,8 @@ class TransitPosition {
     required this.degree,
     this.house,
     required this.retrograde,
+    this.retrogradeStart,
+    this.retrogradeEnd,
   });
 
   factory TransitPosition.fromJson(Map<String, dynamic> json) {
@@ -65,6 +69,8 @@ class TransitPosition {
       degree: (json['degree'] as num).toDouble(),
       house: json['house'] as int?,
       retrograde: json['retrograde'] as bool? ?? false,
+      retrogradeStart: json['retrograde_start'] as String?,
+      retrogradeEnd: json['retrograde_end'] as String?,
     );
   }
 
@@ -74,6 +80,8 @@ class TransitPosition {
     'degree': degree,
     'house': house,
     'retrograde': retrograde,
+    'retrograde_start': retrogradeStart,
+    'retrograde_end': retrogradeEnd,
   };
 
   /// Returns a formatted string like "Sun in Sagittarius 25.4°"

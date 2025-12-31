@@ -251,6 +251,8 @@ class TransitPosition(BaseModel):
     degree: float = Field(..., description="Degree within the sign (0-30)")
     house: Optional[int] = Field(None, ge=1, le=12, description="House placement if natal chart provided")
     retrograde: bool = Field(default=False, description="Is the planet retrograde")
+    retrograde_start: Optional[str] = Field(None, description="Retrograde start date (ISO format) if retrograde")
+    retrograde_end: Optional[str] = Field(None, description="Retrograde end date (ISO format) if retrograde")
 
 
 class DailyAlignmentRequest(BaseModel):

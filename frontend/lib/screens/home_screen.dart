@@ -12,14 +12,16 @@ import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../services/spotify_service.dart';
+import '../services/session_cache_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/playlist.dart';
-import '../models/friend_data.dart';
+
 import '../models/birth_data.dart';
 import '../models/monthly_zodiac.dart';
 import '../widgets/zodiac_playlist_card.dart';
 import '../widgets/zodiac_season_pill.dart';
+import '../services/playlist_service.dart';
 import '../data/test_users.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
@@ -35,37 +37,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
   final SpotifyService _spotifyService = SpotifyService();
   
-  bool _isPlayingUserSound = false;
   bool _isPlayingDailySound = false;
   ChartSonification? _userSonification;
   ChartSonification? _dailySonification;
   DailyReading? _dailyReading;
   bool _isLoadingReading = false;
   String? _readingError;
-  PlaylistResult? _generatedPlaylist;
-  DatasetPlaylistResult? _datasetPlaylist; // New dataset-based playlist
-  CosmicPlaylistResult? _cosmicPlaylist; // AI + Spotify cosmic playlist
-  bool _isGeneratingPlaylist = false;
-  String? _playlistError;
-  PlaylistInsight? _playlistInsight;
-  bool _isLoadingPlaylistInsight = false;
   bool _isLoadingSonification = true;
   
   // User's genre preferences from onboarding
+  // User's genre preferences from onboarding
   List<String> _userMainGenres = [];
-  List<String> _userSubgenres = [];
   
-  // Spotify playlist data
-  String? _spotifyPlaylistUrl;
-  bool _isCreatingSpotifyPlaylist = false;
-  bool _isSpotifyConnected = false;
-  List<SpotifyTrack> _spotifyLibraryTracks = [];  // Tracks from user's library
   
-  // Alignment data
-  int? _alignmentScore;
-  String? _dominantEnergy;
-  bool _isLoadingAlignment = true;
-  String? _alignmentError;
+  // Alignment data (Removed as unused)
   
   // Carousel state for Today's Reading
   int _currentReadingPage = 0;
@@ -92,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, String> get todaysReading => {
     'sign': _getCurrentZodiacSign(),
     'date': _formatCurrentDate(),
-    'energy': _dominantEnergy ?? _dailyReading?.energyLabel ?? 'Loading...',
+    'energy': _dailyReading?.energyLabel ?? 'Loading...',
     'mood': _dailyReading?.mood ?? 'Loading...',
     'bpm': _dailyReading?.playlistParams.bpmRange ?? '---',
     'vibe': _dailyReading?.reading ?? 'Connecting to the cosmos...',
@@ -143,14 +128,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadBirthDataAndInit();
+    
+    // Listen to global playlist service
+    playlistService.addListener(_onPlaylistServiceUpdate);
+    playlistService.init();
+
     _audioService.playingStream.listen((isPlaying) {
       if (mounted && !isPlaying) {
         setState(() {
-          _isPlayingUserSound = false;
+          // _isPlayingUserSound is removed
           _isPlayingDailySound = false;
         });
       }
     });
+  }
+
+  void _onPlaylistServiceUpdate() {
+    if (mounted) {
+      setState(() {
+        // Trigger rebuild when service updates
+      });
+    }
   }
   
   Future<void> _loadBirthDataAndInit() async {
@@ -165,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       setState(() {
         _userMainGenres = genrePrefs.genres;
-        _userSubgenres = genrePrefs.subgenres;
       });
     }
     
@@ -173,89 +170,16 @@ class _HomeScreenState extends State<HomeScreen> {
     // This runs in parallel with everything else below
     _loadDailyReading();
     
-    // Load local cache and Spotify status in parallel
-    await Future.wait([
-      _checkSpotifyConnection(),
-      _loadCachedPlaylist(),
-    ]);
+    // Load cached playlist state and Spotify status
+    await playlistService.init();
     
-    // Load all API data in parallel (no dependencies between these)
+    // Load all API data in parallel
     Future.wait([
-      _loadAlignmentScore(),
       _loadSonificationData(),
       _loadMonthlyZodiacPlaylist(),
     ]);
   }
   
-  /// Load cached daily playlist if available for today.
-  Future<void> _loadCachedPlaylist() async {
-    // Priority: Load cosmic playlist first (new system)
-    final cachedCosmic = await storageService.loadCosmicPlaylist();
-    if (cachedCosmic != null && mounted) {
-      setState(() {
-        _cosmicPlaylist = CosmicPlaylistResult.fromJson(cachedCosmic);
-        _spotifyPlaylistUrl = _cosmicPlaylist?.playlistUrl;
-      });
-      return; // Already have today's playlist
-    }
-    
-    // Fallback: Load dataset playlist from cache (legacy)
-    final cachedDataset = await storageService.loadDatasetPlaylist();
-    if (cachedDataset != null && mounted) {
-      setState(() {
-        _datasetPlaylist = DatasetPlaylistResult.fromJson(cachedDataset);
-      });
-    }
-    
-    // Load Spotify library tracks from cache
-    final cached = await storageService.loadDailyPlaylist();
-    if (cached != null && mounted) {
-      setState(() {
-        _spotifyLibraryTracks = cached.tracks
-            .map((t) => SpotifyTrack.fromJson(t))
-            .toList();
-        _spotifyPlaylistUrl = cached.playlistUrl;
-      });
-    }
-  }
-  
-  Future<void> _checkSpotifyConnection() async {
-    final status = await _spotifyService.getConnectionStatus();
-    if (mounted) {
-      setState(() => _isSpotifyConnected = status.connected);
-    }
-  }
-
-  Future<void> _loadAlignmentScore() async {
-    try {
-      setState(() {
-        _isLoadingAlignment = true;
-        _alignmentError = null;
-      });
-      
-      final result = await _apiService.getDailyAlignment(
-        datetime: _birthDataMap['datetime'] as String,
-        latitude: _birthDataMap['latitude'] as double,
-        longitude: _birthDataMap['longitude'] as double,
-        timezone: _birthDataMap['timezone'] as String,
-      );
-      
-      if (mounted) {
-        setState(() {
-          _alignmentScore = result.score;
-          _dominantEnergy = result.dominantEnergy;
-          _isLoadingAlignment = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _alignmentError = e.toString();
-          _isLoadingAlignment = false;
-        });
-      }
-    }
-  }
 
   /// Load zodiac season playlist using AI + app's Spotify account.
   /// Uses cache to avoid reloading every time user navigates.
@@ -294,10 +218,8 @@ class _HomeScreenState extends State<HomeScreen> {
       String risingSign = 'Scorpio';
       
       if (_userSonification != null) {
-        for (final planet in _userSonification!.planets) {
-          if (planet.planet == 'Sun') sunSign = planet.sign;
-          if (planet.planet == 'Moon') moonSign = planet.sign;
-        }
+        sunSign = _userSonification!.bigFour['sun']?.sign ?? sunSign;
+        moonSign = _userSonification!.bigFour['moon']?.sign ?? moonSign;
       }
       
       // Get genre preferences
@@ -352,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    playlistService.removeListener(_onPlaylistServiceUpdate);
     _audioService.dispose();
     _apiService.dispose();
     _readingPageController.dispose();
@@ -359,6 +282,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadSonificationData() async {
+    // Check cache first
+    final cache = SessionCacheService();
+    if (cache.userSonification != null && cache.dailySonification != null) {
+      setState(() {
+        _userSonification = cache.userSonification;
+        _dailySonification = cache.dailySonification;
+        _isLoadingSonification = false;
+      });
+      return;
+    }
+    
     setState(() => _isLoadingSonification = true);
     
     try {
@@ -377,6 +311,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
       
       if (mounted) {
+        // Store in cache
+        cache.cacheUserSonification(results[0]);
+        cache.cacheDailySonification(results[1]);
+        
         setState(() {
           _userSonification = results[0];
           _dailySonification = results[1];
@@ -395,6 +333,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDailyReading() async {
     if (_isLoadingReading) return;
     
+    // Check cache first
+    final cache = SessionCacheService();
+    if (cache.hasAiReading('daily_reading')) {
+      setState(() {
+        _dailyReading = cache.getAiReading('daily_reading') as DailyReading;
+        _isLoadingReading = false;
+      });
+      return;
+    }
+    
     setState(() {
       _isLoadingReading = true;
       _readingError = null;
@@ -409,6 +357,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       
       if (mounted) {
+        // Store in cache
+        cache.cacheAiReading('daily_reading', reading);
+        
         setState(() {
           _dailyReading = reading;
           _isLoadingReading = false;
@@ -425,285 +376,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _generatePlaylist() async {
-    if (_isGeneratingPlaylist) return;
+    // Extract sun, moon, rising signs from sonification data
+    String sunSign = _getCurrentZodiacSign();
+    String moonSign = 'Pisces'; // Default fallback
+    String risingSign = 'Scorpio'; // Default fallback
     
-    setState(() {
-      _isGeneratingPlaylist = true;
-      _playlistError = null;
-      _datasetPlaylist = null;
-      _spotifyPlaylistUrl = null;
-    });
-    
-    try {
-      // Extract sun, moon, rising signs from sonification data
-      String sunSign = _getCurrentZodiacSign();
-      String moonSign = 'Pisces'; // Default fallback
-      String risingSign = 'Scorpio'; // Default fallback
-      
-      if (_userSonification != null) {
-        for (final planet in _userSonification!.planets) {
-          if (planet.planet == 'Sun') sunSign = planet.sign;
-          if (planet.planet == 'Moon') moonSign = planet.sign;
-        }
-        // Rising sign is typically Ascendant, check if available
-        // For now use the first house cusp if available, otherwise fallback
-      }
-      
-      // Combine genres - use main genres, fall back to defaults if empty
-      final genres = _userMainGenres.isNotEmpty 
-          ? _userMainGenres 
-          : ['indie rock', 'electronic', 'pop'];
-      
-      // Generate cosmic playlist using AI + app's Spotify account
-      final result = await _apiService.generateCosmicPlaylist(
-        sunSign: sunSign,
-        moonSign: moonSign,
-        risingSign: risingSign,
-        genrePreferences: genres,
-      );
-      
-      if (mounted && result.success) {
-        setState(() {
-          _spotifyPlaylistUrl = result.playlistUrl;
-          _isGeneratingPlaylist = false;
-          // Store cosmic result for display
-          _cosmicPlaylist = result;
-        });
-        
-        // Save playlist to cache for the rest of the day
-        await storageService.saveCosmicPlaylist(result.toJson());
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Created ${result.trackCount} track playlist for ${result.sunSign} ✨'),
-            backgroundColor: const Color(0xFF1DB954), // Spotify green
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      } else {
-        throw Exception(result.error ?? 'Failed to generate playlist');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isGeneratingPlaylist = false;
-          _playlistError = e is ApiException ? e.message : 'Failed to generate playlist';
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_playlistError ?? 'Failed to generate playlist'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
+    if (_userSonification != null) {
+      sunSign = _userSonification!.bigFour['sun']?.sign ?? sunSign;
+      moonSign = _userSonification!.bigFour['moon']?.sign ?? moonSign;
+      // Rising sign is the ascendant
+      risingSign = _userSonification!.bigFour['rising']?.sign ?? risingSign;
     }
+    
+    // Combine genres - use main genres, fall back to defaults if empty
+    final genres = _userMainGenres.isNotEmpty 
+        ? _userMainGenres 
+        : ['indie rock', 'electronic', 'pop'];
+    
+    await playlistService.generatePlaylist(
+      sunSign: sunSign,
+      moonSign: moonSign,
+      risingSign: risingSign,
+      genrePreferences: genres,
+    );
   }
   
-  /// Generate zodiac-themed playlist name for Spotify
-  String _getZodiacPlaylistName() {
-    final zodiacSign = _getCurrentZodiacSign();
-    final now = DateTime.now();
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final dateStr = '${months[now.month - 1]} ${now.day}, ${now.year}';
-    return 'Astro.FM - $zodiacSign Season - $dateStr';
-  }
-  
-  /// Create Spotify playlist from dataset tracks
-  Future<void> _createSpotifyFromDataset(DatasetPlaylistResult playlist) async {
-    if (_isCreatingSpotifyPlaylist) return;
-    
-    setState(() => _isCreatingSpotifyPlaylist = true);
-    
-    try {
-      // Convert DatasetTracks to song list for Spotify search
-      final songs = playlist.tracks.map((track) => {
-        'title': track.trackName,
-        'artist': track.artists.split(',').first.trim(), // Use primary artist
-      }).toList();
-      
-      // Create playlist with zodiac-themed name
-      final playlistName = _getZodiacPlaylistName();
-      
-      final result = await _spotifyService.createPlaylist(
-        name: playlistName,
-        songs: songs,
-        description: 'Your cosmic vibe for today ✨🌟 Generated by Astro.FM',
-      );
-      
-      if (mounted && result.success && result.playlistUrl != null) {
-        setState(() {
-          _spotifyPlaylistUrl = result.playlistUrl;
-          _isCreatingSpotifyPlaylist = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Created Spotify playlist with ${result.tracksAdded} tracks 🎵'),
-            backgroundColor: const Color(0xFF1DB954),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isCreatingSpotifyPlaylist = false);
-        // Show error but don't block - the dataset playlist is still available
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e is SpotifyException ? e.message : 'Could not create Spotify playlist'),
-            backgroundColor: Colors.orange.shade700,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
 
   
-  Future<void> _createSpotifyPlaylist(PlaylistResult playlist) async {
-    if (_isCreatingSpotifyPlaylist) return;
-    
-    setState(() => _isCreatingSpotifyPlaylist = true);
-    
-    try {
-      // Extract cosmic parameters from playlist for filtering
-      // Energy: use vibe match score (0-100 -> 0-1)
-      final energyTarget = (playlist.vibeMatchScore / 100).clamp(0.0, 1.0);
-      
-      // Mood: map dominant mood to valence (0-1 scale)
-      final dominantMood = playlist.moodDistribution.entries
-          .reduce((a, b) => a.value > b.value ? a : b)
-          .key;
-      // Map moods to valence: higher = happier
-      final moodToValence = {
-        'energetic': 0.8,
-        'happy': 0.9,
-        'uplifting': 0.85,
-        'calm': 0.5,
-        'peaceful': 0.6,
-        'melancholic': 0.2,
-        'introspective': 0.4,
-        'intense': 0.6,
-        'mysterious': 0.35,
-      };
-      final moodTarget = moodToValence[dominantMood.toLowerCase()] ?? 0.5;
-      
-      // Get BPM range from playlist songs
-      final bpms = playlist.songs.map((s) => s.bpm).toList();
-      final tempoMin = bpms.isNotEmpty ? bpms.reduce((a, b) => a < b ? a : b) : 80;
-      final tempoMax = bpms.isNotEmpty ? bpms.reduce((a, b) => a > b ? a : b) : 160;
-      
-      // Generate playlist from user's library using cosmic parameters
-      final result = await _spotifyService.generateFromLibrary(
-        name: 'Cosmic Queue - ${DateTime.now().toString().split(' ')[0]}',
-        energyTarget: energyTarget,
-        moodTarget: moodTarget,
-        tempoMin: tempoMin,
-        tempoMax: tempoMax,
-        playlistSize: 20,
-        description: 'Personalized from your library by Astro.FM 🌟✨',
-      );
-      
-      if (mounted && result.success && result.playlistUrl != null) {
-        setState(() {
-          _spotifyPlaylistUrl = result.playlistUrl;
-          _spotifyLibraryTracks = result.tracks;  // Store the tracks for display
-          _isCreatingSpotifyPlaylist = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isCreatingSpotifyPlaylist = false);
-        // Show error for library-based playlists
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e is SpotifyException ? e.message : 'Failed to create playlist'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-    }
-  }
+
+
+  
+
   
   Future<void> _openSpotifyPlaylist() async {
-    if (_spotifyPlaylistUrl != null) {
-      await _spotifyService.openPlaylist(_spotifyPlaylistUrl!);
+    if (playlistService.spotifyPlaylistUrl != null) {
+      await _spotifyService.openPlaylist(playlistService.spotifyPlaylistUrl!);
     }
   }
 
-  Future<void> _loadPlaylistInsight(PlaylistResult playlist) async {
-    setState(() => _isLoadingPlaylistInsight = true);
-    
-    try {
-      // Extract dominant mood and element from playlist
-      final dominantMood = playlist.moodDistribution.entries
-          .reduce((a, b) => a.value > b.value ? a : b)
-          .key;
-      final dominantElement = playlist.elementDistribution.entries
-          .reduce((a, b) => a.value > b.value ? a : b)
-          .key;
-      
-      // Get BPM range from songs
-      final bpms = playlist.songs.map((s) => s.bpm).toList();
-      final bpmMin = bpms.isNotEmpty ? bpms.reduce((a, b) => a < b ? a : b) : 100;
-      final bpmMax = bpms.isNotEmpty ? bpms.reduce((a, b) => a > b ? a : b) : 130;
-      
-      final insight = await _apiService.getPlaylistInsight(
-        datetime: _birthDataMap['datetime'] as String,
-        latitude: _birthDataMap['latitude'] as double,
-        longitude: _birthDataMap['longitude'] as double,
-        energyPercent: playlist.vibeMatchScore.round(),
-        dominantMood: dominantMood,
-        dominantElement: dominantElement,
-        bpmMin: bpmMin,
-        bpmMax: bpmMax,
-      );
-      
-      if (mounted) {
-        setState(() {
-          _playlistInsight = insight;
-          _isLoadingPlaylistInsight = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingPlaylistInsight = false);
-      }
-    }
-  }
+
 
   void _sharePlaylistInsight() {
-    if (_playlistInsight == null) return;
+    if (playlistService.playlistInsight == null) return;
     
     final text = '''🎵 My Cosmic Playlist
 
-${_playlistInsight!.insight}
+${playlistService.playlistInsight!.insight}
 
-✨ ${_playlistInsight!.astroHighlight}
-⚡ Energy: ${_playlistInsight!.energyPercent}%
-🎭 Mood: ${_playlistInsight!.dominantMood}
+✨ ${playlistService.playlistInsight!.astroHighlight}
+⚡ Energy: ${playlistService.playlistInsight!.energyPercent}%
+🎭 Mood: ${playlistService.playlistInsight!.dominantMood}
 
 Generated by Astro.FM''';
     
     Share.share(text);
   }
 
-  void _playUserSound() {
-    if (_isPlayingUserSound) {
-      _audioService.stop();
-      setState(() => _isPlayingUserSound = false);
-    } else if (_userSonification != null) {
-      _audioService.stop();
-      _audioService.playChartSound(_userSonification!);
-      setState(() {
-        _isPlayingUserSound = true;
-        _isPlayingDailySound = false;
-      });
-    }
-  }
+
 
   void _playDailySound() {
     if (_isPlayingDailySound) {
@@ -714,7 +443,7 @@ Generated by Astro.FM''';
       _audioService.playChartSound(_dailySonification!);
       setState(() {
         _isPlayingDailySound = true;
-        _isPlayingUserSound = false;
+        // _isPlayingUserSound is removed
       });
     }
   }
@@ -818,146 +547,7 @@ Generated by Astro.FM''';
     );
   }
 
-  Widget _buildAlignmentScoreWidget() {
-    if (_isLoadingAlignment) {
-      return const SizedBox(
-        width: 40,
-        height: 40,
-        child: CircularProgressIndicator(
-          strokeWidth: 3,
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
-        ),
-      );
-    }
-    
-    if (_alignmentError != null || _alignmentScore == null) {
-      return SizedBox(
-        width: 40,
-        height: 40,
-        child: Stack(
-          children: [
-            CircularProgressIndicator(
-              value: 0,
-              backgroundColor: Colors.white.withAlpha(26),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.grey),
-              strokeWidth: 3,
-            ),
-            Center(
-              child: Text(
-                '—',
-                style: GoogleFonts.syne(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    return SizedBox(
-      width: 40,
-      height: 40,
-      child: Stack(
-        children: [
-          CircularProgressIndicator(
-            value: _alignmentScore! / 100,
-            backgroundColor: Colors.white.withAlpha(26),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.electricYellow),
-            strokeWidth: 3,
-          ),
-          Center(
-            child: Text(
-              '$_alignmentScore%',
-              style: GoogleFonts.syne(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: AppColors.electricYellow,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _navigateToFriendProfile(Map<String, dynamic> friend, int index) {
-    final friendData = FriendData(
-      id: index + 1,
-      name: friend['name'] as String,
-      username: '@${(friend['name'] as String).toLowerCase()}',
-      avatarColors: [(friend['color1'] as Color).value, (friend['color2'] as Color).value],
-      sunSign: 'Pisces',
-      moonSign: 'Cancer',
-      risingSign: 'Scorpio',
-      dominantFrequency: '432 Hz',
-      element: 'Water',
-      modality: 'Mutable',
-      compatibilityScore: 85,
-      status: 'online',
-    );
-    Navigator.pushNamed(context, '/friend-profile', arguments: friendData);
-  }
-
-  Widget _buildFriendAvatars() {
-    return Row(
-      children: [
-        ...alignedFriends.asMap().entries.map((entry) {
-          final friend = entry.value;
-          return Transform.translate(
-            offset: Offset(-8.0 * entry.key, 0),
-            child: GestureDetector(
-              onTap: () => _navigateToFriendProfile(friend, entry.key),
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [friend['color1'] as Color, friend['color2'] as Color],
-                  ),
-                  border: Border.all(color: AppColors.backgroundMid, width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    (friend['name'] as String)[0],
-                    style: GoogleFonts.syne(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-        Transform.translate(
-          offset: Offset(-8.0 * alignedFriends.length, 0),
-          child: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withAlpha(26),
-              border: Border.all(color: AppColors.backgroundMid, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                '+5',
-                style: GoogleFonts.syne(
-                  fontSize: 10,
-                  color: Colors.white.withAlpha(153),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildCtaButtons() {
     return Row(
@@ -981,7 +571,7 @@ Generated by Astro.FM''';
               colors: [AppColors.electricYellow, Color(0xFFE5EB0D)],
             ),
             textColor: AppColors.background,
-            onPressed: _isGeneratingPlaylist ? null : () { _generatePlaylist(); },
+            onPressed: playlistService.isGenerating ? null : () { _generatePlaylist(); },
           ),
         ),
       ],
@@ -1280,97 +870,6 @@ Generated by Astro.FM''';
     return parts.join(' — ');
   }
 
-  /// Build a single signal card with color based on signal type
-  Widget _buildSignalCard(DailySignal signal) {
-    // Color based on signal type
-    Color accentColor;
-    Color bgColor;
-    String typeLabel;
-    
-    switch (signal.signalType) {
-      case 'resonance':
-        accentColor = const Color(0xFF4CAF50); // Green
-        bgColor = const Color(0xFF4CAF50).withAlpha(20);
-        typeLabel = 'RESONANCE';
-        break;
-      case 'feedback':
-        accentColor = const Color(0xFFFFC107); // Amber
-        bgColor = const Color(0xFFFFC107).withAlpha(20);
-        typeLabel = 'FEEDBACK';
-        break;
-      case 'dissonance':
-        accentColor = const Color(0xFFE91E63); // Pink/Red
-        bgColor = const Color(0xFFE91E63).withAlpha(20);
-        typeLabel = 'DISSONANCE';
-        break;
-      default:
-        accentColor = Colors.white.withAlpha(128);
-        bgColor = Colors.white.withAlpha(10);
-        typeLabel = 'SIGNAL';
-    }
-    
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withAlpha(51)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header: Signal type + Category
-          Row(
-            children: [
-              Text(
-                signal.icon,
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                typeLabel,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: accentColor,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                signal.category,
-                style: GoogleFonts.syne(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withAlpha(204),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // Category meaning (human-friendly)
-          Text(
-            signal.categoryMeaning,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              color: Colors.white.withAlpha(102),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // The actual message
-          Text(
-            signal.message,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13,
-              height: 1.5,
-              color: Colors.white.withAlpha(230),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Get mood icon and color based on valence value
   Map<String, dynamic> _getMoodInfo(double valence) {
     if (valence > 0.7) {
@@ -1404,25 +903,25 @@ Generated by Astro.FM''';
                     color: Colors.white,
                   ),
                 ),
-            if (_cosmicPlaylist != null)
+            if (playlistService.cosmicPlaylist != null)
                   Text(
-                    '${_cosmicPlaylist!.trackCount} tracks • ${_cosmicPlaylist!.formattedDuration}',
+                    '${playlistService.cosmicPlaylist!.trackCount} tracks • ${playlistService.cosmicPlaylist!.formattedDuration}',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 11,
                       color: Colors.white.withAlpha(128),
                     ),
                   )
-            else if (_datasetPlaylist != null)
+            else if (playlistService.datasetPlaylist != null)
                   Text(
-                    '${_datasetPlaylist!.trackCount} tracks • ${_datasetPlaylist!.formattedDuration}',
+                    '${playlistService.datasetPlaylist!.trackCount} tracks • ${playlistService.datasetPlaylist!.formattedDuration}',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 11,
                       color: Colors.white.withAlpha(128),
                     ),
                   )
-            else if (_generatedPlaylist != null)
+            else if (playlistService.generatedPlaylist != null)
                   Text(
-                    '${_generatedPlaylist!.songCount} songs • ${_generatedPlaylist!.formattedDuration}',
+                    '${playlistService.generatedPlaylist!.songCount} songs • ${playlistService.generatedPlaylist!.formattedDuration}',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 11,
                       color: Colors.white.withAlpha(128),
@@ -1434,7 +933,7 @@ Generated by Astro.FM''';
             Row(
               children: [
                 // Ready status badge (shown when playlist is loaded)
-                if (_cosmicPlaylist != null || _datasetPlaylist != null || _spotifyLibraryTracks.isNotEmpty || _generatedPlaylist != null)
+                if (playlistService.hasPlaylist)
                   Container(
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1466,7 +965,7 @@ Generated by Astro.FM''';
                     ),
                   ),
             // Open in Spotify button
-            if (_spotifyPlaylistUrl != null)
+            if (playlistService.spotifyPlaylistUrl != null)
               GestureDetector(
                 onTap: _openSpotifyPlaylist,
                 child: Container(
@@ -1492,55 +991,26 @@ Generated by Astro.FM''';
                   ),
                 ),
               )
-            else if (_isCreatingSpotifyPlaylist)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(13),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1DB954)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Creating...',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        color: Colors.white.withAlpha(128),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+
               ],
             ),
           ],
         ),
         const SizedBox(height: 12),
         // Show cosmic wave loader while generating
-        if (_isGeneratingPlaylist)
+        if (playlistService.isGenerating)
           const GlassCard(
-            padding: EdgeInsets.zero,
+            padding: EdgeInsets.symmetric(vertical: 32, horizontal: 16),
             child: CosmicWaveLoader(),
           )
         // Show error with retry button
-        else if (_playlistError != null)
+        else if (playlistService.error != null)
           GlassCard(
             child: Column(
               children: [
                 InlineError(
-                  message: _playlistError!,
+                  message: playlistService.error!,
                   onRetry: () {
-                    setState(() => _playlistError = null);
                     _generatePlaylist();
                   },
                 ),
@@ -1548,7 +1018,7 @@ Generated by Astro.FM''';
             ),
           )
         // Show empty state
-        else if (_cosmicPlaylist == null && _datasetPlaylist == null && _spotifyLibraryTracks.isEmpty && _generatedPlaylist == null)
+        else if (!playlistService.hasPlaylist)
           GlassCard(
             child: Center(
               child: Padding(
@@ -1588,7 +1058,7 @@ Generated by Astro.FM''';
           Column(
             children: [
               // AI Playlist Insight Card
-              if (_isLoadingPlaylistInsight)
+              if (playlistService.isLoadingInsight)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: GlassCard(
@@ -1629,7 +1099,7 @@ Generated by Astro.FM''';
                     ),
                   ),
                 )
-              else if (_playlistInsight != null)
+              else if (playlistService.playlistInsight != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: GlassCard(
@@ -1679,7 +1149,7 @@ Generated by Astro.FM''';
                         
                         // Insight text
                         Text(
-                          _playlistInsight!.insight,
+                          playlistService.playlistInsight!.insight,
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 14,
                             height: 1.5,
@@ -1691,11 +1161,11 @@ Generated by Astro.FM''';
                         // Stats row
                         Row(
                           children: [
-                            _buildStatPill('\u2728 ${_playlistInsight!.astroHighlight}', AppColors.cosmicPurple),
+                            _buildStatPill('\u2728 ${playlistService.playlistInsight!.astroHighlight}', AppColors.cosmicPurple),
                             const SizedBox(width: 8),
-                            _buildStatPill('\u26a1 ${_playlistInsight!.energyPercent}%', AppColors.electricYellow),
+                            _buildStatPill('\u26a1 ${playlistService.playlistInsight!.energyPercent}%', AppColors.electricYellow),
                             const SizedBox(width: 8),
-                            _buildStatPill('\ud83c\udfad ${_playlistInsight!.dominantMood}', AppColors.hotPink),
+                            _buildStatPill('\ud83c\udfad ${playlistService.playlistInsight!.dominantMood}', AppColors.hotPink),
                           ],
                         ),
                       ],
@@ -1707,26 +1177,26 @@ Generated by Astro.FM''';
               GlassCard(
                 padding: const EdgeInsets.all(8),
                 child: Column(
-                  children: _cosmicPlaylist != null
-                    ? _cosmicPlaylist!.tracks.asMap().entries.map((entry) {
+                  children: playlistService.cosmicPlaylist != null
+                    ? playlistService.cosmicPlaylist!.tracks.asMap().entries.map((entry) {
                         final index = entry.key;
                         final track = entry.value;
                         return _buildCosmicTrackItem(track, index);
                       }).toList()
-                    : _datasetPlaylist != null
-                    ? _datasetPlaylist!.tracks.asMap().entries.map((entry) {
+                    : playlistService.datasetPlaylist != null
+                    ? playlistService.datasetPlaylist!.tracks.asMap().entries.map((entry) {
                         final index = entry.key;
                         final track = entry.value;
                         return _buildDatasetTrackItem(track, index);
                       }).toList()
-                    : _spotifyLibraryTracks.isNotEmpty
-                      ? _spotifyLibraryTracks.asMap().entries.map((entry) {
+                    : playlistService.spotifyLibraryTracks.isNotEmpty
+                      ? playlistService.spotifyLibraryTracks.asMap().entries.map((entry) {
                           final index = entry.key;
                           final track = entry.value;
                           return _buildSpotifyTrackItem(track, index);
                         }).toList()
-                      : _generatedPlaylist != null 
-                        ? _generatedPlaylist!.songs.asMap().entries.map((entry) {
+                      : playlistService.generatedPlaylist != null 
+                        ? playlistService.generatedPlaylist!.songs.asMap().entries.map((entry) {
                             final index = entry.key;
                             final song = entry.value;
                             return _buildPlaylistItem(song, index);
