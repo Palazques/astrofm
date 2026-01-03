@@ -4,12 +4,15 @@ Uses Gemini as primary provider with OpenAI fallback.
 
 Implements Rule C3: Keys loaded via os.getenv(), never hardcoded.
 """
+import logging
 import os
 import json
 import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 # AI Provider imports
 try:
@@ -285,8 +288,8 @@ For playlist parameters, include as JSON on a separate line:
                     if key not in params:
                         params[key] = value
                 return prose, params
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.debug(f"Failed to parse playlist params JSON: {e}")
         
         return prose, default_params
     
@@ -297,172 +300,161 @@ For playlist parameters, include as JSON on a separate line:
         subject_name: str = None,
     ) -> dict:
         """
-        Generate personalized daily reading with structured signals.
+        Generate a transit-focused daily horoscope.
         
-        Returns 3 signals (Resonance, Feedback, Dissonance) with life area categories,
-        plus backward-compatible 'reading' field.
+        Uses real astronomical data to create a unique horoscope based on
+        today's cosmic weather, personalized by the user's Sun sign.
         
         Args:
-            birth_chart: User's natal chart data
-            current_transits: Current planetary positions
+            birth_chart: User's natal chart data (mainly uses Sun sign)
+            current_transits: Detailed transit data from get_detailed_transit_summary()
             subject_name: Optional name for third-person horoscope
             
         Returns:
-            DailyReadingResponse-compatible dict with 'signals' array
+            DailyReadingResponse-compatible dict with horoscope fields
         """
-        # Check cache
-        cache_key = self._generate_cache_key("daily_v2", {
-            "chart": birth_chart.get("ascendant_sign", ""),
+        # Extract user's Sun sign (main personalization factor)
+        sun_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Sun"), {})
+        sun_sign = sun_planet.get('sign', 'Unknown')
+        
+        # Cache by Sun sign + date (same horoscope for all Leos on the same day)
+        cache_key = self._generate_cache_key("daily_horoscope_v3", {
+            "sun_sign": sun_sign,
             "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            "subject": subject_name or "",
         })
         
         cached = self._get_cached(cache_key)
         if cached:
             return cached
         
-        # Extract chart data
-        sun_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Sun"), {})
-        moon_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Moon"), {})
-        mercury_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Mercury"), {})
-        venus_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Venus"), {})
-        mars_planet = next((p for p in birth_chart.get("planets", []) if p["name"] == "Mars"), {})
+        # Extract transit data
+        moon_sign = current_transits.get('moon_sign', 'Unknown')
+        moon_phase = current_transits.get('moon_phase', 'Unknown')
+        moon_phase_percent = current_transits.get('moon_phase_percent', 50)
+        retrograde_planets = current_transits.get('retrograde_planets', [])
+        major_aspects = current_transits.get('major_aspects', [])
+        dominant_element = current_transits.get('dominant_element', 'Unknown')
+        day_energy = current_transits.get('day_energy', 'Flowing')
+        cosmic_weather_raw = current_transits.get('cosmic_weather', '')
+        current_season = current_transits.get('sun_sign', 'Unknown')
         
-        # Select 3 life areas based on prominent planets
-        life_areas_list = list(self.LIFE_AREAS.keys())
+        # Build aspects string for prompt
+        if major_aspects:
+            aspects_text = "\n".join([f"- {a['planets']} {a['aspect']} (orb: {a['orb']}°)" for a in major_aspects[:4]])
+        else:
+            aspects_text = "- No major aspects today"
+        
+        # Build retrograde text
+        if retrograde_planets:
+            retro_text = ", ".join(retrograde_planets) + " retrograde"
+        else:
+            retro_text = "No planets retrograde"
+        
+        # Life areas based on dominant aspects
+        focus_areas = ["Self-Expression", "Relationships", "Career", "Inner World", 
+                       "Communication", "Finances", "Adventure", "Home Life"]
+        
+        # Seed focus area selection by date for variety
         import random
-        random.seed(datetime.now(timezone.utc).strftime("%Y-%m-%d"))  # Same areas per day
-        selected_areas = random.sample(life_areas_list, 3)
+        random.seed(datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+        default_focus = random.choice(focus_areas)
         
-        # Build the structured signals prompt with 3-part messages
-        prompt = f"""Generate 3 daily signals for this user. Each signal has 3 parts.
+        # Build the horoscope prompt
+        prompt = f"""Generate a daily horoscope for {sun_sign} based on TODAY'S cosmic weather.
 
-USER'S CHART:
-- Sun: {sun_planet.get('sign', 'Unknown')} in House {sun_planet.get('house', '?')}
-- Moon: {moon_planet.get('sign', 'Unknown')} in House {moon_planet.get('house', '?')}
-- Mercury: {mercury_planet.get('sign', 'Unknown')} in House {mercury_planet.get('house', '?')}
-- Venus: {venus_planet.get('sign', 'Unknown')} in House {venus_planet.get('house', '?')}
-- Mars: {mars_planet.get('sign', 'Unknown')} in House {mars_planet.get('house', '?')}
-- Ascendant: {birth_chart.get('ascendant_sign', 'Unknown')} Rising
+TODAY'S SKY ({datetime.now(timezone.utc).strftime("%B %d, %Y")}):
+- Sun in {current_season} ({current_season} Season)
+- Moon: {moon_phase} in {moon_sign} ({moon_phase_percent}% illuminated)
+- Dominant Element: {dominant_element}
+- {retro_text}
 
-TODAY'S TRANSITS:
-- Moon: {current_transits.get('moon_sign', 'Unknown')}
-- Season: {current_transits.get('season', 'Unknown')}
-- Retrograde: {', '.join(current_transits.get('retrograde_planets', [])) or 'None'}
+KEY PLANETARY ASPECTS TODAY:
+{aspects_text}
 
-Generate EXACTLY 3 signals in this format (each on ONE line):
+OVERALL ENERGY: {day_energy}
 
-RESONANCE|{selected_areas[0]}|AUDIO: [audio engineering metaphor]|COSMIC: [light astrology with planet name]|ADVICE: [relatable advice]
+Write a horoscope for {sun_sign} that:
+1. Reflects TODAY'S specific transits (mention the Moon sign or an aspect)
+2. Speaks to how {sun_sign} types will experience this energy
+3. Gives one specific, actionable piece of advice
+4. Sounds blunt and direct (like Co-Star or The Pattern)
+5. Uses "you" and "your"
 
-FEEDBACK|{selected_areas[1]}|AUDIO: [audio warning metaphor]|COSMIC: [light astrology with planet name]|ADVICE: [relatable caution]
-
-DISSONANCE|{selected_areas[2]}|AUDIO: [audio problem metaphor]|COSMIC: [light astrology with planet name]|ADVICE: [helpful guidance]
-
-MESSAGE STYLE GUIDE:
-- AUDIO: Use terms like "signal clarity", "phase aligned", "clipping", "static", "low-pass filter", "gain"
-- COSMIC: Use planet name + feeling (e.g., "Venus energy is flowing" or "Mercury's influence is making thoughts race"). NO aspects, houses, or technical terms.
-- ADVICE: Simple, human advice anyone can relate to. No astrology or music terms.
+FORMAT (each on its own line):
+HEADLINE: [3-5 word punchy title that captures the day's vibe]
+HOROSCOPE: [2-3 sentences. Be specific about today. No vague mysticism.]
+FOCUS_AREA: [One area: Self-Expression, Relationships, Career, Inner World, Communication, Finances, Adventure, or Home Life]
+ENERGY_LEVEL: [1-100 based on how active/intense the day feels for {sun_sign}]
+PLAYLIST_JSON: {{"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}}
 
 RULES:
-- Be blunt and direct like Co-Star
-- Each part is 1 sentence MAX
-- Use "you" and "your" pronouns
-
-After the signals, add playlist parameters as JSON:
-{{"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}}"""
+- The HEADLINE should be memorable and specific to today
+- Reference at least ONE real aspect or the Moon sign in the horoscope
+- Energy level should reflect the interplay between {sun_sign}'s nature and today's transits
+- Be direct. No "may" or "might" - speak with certainty."""
 
         response = self._generate_response(prompt)
         
-        # Parse the structured 3-part response
-        signals = []
-        lines = response.strip().split("\n")
-        
-        for line in lines:
-            line = line.strip()
-            if "|" in line and (line.startswith("RESONANCE") or line.startswith("FEEDBACK") or line.startswith("DISSONANCE")):
-                parts = line.split("|")
-                if len(parts) >= 5:
-                    signal_type = parts[0].strip().lower()
-                    category = parts[1].strip()
-                    
-                    # Extract the 3 message parts
-                    audio_msg = parts[2].replace("AUDIO:", "").strip() if len(parts) > 2 else ""
-                    cosmic_msg = parts[3].replace("COSMIC:", "").strip() if len(parts) > 3 else ""
-                    advice_msg = parts[4].replace("ADVICE:", "").strip() if len(parts) > 4 else ""
-                    
-                    # Get human-friendly meaning
-                    category_meaning = self.LIFE_AREAS.get(category, "Your daily energy")
-                    
-                    signals.append({
-                        "signal_type": signal_type,
-                        "category": category,
-                        "category_meaning": category_meaning,
-                        "message": audio_msg,  # Legacy field
-                        "audio_message": audio_msg,
-                        "cosmic_message": cosmic_msg,
-                        "advice_message": advice_msg,
-                    })
-        
-        # Fallback signals if parsing failed
-        if len(signals) < 3:
-            sun_sign = sun_planet.get('sign', 'Unknown')
-            signals = [
-                {
-                    "signal_type": "resonance",
-                    "category": "Self",
-                    "category_meaning": "How you're showing up today",
-                    "message": f"Your {sun_sign} signal is broadcasting clearly.",
-                    "audio_message": f"Your {sun_sign} signal is broadcasting clearly. Full stereo clarity.",
-                    "cosmic_message": f"Sun energy is amplifying your presence today.",
-                    "advice_message": "Take up space. You've earned the right to be seen.",
-                },
-                {
-                    "signal_type": "feedback",
-                    "category": "Communication",
-                    "category_meaning": "Your mental clarity and expression", 
-                    "message": "Watch the gain on your words today.",
-                    "audio_message": "Mercury's adding too much gain. Words are clipping.",
-                    "cosmic_message": "Mercury's influence is making thoughts move faster than words.",
-                    "advice_message": "Pause before you respond. Give yourself headroom.",
-                },
-                {
-                    "signal_type": "dissonance",
-                    "category": "Work & Career",
-                    "category_meaning": "Your focus and productivity",
-                    "message": "Some static in your focus.",
-                    "audio_message": "Saturn's low-pass filter is cutting the details.",
-                    "cosmic_message": "Saturn's weight is pressing down on your ambitions.",
-                    "advice_message": "Focus on one thing at a time. The clarity will come.",
-                },
-            ]
-        
-        # Parse playlist params from response
-        _, params = self._parse_response(response)
-        
-        # Build cosmic weather with audio engineering style
-        retrograde_count = len(current_transits.get('retrograde_planets', []))
-        moon_sign = current_transits.get('moon_sign', 'Unknown')
-        if retrograde_count >= 3:
-            cosmic_weather = f"Heavy room tone. {retrograde_count} planets in retrograde—signal interference expected."
-        elif retrograde_count > 0:
-            retros = ', '.join(current_transits.get('retrograde_planets', []))
-            cosmic_weather = f"{moon_sign} Moon. {retros} retrograde—some latency in those channels."
-        else:
-            cosmic_weather = f"{moon_sign} Moon. Clean signal across all channels."
-        
-        # Build legacy reading from signals (backward compat)
-        reading_parts = [f"[{s['signal_type'].upper()}] {s['message']}" for s in signals[:3]]
-        legacy_reading = " ".join(reading_parts)
-        
-        result = {
-            "reading": legacy_reading,
-            "signals": signals[:3],  # Exactly 3 signals
-            "playlist_params": params,
-            "cosmic_weather": cosmic_weather,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+        # Parse the response
+        headline = ""
+        horoscope = ""
+        focus_area = default_focus
+        energy_level = 65
+        playlist_params = {
+            "bpm_min": 100, "bpm_max": 130, "energy": 0.6, 
+            "valence": 0.5, "genres": ["electronic", "indie"], "key_mode": "minor"
         }
         
-        # Cache result
+        lines = response.strip().split("\n")
+        for line in lines:
+            line = line.strip()
+            if line.startswith("HEADLINE:"):
+                headline = line.replace("HEADLINE:", "").strip()
+            elif line.startswith("HOROSCOPE:"):
+                horoscope = line.replace("HOROSCOPE:", "").strip()
+            elif line.startswith("FOCUS_AREA:"):
+                focus_area = line.replace("FOCUS_AREA:", "").strip()
+            elif line.startswith("ENERGY_LEVEL:"):
+                try:
+                    energy_level = int(line.replace("ENERGY_LEVEL:", "").strip())
+                    energy_level = max(0, min(100, energy_level))
+                except ValueError:
+                    pass
+            elif line.startswith("PLAYLIST_JSON:"):
+                try:
+                    import json
+                    json_str = line.replace("PLAYLIST_JSON:", "").strip()
+                    playlist_params = json.loads(json_str)
+                except (json.JSONDecodeError, ValueError):
+                    pass
+        
+        # Fallbacks if parsing failed
+        if not headline:
+            headline = f"{day_energy} {moon_phase}"
+        if not horoscope:
+            horoscope = f"The {moon_phase} Moon in {moon_sign} brings {day_energy.lower()} energy today. As a {sun_sign}, lean into this rhythm rather than fighting it. Trust what feels right."
+        
+        # Build clean cosmic weather string
+        cosmic_weather = f"{moon_phase} Moon in {moon_sign}. {retro_text}."
+        if major_aspects:
+            cosmic_weather += f" {major_aspects[0]['planets']} {major_aspects[0]['aspect']}."
+        
+        result = {
+            "headline": headline,
+            "horoscope": horoscope,
+            "cosmic_weather": cosmic_weather,
+            "energy_level": energy_level,
+            "focus_area": focus_area,
+            "moon_phase": moon_phase,
+            "dominant_element": dominant_element,
+            "playlist_params": playlist_params,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            # Legacy fields for backward compatibility
+            "reading": horoscope,
+            "signals": [],
+        }
+        
+        # Cache result (24 hours)
         self._set_cached(cache_key, result, self.DAILY_READING_TTL)
         
         return result
@@ -1059,8 +1051,8 @@ ENERGY_LEVEL: [number]"""
                 try:
                     energy_level = int(line.replace("ENERGY_LEVEL:", "").strip())
                     energy_level = max(1, min(100, energy_level))
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(f"Failed to parse energy level: {e}")
             elif current_section == "horoscope" and line:
                 horoscope_lines.append(line)
         

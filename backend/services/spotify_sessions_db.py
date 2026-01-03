@@ -8,12 +8,15 @@ C3: Least Privilege - Database access isolated to this module.
 H1: Isolation Principle - Separate file for session persistence.
 S2: Documentation Rule - All functions include clear docstrings.
 """
+import logging
 import sqlite3
 from pathlib import Path
 from typing import Optional, Dict, List
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 # Database path (same directory as other data files)
@@ -234,15 +237,15 @@ def _row_to_session(row: sqlite3.Row) -> StoredSpotifySession:
     if row["created_at"]:
         try:
             created_at = datetime.fromisoformat(row["created_at"])
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.warning(f"Invalid created_at format in session: {e}")
     
     updated_at = None
     if row["updated_at"]:
         try:
             updated_at = datetime.fromisoformat(row["updated_at"])
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.warning(f"Invalid updated_at format in session: {e}")
     
     return StoredSpotifySession(
         session_id=row["session_id"],

@@ -214,3 +214,166 @@ class TransitsResult {
   /// Returns true if a planet is currently retrograde.
   bool isRetrograde(String planetName) => retrograde.contains(planetName);
 }
+
+
+// Transit Alignment Models (for comparing natal chart with current transits)
+
+/// Natal planet position data.
+class NatalPositionData {
+  final String sign;
+  final double degree;
+  final int house;
+
+  NatalPositionData({
+    required this.sign,
+    required this.degree,
+    required this.house,
+  });
+
+  factory NatalPositionData.fromJson(Map<String, dynamic> json) {
+    return NatalPositionData(
+      sign: json['sign'] as String,
+      degree: (json['degree'] as num).toDouble(),
+      house: json['house'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'sign': sign,
+    'degree': degree,
+    'house': house,
+  };
+}
+
+/// Transit planet position data.
+class TransitPositionData {
+  final String sign;
+  final double degree;
+  final int house;
+  final bool retrograde;
+
+  TransitPositionData({
+    required this.sign,
+    required this.degree,
+    required this.house,
+    required this.retrograde,
+  });
+
+  factory TransitPositionData.fromJson(Map<String, dynamic> json) {
+    return TransitPositionData(
+      sign: json['sign'] as String,
+      degree: (json['degree'] as num).toDouble(),
+      house: json['house'] as int,
+      retrograde: json['retrograde'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'sign': sign,
+    'degree': degree,
+    'house': house,
+    'retrograde': retrograde,
+  };
+}
+
+/// Complete alignment data for a single planet.
+class TransitAlignmentPlanet {
+  final String id;
+  final String name;
+  final String symbol;
+  final String color;
+  final NatalPositionData natal;
+  final TransitPositionData transit;
+  final String status; // 'gap' or 'resonance'
+  final String pull;
+  final List<String> feelings;
+  final String practice;
+
+  TransitAlignmentPlanet({
+    required this.id,
+    required this.name,
+    required this.symbol,
+    required this.color,
+    required this.natal,
+    required this.transit,
+    required this.status,
+    required this.pull,
+    required this.feelings,
+    required this.practice,
+  });
+
+  factory TransitAlignmentPlanet.fromJson(Map<String, dynamic> json) {
+    return TransitAlignmentPlanet(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      symbol: json['symbol'] as String,
+      color: json['color'] as String,
+      natal: NatalPositionData.fromJson(json['natal'] as Map<String, dynamic>),
+      transit: TransitPositionData.fromJson(json['transit'] as Map<String, dynamic>),
+      status: json['status'] as String,
+      pull: json['pull'] as String,
+      feelings: (json['feelings'] as List<dynamic>).map((e) => e as String).toList(),
+      practice: json['practice'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'symbol': symbol,
+    'color': color,
+    'natal': natal.toJson(),
+    'transit': transit.toJson(),
+    'status': status,
+    'pull': pull,
+    'feelings': feelings,
+    'practice': practice,
+  };
+
+  /// Returns true if this is a gap (tension).
+  bool get isGap => status == 'gap';
+
+  /// Returns true if this is a resonance (harmony).
+  bool get isResonance => status == 'resonance';
+
+  /// Get the Color object from hex string.
+  int get colorValue => int.parse(color.replaceFirst('#', '0xFF'));
+}
+
+/// Result from the transit alignment calculation.
+class TransitAlignmentResult {
+  final List<TransitAlignmentPlanet> planets;
+  final int gapCount;
+  final int resonanceCount;
+
+  TransitAlignmentResult({
+    required this.planets,
+    required this.gapCount,
+    required this.resonanceCount,
+  });
+
+  factory TransitAlignmentResult.fromJson(Map<String, dynamic> json) {
+    return TransitAlignmentResult(
+      planets: (json['planets'] as List<dynamic>)
+          .map((e) => TransitAlignmentPlanet.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      gapCount: json['gap_count'] as int,
+      resonanceCount: json['resonance_count'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'planets': planets.map((e) => e.toJson()).toList(),
+    'gap_count': gapCount,
+    'resonance_count': resonanceCount,
+  };
+
+  /// Get a planet by name.
+  TransitAlignmentPlanet? getPlanet(String name) {
+    try {
+      return planets.firstWhere((p) => p.name == name);
+    } catch (_) {
+      return null;
+    }
+  }
+}

@@ -144,3 +144,159 @@ def get_transit_summary() -> dict:
         "retrograde_planets": retrograde_planets,
         "planets": transits["planets"],
     }
+
+
+def get_detailed_transit_summary() -> dict:
+    """
+    Get rich transit data for AI horoscope generation.
+    Includes planet-to-planet aspects, moon phase details, and dominant element.
+    
+    Returns:
+        Dictionary with detailed transit data for AI prompt
+    """
+    import swisseph as swe
+    from datetime import timedelta
+    
+    now = datetime.now(timezone.utc)
+    julian_day = datetime_to_julian(now)
+    
+    # Get all planet positions
+    planets_data = {}
+    for name, planet_id in PLANETS.items():
+        result, _ = swe.calc_ut(julian_day, planet_id)
+        planets_data[name] = {
+            "longitude": result[0],
+            "speed": result[3],
+            "sign": get_zodiac_sign(result[0])[0],
+            "degree": get_zodiac_sign(result[0])[1],
+            "retrograde": result[3] < 0
+        }
+    
+    # Calculate Moon phase
+    sun_lon = planets_data["Sun"]["longitude"]
+    moon_lon = planets_data["Moon"]["longitude"]
+    moon_angle = (moon_lon - sun_lon) % 360
+    moon_phase_percent = round((moon_angle / 360) * 100)
+    
+    # Moon phase names
+    if moon_angle < 45:
+        moon_phase = "New Moon"
+    elif moon_angle < 90:
+        moon_phase = "Waxing Crescent"
+    elif moon_angle < 135:
+        moon_phase = "First Quarter"
+    elif moon_angle < 180:
+        moon_phase = "Waxing Gibbous"
+    elif moon_angle < 225:
+        moon_phase = "Full Moon"
+    elif moon_angle < 270:
+        moon_phase = "Waning Gibbous"
+    elif moon_angle < 315:
+        moon_phase = "Third Quarter"
+    else:
+        moon_phase = "Waning Crescent"
+    
+    # Calculate major aspects between transiting planets
+    major_aspects = []
+    aspect_angles = [
+        (0, "Conjunction", 8),
+        (60, "Sextile", 6),
+        (90, "Square", 8),
+        (120, "Trine", 8),
+        (180, "Opposition", 8),
+    ]
+    
+    # Check aspects between key planet pairs
+    planet_pairs = [
+        ("Sun", "Moon"),
+        ("Venus", "Mars"),
+        ("Mercury", "Venus"),
+        ("Sun", "Venus"),
+        ("Moon", "Venus"),
+        ("Mars", "Saturn"),
+        ("Jupiter", "Saturn"),
+        ("Sun", "Mars"),
+        ("Moon", "Mars"),
+        ("Mercury", "Mars"),
+    ]
+    
+    for p1, p2 in planet_pairs:
+        if p1 in planets_data and p2 in planets_data:
+            lon1 = planets_data[p1]["longitude"]
+            lon2 = planets_data[p2]["longitude"]
+            diff = abs(lon1 - lon2)
+            if diff > 180:
+                diff = 360 - diff
+            
+            for angle, aspect_name, orb in aspect_angles:
+                if abs(diff - angle) <= orb:
+                    major_aspects.append({
+                        "planets": f"{p1}-{p2}",
+                        "aspect": aspect_name,
+                        "orb": round(abs(diff - angle), 1),
+                        "nature": "harmonious" if aspect_name in ["Trine", "Sextile"] else 
+                                  "challenging" if aspect_name in ["Square", "Opposition"] else "neutral"
+                    })
+                    break
+    
+    # Sort by tightest orb (most exact)
+    major_aspects.sort(key=lambda x: x["orb"])
+    
+    # Calculate dominant element
+    element_map = {
+        "Aries": "Fire", "Leo": "Fire", "Sagittarius": "Fire",
+        "Taurus": "Earth", "Virgo": "Earth", "Capricorn": "Earth",
+        "Gemini": "Air", "Libra": "Air", "Aquarius": "Air",
+        "Cancer": "Water", "Scorpio": "Water", "Pisces": "Water",
+    }
+    
+    element_counts = {"Fire": 0, "Earth": 0, "Air": 0, "Water": 0}
+    for name, data in planets_data.items():
+        element = element_map.get(data["sign"], "Unknown")
+        if element in element_counts:
+            element_counts[element] += 1
+    
+    dominant_element = max(element_counts, key=element_counts.get)
+    
+    # Determine day energy based on aspects and moon phase
+    harmonious_count = sum(1 for a in major_aspects if a["nature"] == "harmonious")
+    challenging_count = sum(1 for a in major_aspects if a["nature"] == "challenging")
+    
+    if moon_phase in ["New Moon", "Full Moon"]:
+        day_energy = "Powerful"
+    elif harmonious_count > challenging_count + 1:
+        day_energy = "Flowing"
+    elif challenging_count > harmonious_count + 1:
+        day_energy = "Intense"
+    elif dominant_element == "Fire":
+        day_energy = "Dynamic"
+    elif dominant_element == "Earth":
+        day_energy = "Grounding"
+    elif dominant_element == "Air":
+        day_energy = "Stimulating"
+    else:
+        day_energy = "Intuitive"
+    
+    # Get retrograde planets
+    retrograde_planets = [name for name, data in planets_data.items() if data["retrograde"]]
+    
+    # Build cosmic weather string
+    retro_text = f"{', '.join(retrograde_planets)} retrograde" if retrograde_planets else "No retrogrades"
+    aspects_text = "; ".join([f"{a['planets']} {a['aspect']}" for a in major_aspects[:3]]) if major_aspects else "No major aspects"
+    
+    cosmic_weather = f"{moon_phase} Moon in {planets_data['Moon']['sign']} ({moon_phase_percent}%). {retro_text}. Key aspects: {aspects_text}."
+    
+    return {
+        "date": now.strftime("%Y-%m-%d"),
+        "sun_sign": planets_data["Sun"]["sign"],
+        "moon_sign": planets_data["Moon"]["sign"],
+        "moon_phase": moon_phase,
+        "moon_phase_percent": moon_phase_percent,
+        "retrograde_planets": retrograde_planets,
+        "major_aspects": major_aspects[:5],  # Top 5 tightest aspects
+        "dominant_element": dominant_element,
+        "element_counts": element_counts,
+        "day_energy": day_energy,
+        "cosmic_weather": cosmic_weather,
+        "planets": planets_data,
+    }

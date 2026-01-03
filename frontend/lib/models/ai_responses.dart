@@ -91,34 +91,58 @@ class DailySignal {
   }
 }
 
-/// AI-generated daily reading with playlist parameters.
+/// AI-generated daily horoscope with transit-focused content.
+/// 
+/// Now uses real astronomical data (Moon phase, planetary aspects, dominant element)
+/// to create a unique horoscope based on the user's Sun sign.
 class DailyReading {
-  final String reading;
-  final List<DailySignal> signals; // NEW: structured reading signals
+  final String headline;         // NEW: Short punchy headline (3-5 words)
+  final String horoscope;        // NEW: 2-3 sentence daily horoscope
+  final String cosmicWeather;    // Real-time cosmic weather from transits
+  final int energyLevel;         // NEW: Day's energy level 0-100
+  final String focusArea;        // NEW: Life area to focus on today
+  final String moonPhase;        // NEW: Current moon phase
+  final String dominantElement;  // NEW: Dominant element today
   final PlaylistParams playlistParams;
-  final String cosmicWeather;
   final String generatedAt;
+  
+  // Legacy fields for backward compatibility
+  final String reading;
+  final List<DailySignal> signals;
 
   DailyReading({
-    required this.reading,
-    required this.signals,
-    required this.playlistParams,
+    required this.headline,
+    required this.horoscope,
     required this.cosmicWeather,
+    required this.energyLevel,
+    required this.focusArea,
+    required this.moonPhase,
+    required this.dominantElement,
+    required this.playlistParams,
     required this.generatedAt,
+    this.reading = '',
+    this.signals = const [],
   });
 
   factory DailyReading.fromJson(Map<String, dynamic> json) {
     return DailyReading(
-      reading: json['reading'] as String,
+      headline: json['headline'] as String? ?? 'Your Daily Horoscope',
+      horoscope: json['horoscope'] as String? ?? json['reading'] as String? ?? '',
+      cosmicWeather: json['cosmic_weather'] as String? ?? '',
+      energyLevel: json['energy_level'] as int? ?? 65,
+      focusArea: json['focus_area'] as String? ?? 'Self-Expression',
+      moonPhase: json['moon_phase'] as String? ?? 'Unknown',
+      dominantElement: json['dominant_element'] as String? ?? 'Unknown',
+      playlistParams: PlaylistParams.fromJson(
+        json['playlist_params'] as Map<String, dynamic>? ?? {},
+      ),
+      generatedAt: json['generated_at'] as String? ?? '',
+      // Legacy fields
+      reading: json['reading'] as String? ?? json['horoscope'] as String? ?? '',
       signals: (json['signals'] as List<dynamic>?)
               ?.map((s) => DailySignal.fromJson(s as Map<String, dynamic>))
               .toList() ??
           [],
-      playlistParams: PlaylistParams.fromJson(
-        json['playlist_params'] as Map<String, dynamic>,
-      ),
-      cosmicWeather: json['cosmic_weather'] as String,
-      generatedAt: json['generated_at'] as String,
     );
   }
 
@@ -130,15 +154,56 @@ class DailyReading {
     return genres.take(2).join(' → ');
   }
 
-  /// Determine energy label based on energy value
+  /// Determine energy label based on energy level
   String get energyLabel {
-    if (playlistParams.energy >= 0.8) return 'High Energy';
-    if (playlistParams.energy >= 0.6) return 'Energetic';
-    if (playlistParams.energy >= 0.4) return 'Balanced';
-    if (playlistParams.energy >= 0.2) return 'Chill';
+    if (energyLevel >= 80) return 'High Energy';
+    if (energyLevel >= 60) return 'Energetic';
+    if (energyLevel >= 40) return 'Balanced';
+    if (energyLevel >= 20) return 'Chill';
     return 'Ambient';
   }
+  
+  /// Get emoji for moon phase
+  String get moonPhaseEmoji {
+    switch (moonPhase) {
+      case 'New Moon':
+        return '🌑';
+      case 'Waxing Crescent':
+        return '🌒';
+      case 'First Quarter':
+        return '🌓';
+      case 'Waxing Gibbous':
+        return '🌔';
+      case 'Full Moon':
+        return '🌕';
+      case 'Waning Gibbous':
+        return '🌖';
+      case 'Third Quarter':
+        return '🌗';
+      case 'Waning Crescent':
+        return '🌘';
+      default:
+        return '🌙';
+    }
+  }
+  
+  /// Get emoji for dominant element
+  String get elementEmoji {
+    switch (dominantElement) {
+      case 'Fire':
+        return '🔥';
+      case 'Earth':
+        return '🌍';
+      case 'Air':
+        return '💨';
+      case 'Water':
+        return '💧';
+      default:
+        return '✨';
+    }
+  }
 }
+
 
 /// AI interpretation of alignment between two charts.
 class AlignmentInterpretation {

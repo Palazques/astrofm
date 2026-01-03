@@ -45,24 +45,24 @@ class TransitPlanetOrb extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isSelected
-                    ? [color, color.withOpacity(0.8)]
-                    : [color.withOpacity(0.4), color.withOpacity(0.15)],
+                    ? [color, color.withValues(alpha: 0.8)]
+                    : [color.withValues(alpha: 0.4), color.withValues(alpha: 0.15)],
               ),
               border: Border.all(
-                color: isSelected ? color : color.withOpacity(0.7),
+                color: isSelected ? color : color.withValues(alpha: 0.7),
                 width: 2,
               ),
               boxShadow: [
                 // Outer glow to distinguish as transit
                 BoxShadow(
-                  color: color.withOpacity(isSelected ? 0.6 : 0.25),
+                  color: color.withValues(alpha: isSelected ? 0.6 : 0.25),
                   blurRadius: isHighlight ? 24 : 12,
                   spreadRadius: isHighlight ? 4 : 1,
                 ),
                 // Highlight glow for "Today's Highlight Planet"
                 if (isHighlight)
                   BoxShadow(
-                    color: const Color(0xFFFFD700).withOpacity(0.4),
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.4),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -104,7 +104,7 @@ class TransitPlanetOrb extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFF6B6B).withOpacity(0.5),
+                      color: const Color(0xFFFF6B6B).withValues(alpha: 0.5),
                       blurRadius: 6,
                       spreadRadius: 1,
                     ),

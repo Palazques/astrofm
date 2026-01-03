@@ -16,7 +16,7 @@ from models.schemas import (
 )
 from services.ai_service import get_ai_service
 from services.ephemeris import calculate_natal_chart
-from services.transits import get_transit_summary
+from services.transits import get_transit_summary, get_detailed_transit_summary
 
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -25,45 +25,39 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 @router.post("/daily-reading", response_model=DailyReadingResponse)
 def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse:
     """
-    Generate a personalized daily reading with playlist parameters.
+    Generate a transit-focused daily horoscope.
     
-    The reading combines the user's birth chart with current planetary transits
-    to create a unique horoscope with sonic/musical guidance.
+    Uses real astronomical data (Moon phase, planetary aspects, dominant element)
+    to create a unique horoscope for the user's Sun sign.
     """
     try:
         # Parse birth datetime
         birth_dt = datetime.fromisoformat(request.datetime_str)
         
-        # Calculate user's natal chart
+        # Calculate user's natal chart (mainly to get Sun sign)
         birth_chart = calculate_natal_chart(birth_dt, request.latitude, request.longitude)
         
-        # Get current transits
-        current_transits = get_transit_summary()
+        # Get detailed current transits with aspects, moon phase, dominant element
+        current_transits = get_detailed_transit_summary()
         
-        # Generate AI reading
+        # Generate AI horoscope
         ai_service = get_ai_service()
         result = ai_service.generate_daily_reading(birth_chart, current_transits, request.subject_name)
         
-        # Build signals from result with 3-part messages
-        signals = [
-            DailySignal(
-                signal_type=s["signal_type"],
-                category=s["category"],
-                category_meaning=s["category_meaning"],
-                message=s.get("message", ""),
-                audio_message=s.get("audio_message", ""),
-                cosmic_message=s.get("cosmic_message", ""),
-                advice_message=s.get("advice_message", ""),
-            )
-            for s in result.get("signals", [])
-        ]
-        
+        # Build response with new horoscope format
         return DailyReadingResponse(
-            reading=result["reading"],
-            signals=signals,
-            playlist_params=PlaylistParams(**result["playlist_params"]),
+            headline=result["headline"],
+            horoscope=result["horoscope"],
             cosmic_weather=result["cosmic_weather"],
+            energy_level=result["energy_level"],
+            focus_area=result["focus_area"],
+            moon_phase=result["moon_phase"],
+            dominant_element=result["dominant_element"],
+            playlist_params=PlaylistParams(**result["playlist_params"]),
             generated_at=result["generated_at"],
+            # Legacy fields for backward compatibility
+            reading=result.get("reading", result["horoscope"]),
+            signals=[],
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -375,3 +369,36 @@ def get_welcome_message(request: WelcomeMessageRequest) -> WelcomeMessageRespons
         raise HTTPException(status_code=503, detail=f"AI service unavailable: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get welcome message: {e}")
+
+
+from models.schemas import TransitAlignmentRequest, TransitAlignmentResponse
+from services.transit_alignment import calculate_transit_alignment
+
+
+@router.post("/transit-alignment", response_model=TransitAlignmentResponse)
+def get_transit_alignment(request: TransitAlignmentRequest) -> TransitAlignmentResponse:
+    """
+    Calculate transit alignment between user's natal chart and current transits.
+    
+    Returns gap/resonance status and planet-specific insights for each planet.
+    Insights are based on house-to-house transitions.
+    """
+    try:
+        result = calculate_transit_alignment(
+            birth_datetime=request.datetime_str,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            timezone_str=request.timezone,
+            target_date=request.target_date,
+        )
+        
+        return TransitAlignmentResponse(
+            planets=result["planets"],
+            gap_count=result["gap_count"],
+            resonance_count=result["resonance_count"],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to calculate transit alignment: {e}")
+

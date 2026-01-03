@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'transit_wheel_planet_data.dart';
-import 'transit_planet_orb.dart';
 
 /// Modal popup showing transit planet details.
 /// 
@@ -31,7 +30,7 @@ class TransitPlanetPopup extends StatelessWidget {
     return GestureDetector(
       onTap: onClose,
       child: Container(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.7),
         child: Center(
           child: GestureDetector(
             onTap: () {}, // Prevent close when tapping popup
@@ -42,12 +41,12 @@ class TransitPlanetPopup extends StatelessWidget {
                 color: const Color(0xFF0A0A0F),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: planet.color.withOpacity(0.4),
+                  color: planet.color.withValues(alpha: 0.4),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: planet.color.withOpacity(0.2),
+                    color: planet.color.withValues(alpha: 0.2),
                     blurRadius: 30,
                     spreadRadius: 5,
                   ),
@@ -116,8 +115,8 @@ class TransitPlanetPopup extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            planet.color.withOpacity(0.15),
-            planet.color.withOpacity(0.05),
+            planet.color.withValues(alpha: 0.15),
+            planet.color.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: const BorderRadius.only(
@@ -137,17 +136,17 @@ class TransitPlanetPopup extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  planet.color.withOpacity(0.4),
-                  planet.color.withOpacity(0.15),
+                  planet.color.withValues(alpha: 0.4),
+                  planet.color.withValues(alpha: 0.15),
                 ],
               ),
               border: Border.all(
-                color: planet.color.withOpacity(0.7),
+                color: planet.color.withValues(alpha: 0.7),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: planet.color.withOpacity(0.3),
+                  color: planet.color.withValues(alpha: 0.3),
                   blurRadius: 12,
                   spreadRadius: 2,
                 ),
@@ -179,13 +178,16 @@ class TransitPlanetPopup extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      planet.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        fontFamily: 'Space Grotesk',
+                    Flexible(
+                      child: Text(
+                        planet.name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'Space Grotesk',
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (planet.isRetrograde) ...[
@@ -196,10 +198,10 @@ class TransitPlanetPopup extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF6B6B).withOpacity(0.2),
+                          color: const Color(0xFFFF6B6B).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFFFF6B6B).withOpacity(0.5),
+                            color: const Color(0xFFFF6B6B).withValues(alpha: 0.5),
                             width: 1,
                           ),
                         ),
@@ -216,7 +218,7 @@ class TransitPlanetPopup extends StatelessWidget {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              'Retrograde',
+                              'Rx',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -234,7 +236,7 @@ class TransitPlanetPopup extends StatelessWidget {
                   'Transit',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                     fontFamily: 'Space Grotesk',
                   ),
                 ),
@@ -250,10 +252,10 @@ class TransitPlanetPopup extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           width: 1,
         ),
       ),
@@ -262,32 +264,35 @@ class TransitPlanetPopup extends StatelessWidget {
           Icon(
             Icons.my_location,
             size: 18,
-            color: planet.color.withOpacity(0.8),
+            color: planet.color.withValues(alpha: 0.8),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Current Position',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withOpacity(0.5),
-                  letterSpacing: 0.5,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current Position',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${planet.sign} ${planet.degree.toStringAsFixed(1)}°',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  fontFamily: 'Space Grotesk',
+                const SizedBox(height: 2),
+                Text(
+                  '${planet.sign} ${planet.degree.toStringAsFixed(1)}°',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontFamily: 'Space Grotesk',
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -307,16 +312,19 @@ class TransitPlanetPopup extends StatelessWidget {
             Icon(
               icon,
               size: 14,
-              color: planet.color.withOpacity(0.8),
+              color: planet.color.withValues(alpha: 0.8),
             ),
             const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: planet.color.withOpacity(0.9),
-                letterSpacing: 0.5,
+            Flexible(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: planet.color.withValues(alpha: 0.9),
+                  letterSpacing: 0.5,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -327,7 +335,7 @@ class TransitPlanetPopup extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             height: 1.5,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -338,10 +346,10 @@ class TransitPlanetPopup extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6B6B).withOpacity(0.08),
+        color: const Color(0xFFFF6B6B).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFFF6B6B).withOpacity(0.2),
+          color: const Color(0xFFFF6B6B).withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -350,7 +358,7 @@ class TransitPlanetPopup extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF6B6B).withOpacity(0.15),
+              color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: const Text(
@@ -381,9 +389,11 @@ class TransitPlanetPopup extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontFamily: 'Space Grotesk',
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -398,7 +408,7 @@ class TransitPlanetPopup extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
@@ -419,7 +429,7 @@ class TransitPlanetPopup extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
           ),
         ),
       ),

@@ -626,6 +626,51 @@ class ApiService {
     }
   }
 
+  /// Get transit alignment between natal chart and current transits.
+  /// Returns gap/resonance status and planet-specific insights.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  /// [targetDate] - Optional target date for transits (defaults to now)
+  Future<TransitAlignmentResult> getTransitAlignment({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+    String? targetDate,
+  }) async {
+    final Map<String, dynamic> body = {
+      'datetime': datetime,
+      'latitude': latitude,
+      'longitude': longitude,
+      'timezone': timezone,
+    };
+
+    if (targetDate != null) {
+      body['target_date'] = targetDate;
+    }
+
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/ai/transit-alignment'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return TransitAlignmentResult.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get transit alignment',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   /// Get attunement analysis comparing natal chart to current transits.
   /// Identifies gaps (where user needs to attune) and resonances (natural alignment).
   ///

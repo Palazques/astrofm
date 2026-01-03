@@ -45,10 +45,16 @@ class _AlignScreenState extends State<AlignScreen> {
   AlignmentInterpretation? _aiInterpretation;
   List<String> _harmoniousAspects = [];
   
-  // Transit data from API
+  // Transit data from API (old format)
   TransitsResult? _transitsData;
   bool _isLoadingTransits = false;
   String? _transitsError;
+  
+  // Transit Alignment data (new format with gap/resonance)
+  TransitAlignmentResult? _transitAlignmentData;
+  bool _isLoadingTransitAlignment = false;
+  String? _transitAlignmentError;
+  TransitAlignmentPlanet? _selectedTransitPlanet;
   
   // Transit AI interpretation
   TransitInterpretation? _transitInterpretation;
@@ -129,12 +135,45 @@ class _AlignScreenState extends State<AlignScreen> {
         });
         // Load AI interpretation after transits are loaded
         _loadTransitInterpretation();
+        // Load transit alignment data (new format)
+        _loadTransitAlignment();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _transitsError = e.toString();
           _isLoadingTransits = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadTransitAlignment() async {
+    if (_birthData == null) return;
+    
+    setState(() {
+      _isLoadingTransitAlignment = true;
+      _transitAlignmentError = null;
+    });
+    
+    try {
+      final result = await _apiService.getTransitAlignment(
+        datetime: _birthData!.datetime,
+        latitude: _birthData!.latitude,
+        longitude: _birthData!.longitude,
+        timezone: _birthData!.timezone,
+      );
+      if (mounted) {
+        setState(() {
+          _transitAlignmentData = result;
+          _isLoadingTransitAlignment = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _transitAlignmentError = e.toString();
+          _isLoadingTransitAlignment = false;
         });
       }
     }
@@ -1065,7 +1104,7 @@ class _AlignScreenState extends State<AlignScreen> {
 
   Widget _buildTransitContent() {
     // Show skeleton while loading
-    if (_isLoadingTransits) {
+    if (_isLoadingTransitAlignment || _isLoadingTransits) {
       return Column(
         children: List.generate(3, (index) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -1075,6 +1114,17 @@ class _AlignScreenState extends State<AlignScreen> {
     }
     
     // Show error state
+    if (_transitAlignmentError != null) {
+      return GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: InlineError(
+          message: 'Could not load transit alignment',
+          onRetry: _loadTransitAlignment,
+        ),
+      );
+    }
+    
+    // Fallback to old transits error
     if (_transitsError != null) {
       return GlassCard(
         padding: const EdgeInsets.all(16),
@@ -1086,16 +1136,37 @@ class _AlignScreenState extends State<AlignScreen> {
     }
     
     // Show transit data
-    if (_transitsData == null || _transitsData!.planets.isEmpty) {
+    if (_transitAlignmentData == null || _transitAlignmentData!.planets.isEmpty) {
       return GlassCard(
         padding: const EdgeInsets.all(16),
         child: Text('No transit data available', style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(128))),
       );
     }
     
-    // Build transit wheel with AI insight card
+    final alignmentData = _transitAlignmentData!;
+    
+    // Build transit wheel with header badges and insight card
     return Column(
       children: [
+        // Gap/Resonance Header Badges
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildStatusBadge(
+              count: alignmentData.gapCount,
+              label: 'Gaps',
+              color: const Color(0xFFE84855),
+            ),
+            const SizedBox(width: 12),
+            _buildStatusBadge(
+              count: alignmentData.resonanceCount,
+              label: 'Resonances',
+              color: const Color(0xFF00D4AA),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
         // AI Cosmic Weather Insight
         _buildTransitInsightCard(),
         const SizedBox(height: 16),
@@ -1103,12 +1174,374 @@ class _AlignScreenState extends State<AlignScreen> {
         // Transit Wheel
         Center(
           child: TransitWheel(
-            transits: _transitsData!,
-            highlightPlanet: 'Sun', // Today's highlight is always Sun
+            alignmentData: alignmentData,
+            selectedPlanet: _selectedTransitPlanet,
+            onPlanetSelected: (planet) {
+              setState(() => _selectedTransitPlanet = planet);
+            },
           ),
         ),
+        
+        // Planet Insight Card (when selected)
+        if (_selectedTransitPlanet != null) ...[
+          const SizedBox(height: 20),
+          _buildPlanetInsightCard(_selectedTransitPlanet!),
+        ],
       ],
     );
+  }
+  
+  Widget _buildStatusBadge({
+    required int count,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(38),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$count $label',
+            style: GoogleFonts.syne(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPlanetInsightCard(TransitAlignmentPlanet planet) {
+    final isGap = planet.isGap;
+    final statusColor = isGap ? const Color(0xFFE84855) : const Color(0xFF00D4AA);
+    
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      borderColor: statusColor.withAlpha(51),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Card Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withAlpha(15),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Planet icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(planet.colorValue).withAlpha(77),
+                        Color(planet.colorValue).withAlpha(26),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: Color(planet.colorValue).withAlpha(128),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      planet.symbol,
+                      style: TextStyle(
+                        fontSize: 24,
+                        color: Color(planet.colorValue),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Planet name and house transition
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        planet.name,
+                        style: GoogleFonts.syne(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${planet.natal.house}${_getOrdinal(planet.natal.house)} → ${planet.transit.house}${_getOrdinal(planet.transit.house)} House',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 12,
+                          color: Colors.white.withAlpha(128),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(38),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: statusColor.withAlpha(102),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    planet.status.toUpperCase(),
+                    style: GoogleFonts.syne(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Yours vs Today comparison
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withAlpha(15),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Yours column
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(
+                          color: Colors.white.withAlpha(15),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'YOURS',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            color: Colors.white.withAlpha(102),
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          planet.natal.sign,
+                          style: GoogleFonts.syne(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(planet.colorValue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Today column
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TODAY',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            color: Colors.white.withAlpha(102),
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          planet.transit.sign,
+                          style: GoogleFonts.syne(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withAlpha(230),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // The Pull / The Harmony
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withAlpha(15),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isGap ? 'THE PULL' : 'THE HARMONY',
+                  style: GoogleFonts.syne(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  planet.pull,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: Colors.white.withAlpha(204),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // You Might Feel
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withAlpha(15),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'YOU MIGHT FEEL',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    color: Colors.white.withAlpha(102),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: planet.feelings.map((feeling) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(13),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      feeling,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: Colors.white.withAlpha(179),
+                      ),
+                    ),
+                  )).toList(),
+                ),
+              ],
+            ),
+          ),
+          
+          // Today's Practice
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TODAY'S PRACTICE",
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    color: Colors.white.withAlpha(102),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(13),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border(
+                      left: BorderSide(
+                        color: statusColor,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    planet.practice,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: Colors.white.withAlpha(204),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  String _getOrdinal(int number) {
+    if (number >= 11 && number <= 13) return 'th';
+    switch (number % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
   }
   
   String _getPlanetSymbol(String name) {

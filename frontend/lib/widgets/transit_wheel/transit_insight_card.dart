@@ -1,0 +1,401 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../models/alignment.dart';
+import '../../config/design_tokens.dart';
+
+/// Insight card for a selected transit planet.
+/// Shows "Yours vs Today" comparison, pull/harmony explanation,
+/// feeling pills, and today's practice.
+class TransitInsightCard extends StatelessWidget {
+  final TransitAlignmentPlanet planet;
+  final VoidCallback? onClose;
+
+  const TransitInsightCard({
+    super.key,
+    required this.planet,
+    this.onClose,
+  });
+
+  // House theme keywords from the mockup
+  static const Map<int, String> _houseKeywords = {
+    1: 'Identity',
+    2: 'Resources',
+    3: 'Communication',
+    4: 'Foundation',
+    5: 'Expression',
+    6: 'Routine',
+    7: 'Partnership',
+    8: 'Depths',
+    9: 'Expansion',
+    10: 'Achievement',
+    11: 'Community',
+    12: 'Dissolution',
+  };
+
+  String _getHouseKeyword(int house) => _houseKeywords[house] ?? 'House $house';
+
+  String _getOrdinal(int number) {
+    if (number >= 11 && number <= 13) return 'th';
+    switch (number % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  }
+
+  Color get _statusColor => planet.isGap 
+      ? const Color(0xFFE84855) // Gap red
+      : const Color(0xFF00D4AA); // Resonance teal
+
+  Color get _planetColor => Color(planet.colorValue);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildHeader(),
+          _buildYoursVsToday(),
+          _buildPullSection(),
+          _buildFeelingsSection(),
+          _buildPracticeSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              // Planet icon
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      _planetColor.withValues(alpha: 0.3),
+                      _planetColor.withValues(alpha: 0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: _planetColor.withValues(alpha: 0.5),
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    planet.symbol,
+                    style: TextStyle(
+                      fontSize: 24,
+                      color: _planetColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    planet.name,
+                    style: GoogleFonts.syne(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    '${planet.natal.house}${_getOrdinal(planet.natal.house)} → ${planet.transit.house}${_getOrdinal(planet.transit.house)} House',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Status badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: _statusColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _statusColor.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Text(
+              planet.status.toUpperCase(),
+              style: GoogleFonts.syne(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _statusColor,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYoursVsToday() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Yours column
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.06),
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'YOURS',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10,
+                      color: Colors.white.withValues(alpha: 0.4),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    planet.natal.sign,
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _planetColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getHouseKeyword(planet.natal.house),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Today column
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TODAY',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10,
+                      color: Colors.white.withValues(alpha: 0.4),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    planet.transit.sign,
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getHouseKeyword(planet.transit.house),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPullSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            planet.isGap ? 'THE PULL' : 'THE HARMONY',
+            style: GoogleFonts.syne(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: _statusColor,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            planet.pull,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 14,
+              height: 1.6,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeelingsSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'YOU MIGHT FEEL',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              color: Colors.white.withValues(alpha: 0.4),
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: planet.feelings.map((feeling) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  feeling,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPracticeSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                size: 14,
+                color: AppColors.electricYellow.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "TODAY'S PRACTICE",
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.electricYellow.withValues(alpha: 0.8),
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.electricYellow.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border(
+                left: BorderSide(
+                  color: AppColors.electricYellow,
+                  width: 3,
+                ),
+              ),
+            ),
+            child: Text(
+              planet.practice,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                height: 1.6,
+                fontStyle: FontStyle.italic,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

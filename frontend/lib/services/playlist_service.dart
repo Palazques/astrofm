@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/playlist.dart';
 import '../models/ai_responses.dart';
@@ -20,7 +21,6 @@ class PlaylistService extends ChangeNotifier {
 
   final ApiService _apiService = ApiService();
   final StorageService _storageService = StorageService();
-  // ignore: unused_field
   final SpotifyService _spotifyService = SpotifyService();
 
   // State variables
@@ -90,7 +90,7 @@ class PlaylistService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error loading cached playlist: $e');
+      if (kDebugMode) debugPrint('Error loading cached playlist: $e');
     }
   }
 
@@ -134,7 +134,7 @@ class PlaylistService extends ChangeNotifier {
       }
     } catch (e) {
       _error = e is ApiException ? e.message : 'Failed to generate playlist';
-      debugPrint('Playlist generation error: $e');
+      if (kDebugMode) debugPrint('Playlist generation error: $e');
     } finally {
       _isGenerating = false;
       notifyListeners();
@@ -191,7 +191,7 @@ class PlaylistService extends ChangeNotifier {
       
       _playlistInsight = insight;
     } catch (e) {
-      debugPrint('Error loading playlist insight: $e');
+      if (kDebugMode) debugPrint('Error loading playlist insight: $e');
     } finally {
       _isLoadingInsight = false;
       notifyListeners();
@@ -241,7 +241,7 @@ class PlaylistService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error creating Spotify playlist: $e');
+      if (kDebugMode) debugPrint('Error creating Spotify playlist: $e');
       rethrow;
     }
   }
@@ -290,7 +290,7 @@ class PlaylistService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error creating Spotify playlist from library: $e');
+      if (kDebugMode) debugPrint('Error creating Spotify playlist from library: $e');
       rethrow;
     }
   }

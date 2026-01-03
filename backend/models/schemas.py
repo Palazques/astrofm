@@ -131,6 +131,7 @@ class DailyReadingRequest(BaseModel):
 class DailySignal(BaseModel):
     """
     Structured daily reading signal (Resonance, Feedback, or Dissonance).
+    DEPRECATED: Kept for backward compatibility. New apps should use DailyHoroscopeResponse.
     
     Each signal contains 3 message parts:
     - audio_message: Music/engineering metaphor (prominent)
@@ -169,19 +170,27 @@ class DailySignal(BaseModel):
 
 class DailyReadingResponse(BaseModel):
     """
-    Response model for AI-generated daily reading.
+    Response model for AI-generated daily horoscope.
     
-    Includes both the legacy 'reading' field (for backward compatibility)
-    and the new 'signals' array for structured, categorized readings.
+    Transit-focused general horoscope that reflects what today holds based on
+    actual planetary positions, personalized by Sun sign.
     """
-    reading: str = Field(..., description="Personalized horoscope text (legacy)")
+    headline: str = Field(..., description="Short punchy headline (3-5 words)")
+    horoscope: str = Field(..., description="2-3 sentence daily horoscope")
+    cosmic_weather: str = Field(..., description="Today's cosmic weather summary with real transit data")
+    energy_level: int = Field(..., ge=0, le=100, description="Day's energy level 0-100")
+    focus_area: str = Field(..., description="Life area to focus on today")
+    moon_phase: str = Field(..., description="Current moon phase name")
+    dominant_element: str = Field(..., description="Dominant element today (Fire/Earth/Air/Water)")
+    playlist_params: PlaylistParams = Field(..., description="Playlist generation parameters")
+    generated_at: str = Field(..., description="Generation timestamp ISO format")
+    
+    # Legacy fields for backward compatibility
+    reading: str = Field(default="", description="Legacy reading text (deprecated, use horoscope)")
     signals: list[DailySignal] = Field(
         default=[],
-        description="Structured reading signals: Resonance, Feedback, Dissonance"
+        description="DEPRECATED: Structured signals (use horoscope instead)"
     )
-    playlist_params: PlaylistParams = Field(..., description="Playlist generation parameters")
-    cosmic_weather: str = Field(..., description="Current cosmic weather summary")
-    generated_at: str = Field(..., description="Generation timestamp ISO format")
 
 
 class AlignmentRequest(BaseModel):
@@ -471,3 +480,90 @@ class WelcomeMessageResponse(BaseModel):
     sound_teaser: str = Field(..., description="Intriguing hint about their unique sound")
 
 
+# Transit Alignment Models (for comparing natal chart with current transits)
+
+class NatalPositionData(BaseModel):
+    """Natal planet position data."""
+    sign: str = Field(..., description="Zodiac sign")
+    degree: float = Field(..., ge=0, le=30, description="Degree within sign (0-30)")
+    house: int = Field(..., ge=1, le=12, description="House placement (1-12)")
+
+
+class TransitPositionData(BaseModel):
+    """Transit planet position data."""
+    sign: str = Field(..., description="Zodiac sign")
+    degree: float = Field(..., ge=0, le=30, description="Degree within sign (0-30)")
+    house: int = Field(..., ge=1, le=12, description="House placement (1-12)")
+    retrograde: bool = Field(default=False, description="Is planet retrograde")
+
+
+class TransitAlignmentPlanet(BaseModel):
+    """
+    Complete alignment data for a single planet.
+    Combines natal and transit positions with gap/resonance status and insight.
+    """
+    id: str = Field(..., description="Planet identifier (lowercase name)")
+    name: str = Field(..., description="Planet name")
+    symbol: str = Field(..., description="Planet unicode symbol")
+    color: str = Field(..., description="Planet color hex code")
+    natal: NatalPositionData = Field(..., description="Natal position")
+    transit: TransitPositionData = Field(..., description="Current transit position")
+    status: str = Field(..., description="'gap' or 'resonance'")
+    pull: str = Field(..., description="Explanation of the tension/harmony")
+    feelings: list[str] = Field(..., description="3-4 symptom descriptions")
+    practice: str = Field(..., description="Actionable guidance")
+
+
+class TransitAlignmentRequest(BaseModel):
+    """
+    Request model for transit alignment calculation.
+    """
+    datetime_str: str = Field(
+        ...,
+        alias="datetime",
+        description="Birth date and time in ISO format (YYYY-MM-DDTHH:MM:SS)",
+        examples=["1990-07-15T15:42:00"]
+    )
+    latitude: float = Field(
+        ...,
+        ge=-90.0,
+        le=90.0,
+        description="Birth location latitude (-90 to 90)"
+    )
+    longitude: float = Field(
+        ...,
+        ge=-180.0,
+        le=180.0,
+        description="Birth location longitude (-180 to 180)"
+    )
+    timezone: str = Field(
+        default="UTC",
+        description="Timezone name (e.g., 'America/Los_Angeles', 'UTC')"
+    )
+    target_date: Optional[str] = Field(
+        default=None,
+        description="Optional target date for transits (ISO format, defaults to now)"
+    )
+
+    @field_validator('datetime_str')
+    @classmethod
+    def validate_datetime(cls, v: str) -> str:
+        """Validate datetime string is in proper ISO format."""
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError("datetime must be in ISO format: YYYY-MM-DDTHH:MM:SS")
+        return v
+
+
+class TransitAlignmentResponse(BaseModel):
+    """
+    Response model for transit alignment calculation.
+    Contains planet alignments with gap/resonance status and insights.
+    """
+    planets: list[TransitAlignmentPlanet] = Field(
+        ...,
+        description="Alignment data for each planet"
+    )
+    gap_count: int = Field(..., ge=0, description="Number of planets in gap")
+    resonance_count: int = Field(..., ge=0, description="Number of planets in resonance")

@@ -3,9 +3,16 @@ Astro.FM Backend API
 FastAPI application for astrological calculations using Swiss Ephemeris.
 """
 import os
+import sys
+import io
 from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+
+# Fix Windows console encoding for Unicode characters (zodiac symbols, etc.)
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # CRITICAL: Load environment variables BEFORE importing routes
 # Routes import AIService which reads keys at instantiation time

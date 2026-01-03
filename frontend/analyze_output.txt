@@ -1,0 +1,53 @@
+﻿Analyzing transit_wheel...                                      
+
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:48:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:49:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:49:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:52:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:58:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:65:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_orb.dart:107:54 - deprecated_member_use
+warning - Unused import: 'transit_planet_orb.dart' - lib\widgets\transit_wheel\transit_planet_popup.dart:3:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:34:29 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:45:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:50:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:119:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:120:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:140:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:141:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:145:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:150:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:202:58 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:205:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:240:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:256:29 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:259:31 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:268:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:280:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:316:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:325:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:339:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:350:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:353:42 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:362:46 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:393:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:412:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_planet_popup.dart:433:33 - deprecated_member_use
+warning - The value of the local variable 'moonPlanet' isn't used - lib\widgets\transit_wheel\transit_wheel.dart:201:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_wheel.dart:211:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_wheel.dart:212:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_wheel.dart:216:31 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\transit_wheel\transit_wheel.dart:235:35 - deprecated_member_use
+
+flutter : 38 issues found. (ran in 1.8s)
+At line:1 char:1
++ flutter analyze lib/widgets/transit_wheel/ 
+2>&1 | Out-File -FilePath  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~
+    + CategoryInfo          : NotSpecified:  
+   (38 issues found. (ran in 1.8s):String)   
+  [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 

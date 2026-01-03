@@ -8,6 +8,7 @@ import 'transit_planet_orb.dart';
 /// Contains transit position info, retrograde status, and personal impact data
 /// derived from comparing transit positions to the user's natal chart.
 class TransitWheelPlanetData {
+  final String id;
   final String name;
   final String symbol;
   final String sign;
@@ -19,8 +20,20 @@ class TransitWheelPlanetData {
   final bool isHighlight; // "Today's Highlight Planet"
   final double angle; // Position on wheel (0-360 degrees)
   final Color color;
+  
+  // Natal position data (for gap/resonance comparison)
+  final String? natalSign;
+  final double? natalDegree;
+  final double? natalAngle; // Natal position angle on wheel
+  
+  // Alignment status and insights
+  final String? status; // 'gap' or 'resonance'
+  final String? pull; // "The Pull" / "The Harmony" explanation
+  final List<String>? feelings; // "You Might Feel" items
+  final String? practice; // "Today's Practice" suggestion
 
   const TransitWheelPlanetData({
+    this.id = '',
     required this.name,
     required this.symbol,
     required this.sign,
@@ -32,7 +45,22 @@ class TransitWheelPlanetData {
     this.isHighlight = false,
     required this.angle,
     required this.color,
+    // Natal position
+    this.natalSign,
+    this.natalDegree,
+    this.natalAngle,
+    // Alignment data
+    this.status,
+    this.pull,
+    this.feelings,
+    this.practice,
   });
+  
+  /// Whether this planet is in a gap (tension) state.
+  bool get isGap => status == 'gap';
+  
+  /// Whether this planet is in resonance (harmony) with its natal position.
+  bool get isResonance => status == 'resonance';
 
   /// Create from TransitPosition API model.
   factory TransitWheelPlanetData.fromTransitPosition(
@@ -61,6 +89,37 @@ class TransitWheelPlanetData {
       isHighlight: isHighlight,
       angle: _calculateAngleFromSign(transit.sign, transit.degree),
       color: getPlanetColor(transit.name),
+    );
+  }
+
+  /// Create from TransitAlignmentPlanet API model (with natal comparison data).
+  factory TransitWheelPlanetData.fromTransitAlignmentPlanet(
+    TransitAlignmentPlanet planet, {
+    bool isHighlight = false,
+  }) {
+    final transitAngle = _calculateAngleFromSign(planet.transit.sign, planet.transit.degree);
+    final natalAngle = _calculateAngleFromSign(planet.natal.sign, planet.natal.degree);
+
+    return TransitWheelPlanetData(
+      id: planet.id,
+      name: planet.name,
+      symbol: planet.symbol,
+      sign: planet.transit.sign,
+      degree: planet.transit.degree,
+      natalHouse: planet.transit.house,
+      isRetrograde: planet.transit.retrograde,
+      isHighlight: isHighlight,
+      angle: transitAngle,
+      color: Color(planet.colorValue),
+      // Natal position
+      natalSign: planet.natal.sign,
+      natalDegree: planet.natal.degree,
+      natalAngle: natalAngle,
+      // Alignment data
+      status: planet.status,
+      pull: planet.pull,
+      feelings: planet.feelings,
+      practice: planet.practice,
     );
   }
 
