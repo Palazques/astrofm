@@ -478,6 +478,52 @@ class AudioService {
     });
   }
 
+  /// Play a single frequency for a short duration (e.g. planet selection feedback).
+  Future<void> playFrequency(double frequency, {double duration = 1.2}) async {
+    // Note: we don't call stop() here to allow overlapping with existing drones 
+    // IF we wanted polyphony, but for selection feedback, stopping is fine to avoid mud.
+    stop();
+    
+    _ensureContext();
+    final ctx = _audioContext!;
+    
+    if (ctx.state == 'suspended') ctx.resume();
+    _isPlaying = true;
+    _playingController.add(true);
+    
+    final now = ctx.currentTime;
+    
+    final oscillator = ctx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+    
+    final gainNode = ctx.createGain();
+    const volume = 0.2; // Slightly louder than drone for feedback
+    
+    gainNode.gain.setValueAtTime(0.0, now);
+    gainNode.gain.linearRampToValueAtTime(volume, now + 0.1);
+    gainNode.gain.setValueAtTime(volume, now + duration - 0.3);
+    gainNode.gain.linearRampToValueAtTime(0.0, now + duration);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+    
+    _activeOscillators['feedback'] = oscillator;
+    _activeGains['feedback'] = gainNode;
+    
+    _singlePlayTimer?.cancel();
+    _singlePlayTimer = Timer(Duration(milliseconds: (duration * 1000).toInt()), () {
+      if (_isPlaying) {
+        _cleanup();
+        _isPlaying = false;
+        _playingController.add(false);
+      }
+    });
+  }
+
   /// Stop all playback immediately.
   void stop() {
     if (!_isPlaying) return;

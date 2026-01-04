@@ -18,11 +18,11 @@ import '../models/ai_responses.dart';
 import '../models/playlist.dart';
 
 import '../models/birth_data.dart';
-import '../models/monthly_zodiac.dart';
-import '../widgets/zodiac_playlist_card.dart';
-import '../widgets/zodiac_season_pill.dart';
+
 import '../services/playlist_service.dart';
 import '../data/test_users.dart';
+import '../widgets/zodiac_season_card_widget.dart';
+import '../models/zodiac_season_card.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -46,20 +46,21 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingSonification = true;
   
   // User's genre preferences from onboarding
-  // User's genre preferences from onboarding
   List<String> _userMainGenres = [];
   
-  // Carousel state for Today's Reading
-  int _currentReadingPage = 0;
-  final PageController _readingPageController = PageController(viewportFraction: 0.85);
+  // Carousel state for Today's Reading (Old) - Removed as redundant with new card layout
   
-  // Monthly zodiac playlist data
-  MonthlyZodiacPlaylist? _monthlyZodiacPlaylist;
-  bool _isLoadingMonthlyZodiac = false;
-  String? _monthlyZodiacError;
+
+  
+
   
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
+  
+  // Zodiac Season Card state
+  ZodiacSeasonCardData? _zodiacSeasonCard;
+  bool _isLoadingSeasonCard = false;
+  String? _seasonCardError;
   
   Map<String, dynamic> get _birthDataMap => _birthData != null 
     ? {
@@ -173,108 +174,18 @@ class _HomeScreenState extends State<HomeScreen> {
     // Load all API data in parallel
     Future.wait([
       _loadSonificationData(),
-      _loadMonthlyZodiacPlaylist(),
+      _loadZodiacSeasonCard(),
     ]);
   }
   
 
-  /// Load zodiac season playlist using AI + app's Spotify account.
-  /// Uses cache to avoid reloading every time user navigates.
-  /// Only regenerates once per zodiac season (~30 days).
-  /// No user Spotify auth required.
-  Future<void> _loadMonthlyZodiacPlaylist() async {
-    if (_isLoadingMonthlyZodiac) return;
-    
-    // If we already have the playlist loaded in memory, skip
-    if (_monthlyZodiacPlaylist != null) return;
-    
-    // Generate current zodiac season key (e.g., "Capricorn_2024")
-    final now = DateTime.now();
-    final currentSeasonKey = '${_getCurrentZodiacSign()}_${now.year}';
-    
-    // Check for cached playlist from current zodiac season
-    final cached = await storageService.loadZodiacSeasonPlaylist(currentSeasonKey);
-    if (cached != null && mounted) {
-      setState(() {
-        _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(cached);
-        _monthlyZodiacError = null;
-      });
-      return; // Use cached version
-    }
-    
-    // No valid cache - fetch from API (no Spotify auth required!)
-    setState(() {
-      _isLoadingMonthlyZodiac = true;
-      _monthlyZodiacError = null;
-    });
-    
-    try {
-      // Get user's chart info for personalization
-      String sunSign = _getCurrentZodiacSign();
-      String moonSign = 'Pisces';
-      String risingSign = 'Scorpio';
-      
-      if (_userSonification != null) {
-        sunSign = _userSonification!.bigFour['sun']?.sign ?? sunSign;
-        moonSign = _userSonification!.bigFour['moon']?.sign ?? moonSign;
-      }
-      
-      // Get genre preferences
-      final genres = _userMainGenres.isNotEmpty 
-          ? _userMainGenres 
-          : ['indie rock', 'electronic', 'pop'];
-      
-      // Call the new zodiac season API (no user Spotify auth needed)
-      final result = await _apiService.getZodiacSeasonPlaylist(
-        sunSign: sunSign,
-        moonSign: moonSign,
-        risingSign: risingSign,
-        genrePreferences: genres,
-      );
-      
-      if (mounted && result.success) {
-        // Convert to MonthlyZodiacPlaylist format for the widget
-        final playlistData = result.toJson();
-        // Add track_count which may differ from tracks list length
-        playlistData['track_count'] = result.trackCount;
-        
-        setState(() {
-          _monthlyZodiacPlaylist = MonthlyZodiacPlaylist.fromJson(playlistData);
-          _isLoadingMonthlyZodiac = false;
-        });
-        
-        // Save to cache for the entire zodiac season
-        await storageService.saveZodiacSeasonPlaylist(playlistData);
-      } else {
-        throw Exception(result.error ?? 'Failed to generate playlist');
-      }
-    } catch (e) {
-      if (mounted) {
-        String error = 'Failed to load zodiac playlist';
-        if (e is ApiException) {
-          error = e.message;
-        }
-        setState(() {
-          _monthlyZodiacError = error;
-          _isLoadingMonthlyZodiac = false;
-        });
-      }
-    }
-  }
 
-  /// Open the zodiac season playlist in Spotify.
-  Future<void> _openMonthlyZodiacPlaylist() async {
-    if (_monthlyZodiacPlaylist?.playlistUrl != null) {
-      await _spotifyService.openPlaylist(_monthlyZodiacPlaylist!.playlistUrl!);
-    }
-  }
 
   @override
   void dispose() {
     playlistService.removeListener(_onPlaylistServiceUpdate);
     _audioService.dispose();
     _apiService.dispose();
-    _readingPageController.dispose();
     super.dispose();
   }
 
@@ -371,6 +282,74 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
+  
+  Future<void> _loadZodiacSeasonCard() async {
+    if (_isLoadingSeasonCard) return;
+    
+    // Check cache first using season key
+    final cache = SessionCacheService();
+    if (cache.hasAiReading('zodiac_season_card')) {
+      final cached = cache.getAiReading('zodiac_season_card') as ZodiacSeasonCardData?;
+      if (cached != null && cached.cachedUntil.isAfter(DateTime.now())) {
+        setState(() {
+          _zodiacSeasonCard = cached;
+          _isLoadingSeasonCard = false;
+        });
+        return;
+      }
+    }
+    
+    setState(() {
+      _isLoadingSeasonCard = true;
+      _seasonCardError = null;
+    });
+    
+    try {
+      final card = await _apiService.getZodiacSeasonCard(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
+        genrePreferences: _userMainGenres.isNotEmpty 
+            ? _userMainGenres 
+            : ['indie rock', 'electronic', 'pop'],
+      );
+      
+      if (mounted) {
+        // Cache for season duration
+        cache.cacheAiReading('zodiac_season_card', card);
+        
+        setState(() {
+          _zodiacSeasonCard = card;
+          _isLoadingSeasonCard = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _seasonCardError = 'Could not load season card';
+          _isLoadingSeasonCard = false;
+        });
+      }
+    }
+  }
+  
+  Widget _buildZodiacSeasonCardSection() {
+    return ZodiacSeasonCardWidget(
+      data: _zodiacSeasonCard,
+      isLoading: _isLoadingSeasonCard,
+      errorMessage: _seasonCardError,
+      onRetry: _loadZodiacSeasonCard,
+      onPlayPressed: () {
+        // Could trigger Spotify playback here
+      },
+      onOpenSpotify: () {
+        if (_zodiacSeasonCard?.playlistUrl != null) {
+          _spotifyService.openPlaylist(_zodiacSeasonCard!.playlistUrl!);
+        }
+      },
+    );
+  }
 
   Future<void> _generatePlaylist() async {
     // Extract sun, moon, rising signs from sonification data
@@ -460,22 +439,16 @@ Generated by Astro.FM''';
             _buildSoundOrbsSection(),
             const SizedBox(height: 20),
 
-            // Monthly Zodiac Playlist Card
-            ZodiacPlaylistCard(
-              playlist: _monthlyZodiacPlaylist,
-              isLoading: _isLoadingMonthlyZodiac,
-              errorMessage: _monthlyZodiacError,
-              onRetry: _loadMonthlyZodiacPlaylist,
-              onOpenSpotify: _openMonthlyZodiacPlaylist,
-            ),
-            const SizedBox(height: 20),
-
             // CTA Buttons
             _buildCtaButtons(),
             const SizedBox(height: 24),
 
             // Today's Resonance
             _buildTodaysResonance(),
+            const SizedBox(height: 24),
+            
+            // Zodiac Season Card
+            _buildZodiacSeasonCardSection(),
             const SizedBox(height: 24),
 
             // Cosmic Queue
@@ -525,20 +498,6 @@ Generated by Astro.FM''';
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 20),
-        // Zodiac Season Pill - tappable
-        ZodiacSeasonPill(
-          onTap: () {
-            // TODO: Open horoscope bottom sheet
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Horoscope details coming soon!'),
-                backgroundColor: AppColors.cosmicPurple,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
         ),
       ],
     );
@@ -614,14 +573,12 @@ Generated by Astro.FM''';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildReadingHeader(),
-        const SizedBox(height: 12),
         _buildHoroscopeCard(),
       ],
     );
   }
   
-  /// Build the new horoscope-style card
+  /// Build the premium luxury horoscope card inspired by the latest design
   Widget _buildHoroscopeCard() {
     final reading = _dailyReading;
     if (reading == null) {
@@ -638,132 +595,296 @@ Generated by Astro.FM''';
     }
     
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withAlpha(12),
-            Colors.white.withAlpha(5),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF0A0A0F),
+        borderRadius: BorderRadius.circular(32),
         border: Border.all(color: Colors.white.withAlpha(20)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cosmicPurple.withAlpha(24),
+            blurRadius: 50,
+            spreadRadius: -10,
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Headline
-          Text(
-            reading.headline,
-            style: GoogleFonts.syne(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.electricYellow,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          // Horoscope text
-          Text(
-            reading.horoscope,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 15,
-              height: 1.6,
-              color: Colors.white.withAlpha(220),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Info pills row
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // Moon phase pill
-              _buildInfoPill(
-                reading.moonPhaseEmoji,
-                reading.moonPhase,
-                AppColors.cosmicPurple.withAlpha(100),
-              ),
-              // Dominant element pill
-              _buildInfoPill(
-                reading.elementEmoji,
-                reading.dominantElement,
-                _getElementColor(reading.dominantElement).withAlpha(100),
-              ),
-              // Focus area pill
-              _buildInfoPill(
-                '🎯',
-                reading.focusArea,
-                AppColors.hotPink.withAlpha(80),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Energy bar
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'ENERGY',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withAlpha(100),
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  Text(
-                    '${reading.energyLevel}%',
-                    style: GoogleFonts.syne(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _getEnergyColor(reading.energyLevel),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(20),
-                  borderRadius: BorderRadius.circular(2),
+          // Background Glow Orb (Subtle)
+          Positioned(
+            top: -40,
+            right: -20,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.electricYellow.withAlpha(30),
+                    Colors.transparent,
+                  ],
                 ),
-                child: FractionallySizedBox(
-                  widthFactor: reading.energyLevel / 100,
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.cosmicPurple,
-                          _getEnergyColor(reading.energyLevel),
+              ),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row: DATE & SHARE
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.electricYellow,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'TODAY\'S READING',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            color: Colors.white.withAlpha(128),
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '•',
+                          style: TextStyle(color: Colors.white.withAlpha(77)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatCurrentDate(),
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            color: Colors.white.withAlpha(102),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.share_outlined, size: 14, color: Colors.white60),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // MAIN HEADLINE (Gradient)
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Colors.white, AppColors.electricYellow, AppColors.hotPink],
+                    stops: [0.0, 0.4, 1.0],
+                  ).createShader(bounds),
+                  child: Text(
+                    reading.headline.toUpperCase(),
+                    style: GoogleFonts.syne(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                // SUBHEADLINE
+                Text(
+                  reading.subheadline,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 15,
+                    color: Colors.white.withAlpha(180),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // TAGS / INFO PILLS
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildLuxuryInfoPill(
+                      '○', 
+                      reading.moonPhase, 
+                      AppColors.electricYellow
+                    ),
+                    if (reading.houseContext.isNotEmpty)
+                      _buildLuxuryInfoPill(
+                        '⬡', 
+                        reading.houseContext.split(' ').last, 
+                        AppColors.cosmicPurple
+                      ),
+                    _buildLuxuryInfoPill(
+                      '◈', 
+                      reading.dominantElement, 
+                      const Color(0xFF00B4D8)
+                    ),
+                    _buildLuxuryInfoPill(
+                      '◎', 
+                      reading.focusArea, 
+                      AppColors.hotPink
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // THE MESSAGE (HOROSCOPE)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.cosmicPurple.withAlpha(20),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cosmicPurple.withAlpha(40)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text('✦', style: TextStyle(color: AppColors.cosmicPurple)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'THE MESSAGE',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.cosmicPurple,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                      const SizedBox(height: 10),
+                      Text(
+                        reading.horoscope,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 14,
+                          color: Colors.white.withAlpha(200),
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Cosmic weather subtitle
-          Text(
-            reading.cosmicWeather,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 11,
-              color: Colors.white.withAlpha(100),
-              height: 1.4,
+                const SizedBox(height: 16),
+                
+                // TODAY'S MOVE (ADVICE)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.electricYellow.withAlpha(15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.electricYellow.withAlpha(30)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text('→', style: TextStyle(color: AppColors.electricYellow)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'TODAY\'S MOVE',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.electricYellow,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '"${reading.actionableAdvice}"',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withAlpha(230),
+                          fontStyle: FontStyle.italic,
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // ENERGY BAR
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          reading.energyLabel.toUpperCase(),
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withAlpha(100),
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        Text(
+                          '${reading.energyLevel}%',
+                          style: GoogleFonts.syne(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _getEnergyColor(reading.energyLevel),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 4,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(20),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: FractionallySizedBox(
+                        widthFactor: reading.energyLevel / 100,
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.cosmicPurple,
+                                _getEnergyColor(reading.energyLevel),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                // Cosmic weather technical footer
+                Text(
+                  reading.cosmicWeather,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    color: Colors.white.withAlpha(100),
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -771,25 +892,34 @@ Generated by Astro.FM''';
     );
   }
   
-  /// Build a small info pill widget
-  Widget _buildInfoPill(String emoji, String label, Color bgColor) {
+
+
+  /// Build the luxury version of the info pill
+  Widget _buildLuxuryInfoPill(String emoji, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        color: color.withAlpha(40),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withAlpha(80), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 4),
+          Text(
+            emoji, 
+            style: TextStyle(
+              fontSize: emoji.length > 1 ? 10 : 12, 
+              color: color
+            )
+          ),
+          const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withAlpha(230),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
@@ -797,21 +927,7 @@ Generated by Astro.FM''';
     );
   }
   
-  /// Get color based on element
-  Color _getElementColor(String element) {
-    switch (element) {
-      case 'Fire':
-        return const Color(0xFFE84855);
-      case 'Earth':
-        return const Color(0xFF00D4AA);
-      case 'Air':
-        return const Color(0xFF7D67FE);
-      case 'Water':
-        return const Color(0xFF59A5FF);
-      default:
-        return Colors.white.withAlpha(128);
-    }
-  }
+
   
   /// Get color based on energy level
   Color _getEnergyColor(int level) {

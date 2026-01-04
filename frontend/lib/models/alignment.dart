@@ -223,11 +223,13 @@ class NatalPositionData {
   final String sign;
   final double degree;
   final int house;
+  final double? longitude;
 
   NatalPositionData({
     required this.sign,
     required this.degree,
     required this.house,
+    this.longitude,
   });
 
   factory NatalPositionData.fromJson(Map<String, dynamic> json) {
@@ -235,6 +237,7 @@ class NatalPositionData {
       sign: json['sign'] as String,
       degree: (json['degree'] as num).toDouble(),
       house: json['house'] as int,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
     );
   }
 
@@ -242,6 +245,7 @@ class NatalPositionData {
     'sign': sign,
     'degree': degree,
     'house': house,
+    if (longitude != null) 'longitude': longitude,
   };
 }
 
@@ -251,12 +255,14 @@ class TransitPositionData {
   final double degree;
   final int house;
   final bool retrograde;
+  final double? longitude;
 
   TransitPositionData({
     required this.sign,
     required this.degree,
     required this.house,
     required this.retrograde,
+    this.longitude,
   });
 
   factory TransitPositionData.fromJson(Map<String, dynamic> json) {
@@ -265,6 +271,7 @@ class TransitPositionData {
       degree: (json['degree'] as num).toDouble(),
       house: json['house'] as int,
       retrograde: json['retrograde'] as bool? ?? false,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
     );
   }
 
@@ -273,6 +280,7 @@ class TransitPositionData {
     'degree': degree,
     'house': house,
     'retrograde': retrograde,
+    if (longitude != null) 'longitude': longitude,
   };
 }
 
@@ -284,7 +292,11 @@ class TransitAlignmentPlanet {
   final String color;
   final NatalPositionData natal;
   final TransitPositionData transit;
-  final String status; // 'gap' or 'resonance'
+  final String status; // 'gap', 'resonance', 'alignment', or 'integration'
+  final String aspectType;
+  final double orb;
+  final bool isApplying;
+  final double frequency;
   final String pull;
   final List<String> feelings;
   final String practice;
@@ -297,6 +309,10 @@ class TransitAlignmentPlanet {
     required this.natal,
     required this.transit,
     required this.status,
+    required this.aspectType,
+    required this.orb,
+    required this.isApplying,
+    required this.frequency,
     required this.pull,
     required this.feelings,
     required this.practice,
@@ -311,6 +327,10 @@ class TransitAlignmentPlanet {
       natal: NatalPositionData.fromJson(json['natal'] as Map<String, dynamic>),
       transit: TransitPositionData.fromJson(json['transit'] as Map<String, dynamic>),
       status: json['status'] as String,
+      aspectType: json['aspect_type'] as String? ?? 'None',
+      orb: (json['orb'] as num? ?? 0.0).toDouble(),
+      isApplying: json['is_applying'] as bool? ?? true,
+      frequency: (json['frequency'] as num).toDouble(),
       pull: json['pull'] as String,
       feelings: (json['feelings'] as List<dynamic>).map((e) => e as String).toList(),
       practice: json['practice'] as String,
@@ -325,6 +345,10 @@ class TransitAlignmentPlanet {
     'natal': natal.toJson(),
     'transit': transit.toJson(),
     'status': status,
+    'aspect_type': aspectType,
+    'orb': orb,
+    'is_applying': isApplying,
+    'frequency': frequency,
     'pull': pull,
     'feelings': feelings,
     'practice': practice,
@@ -336,6 +360,12 @@ class TransitAlignmentPlanet {
   /// Returns true if this is a resonance (harmony).
   bool get isResonance => status == 'resonance';
 
+  /// Returns true if this is an alignment (peak/conjunction).
+  bool get isAlignment => status == 'alignment';
+
+  /// Returns true if this is an integration (separating phase).
+  bool get isIntegration => status == 'integration';
+
   /// Get the Color object from hex string.
   int get colorValue => int.parse(color.replaceFirst('#', '0xFF'));
 }
@@ -345,11 +375,13 @@ class TransitAlignmentResult {
   final List<TransitAlignmentPlanet> planets;
   final int gapCount;
   final int resonanceCount;
+  final bool isMajorLifeShift;
 
   TransitAlignmentResult({
     required this.planets,
     required this.gapCount,
     required this.resonanceCount,
+    required this.isMajorLifeShift,
   });
 
   factory TransitAlignmentResult.fromJson(Map<String, dynamic> json) {
@@ -359,6 +391,7 @@ class TransitAlignmentResult {
           .toList(),
       gapCount: json['gap_count'] as int,
       resonanceCount: json['resonance_count'] as int,
+      isMajorLifeShift: json['is_major_life_shift'] as bool? ?? false,
     );
   }
 
@@ -366,6 +399,7 @@ class TransitAlignmentResult {
     'planets': planets.map((e) => e.toJson()).toList(),
     'gap_count': gapCount,
     'resonance_count': resonanceCount,
+    'is_major_life_shift': isMajorLifeShift,
   };
 
   /// Get a planet by name.

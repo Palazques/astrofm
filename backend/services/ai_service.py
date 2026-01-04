@@ -318,7 +318,7 @@ For playlist parameters, include as JSON on a separate line:
         sun_sign = sun_planet.get('sign', 'Unknown')
         
         # Cache by Sun sign + date (same horoscope for all Leos on the same day)
-        cache_key = self._generate_cache_key("daily_horoscope_v3", {
+        cache_key = self._generate_cache_key("daily_horoscope_v6", {
             "sun_sign": sun_sign,
             "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         })
@@ -359,6 +359,28 @@ For playlist parameters, include as JSON on a separate line:
         random.seed(datetime.now(timezone.utc).strftime("%Y-%m-%d"))
         default_focus = random.choice(focus_areas)
         
+        # Determine energy label context
+        energy_label = "Volatility Index" if day_energy in ["Intense", "Powerful", "Dynamic"] else "Vitality Battery"
+        
+        # Calculate house localization (where is the transiting moon in user's houses)
+        house_context = ""
+        user_asc = birth_chart.get("ascendant", 0)
+        moon_data = current_transits.get("planets", {}).get("Moon", {})
+        moon_lon = moon_data.get("longitude", 0)
+        
+        if moon_lon:
+            asc_sign_index = int(user_asc // 30)
+            moon_sign_index = int(moon_lon // 30)
+            moon_house = (moon_sign_index - asc_sign_index) % 12 + 1
+            
+            themes = {
+                1: "Identity & Self", 2: "Finances & Values", 3: "Communication", 
+                4: "Home & Roots", 5: "Creativity & Joy", 6: "Wellness & Routine",
+                7: "Partnerships", 8: "Transformation", 9: "Expansion",
+                10: "Career & Reputation", 11: "Community", 12: "Inner World"
+            }
+            house_context = f"The {moon_phase} occurs in your {moon_house}th house of {themes.get(moon_house, 'Life')}"
+        
         # Build the horoscope prompt
         prompt = f"""Generate a daily horoscope for {sun_sign} based on TODAY'S cosmic weather.
 
@@ -367,37 +389,40 @@ TODAY'S SKY ({datetime.now(timezone.utc).strftime("%B %d, %Y")}):
 - Moon: {moon_phase} in {moon_sign} ({moon_phase_percent}% illuminated)
 - Dominant Element: {dominant_element}
 - {retro_text}
+- Personal Context: {house_context}
 
 KEY PLANETARY ASPECTS TODAY:
 {aspects_text}
 
-OVERALL ENERGY: {day_energy}
+OVERALL ENERGY: {day_energy} (Displaying as: {energy_label})
 
-Write a horoscope for {sun_sign} that:
-1. Reflects TODAY'S specific transits (mention the Moon sign or an aspect)
-2. Speaks to how {sun_sign} types will experience this energy
-3. Gives one specific, actionable piece of advice
-4. Sounds blunt and direct (like Co-Star or The Pattern)
-5. Uses "you" and "your"
+Follow the "Event → Feeling → Action" framework:
+1. EVENT: Reflect TODAY'S specific transits (Moon sign, house placement, or aspects).
+2. FEELING: Speak to how {sun_sign} types will experience this energy emotionally.
+3. ACTION: Identify the "So What?" - a blunt, specific, behavioral check to take today.
 
 FORMAT (each on its own line):
-HEADLINE: [3-5 word punchy title that captures the day's vibe]
-HOROSCOPE: [2-3 sentences. Be specific about today. No vague mysticism.]
+HEADLINE: [3-5 word punchy title. All caps vibe.]
+SUBHEADLINE: [One sentence explaining the technical activation, e.g. "The {moon_phase} Moon in your {moon_lon // 30}th house is a peak signal"]
+HOROSCOPE: [2-3 sentences. Explain the Event and Feeling (The Message). Be blunt.]
+ADVICE: [One specific action/behavior to take (Today's Move). No more than 15 words.]
 FOCUS_AREA: [One area: Self-Expression, Relationships, Career, Inner World, Communication, Finances, Adventure, or Home Life]
-ENERGY_LEVEL: [1-100 based on how active/intense the day feels for {sun_sign}]
+ENERGY_LEVEL: [1-100 based on the {energy_label}]
 PLAYLIST_JSON: {{"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}}
 
 RULES:
-- The HEADLINE should be memorable and specific to today
-- Reference at least ONE real aspect or the Moon sign in the horoscope
-- Energy level should reflect the interplay between {sun_sign}'s nature and today's transits
-- Be direct. No "may" or "might" - speak with certainty."""
+- TONE: Blunt, direct, existential (Co-Star style).
+- Reference technical placements naturally but explain their weight.
+- Synthesis: Explain how the {retro_text} interacts with today's {day_energy} energy.
+- Use "you" and "your" consistently."""
 
         response = self._generate_response(prompt)
         
         # Parse the response
         headline = ""
+        subheadline = ""
         horoscope = ""
+        advice = ""
         focus_area = default_focus
         energy_level = 65
         playlist_params = {
@@ -410,8 +435,12 @@ RULES:
             line = line.strip()
             if line.startswith("HEADLINE:"):
                 headline = line.replace("HEADLINE:", "").strip()
+            elif line.startswith("SUBHEADLINE:"):
+                subheadline = line.replace("SUBHEADLINE:", "").strip()
             elif line.startswith("HOROSCOPE:"):
                 horoscope = line.replace("HOROSCOPE:", "").strip()
+            elif line.startswith("ADVICE:"):
+                advice = line.replace("ADVICE:", "").strip()
             elif line.startswith("FOCUS_AREA:"):
                 focus_area = line.replace("FOCUS_AREA:", "").strip()
             elif line.startswith("ENERGY_LEVEL:"):
@@ -441,7 +470,11 @@ RULES:
         
         result = {
             "headline": headline,
+            "subheadline": subheadline or house_context,
             "horoscope": horoscope,
+            "actionable_advice": advice,
+            "energy_label": energy_label,
+            "house_context": house_context,
             "cosmic_weather": cosmic_weather,
             "energy_level": energy_level,
             "focus_area": focus_area,
@@ -1172,6 +1205,249 @@ WHAT_IT_DOES: [text]"""
             "how_it_feels": how_it_feels,
             "what_it_does": what_it_does,
         }
+
+
+    def generate_bulk_transit_insights(
+        self,
+        user_sun_sign: str,
+        planet_moves: list[dict],
+    ) -> dict[str, dict]:
+        """
+        Generate personalized insights for multiple transit movements in one prompt.
+        
+        Args:
+            user_sun_sign: User's natal Sun sign for personalization
+            planet_moves: List of {planet, natal_house, transit_house}
+            
+        Returns:
+            Dict mapping planet name (lowercase) to {pull, feelings, practice}
+        """
+        # Build movement summary
+        move_desc = []
+        for m in planet_moves:
+            # Add ordinal suffix to houses
+            n_suffix = self._get_ordinal(m['natal_house'])
+            t_suffix = self._get_ordinal(m['transit_house'])
+            move_desc.append(f"- {m['planet']}: {m['natal_house']}{n_suffix} House -> {m['transit_house']}{t_suffix} House")
+            
+        prompt = f"""Generate personalized transit insights for a {user_sun_sign} individual based on these movements in their chart today:
+
+{chr(10).join(move_desc)}
+
+For EACH planet listed above, provide three fields:
+1. PULL: A 1-sentence description of the pull between these two specific life areas (houses).
+2. FEELINGS: exactly 3 short symptom keywords (e.g., "Mental fog", "Sudden clarity", "Burst of energy").
+3. PRACTICE: A 1-sentence actionable guidance.
+
+RULES:
+- Focus on the HOUSES. (e.g. 1st=Self, 4th=Home, 10th=Career). 
+- Be blunt, direct, and slightly provocative (Co-Star/The Pattern style).
+- No "may" or "might". Speak with certainty.
+- Return in the EXACT format below.
+
+FORMAT:
+PLANET: [Name]
+PULL: [Text]
+FEELINGS: [keyword1], [keyword2], [keyword3]
+PRACTICE: [Text]
+---"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse the response
+        results = {}
+        current_planet = None
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if not line or line.startswith("---"):
+                continue
+                
+            if line.startswith("PLANET:"):
+                current_planet = line.replace("PLANET:", "").strip().lower()
+                results[current_planet] = {"pull": "", "feelings": [], "practice": ""}
+            elif line.startswith("PULL:") and current_planet:
+                results[current_planet]["pull"] = line.replace("PULL:", "").strip()
+            elif line.startswith("FEELINGS:") and current_planet:
+                feelings_raw = line.replace("FEELINGS:", "").strip()
+                results[current_planet]["feelings"] = [f.strip() for f in feelings_raw.split(",") if f.strip()]
+            elif line.startswith("PRACTICE:") and current_planet:
+                results[current_planet]["practice"] = line.replace("PRACTICE:", "").strip()
+                
+        return results
+
+    # Seasonal personal insight TTL (refresh when season changes)
+    SEASONAL_INSIGHT_TTL = timedelta(days=30)
+
+    def generate_seasonal_personal_insight(
+        self,
+        current_season_sign: str,
+        current_element: str,
+        user_sun_sign: str,
+        user_rising_sign: str,
+        user_natal_planets: list[dict],
+    ) -> dict:
+        """
+        Generate personalized insight about how the current zodiac season
+        affects the user based on their natal chart.
+        
+        Uses full natal chart to calculate which house the season sign 
+        occupies and generates personalized AI interpretation.
+        
+        Args:
+            current_season_sign: Current zodiac season (e.g., "Capricorn")
+            current_element: Season's element (e.g., "Earth")
+            user_sun_sign: User's Sun sign
+            user_rising_sign: User's Rising/Ascendant sign
+            user_natal_planets: List of natal planets [{name, sign, house}, ...]
+            
+        Returns:
+            dict with headline, subtext, meaning, focus_areas
+        """
+        # Cache key based on user's rising sign + current season
+        cache_key = self._generate_cache_key("seasonal_insight", {
+            "season": current_season_sign,
+            "rising": user_rising_sign,
+            "sun": user_sun_sign,
+        })
+        
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+        
+        # Calculate which house the season sign occupies for this user
+        # Using Whole Sign Houses: Rising sign = 1st house, next sign = 2nd, etc.
+        zodiac_order = [
+            "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+            "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+        ]
+        
+        rising_idx = zodiac_order.index(user_rising_sign) if user_rising_sign in zodiac_order else 0
+        season_idx = zodiac_order.index(current_season_sign) if current_season_sign in zodiac_order else 0
+        
+        # House = distance from rising sign + 1
+        house_number = ((season_idx - rising_idx) % 12) + 1
+        
+        # House meanings for context
+        house_meanings = {
+            1: ("Self & Identity", "how you present yourself to the world"),
+            2: ("Values & Resources", "your finances, possessions, and self-worth"),
+            3: ("Communication", "your mind, learning, and local community"),
+            4: ("Home & Family", "your roots, private life, and emotional foundation"),
+            5: ("Creativity & Romance", "your joy, self-expression, and love affairs"),
+            6: ("Health & Service", "your daily routines, work, and wellness"),
+            7: ("Partnerships", "your committed relationships and collaborations"),
+            8: ("Transformation", "shared resources, intimacy, and deep change"),
+            9: ("Expansion", "your beliefs, higher learning, and adventures"),
+            10: ("Career & Legacy", "your public image, ambitions, and achievements"),
+            11: ("Community", "your friendships, hopes, and collective vision"),
+            12: ("Spirituality", "your inner world, healing, and hidden patterns"),
+        }
+        
+        house_name, house_desc = house_meanings.get(house_number, ("Life Area", "an important area"))
+        
+        # Check if user has any natal planets in the season sign
+        planets_in_season = [p["name"] for p in user_natal_planets if p.get("sign") == current_season_sign]
+        planets_context = f"You have {', '.join(planets_in_season)} in {current_season_sign}." if planets_in_season else ""
+        
+        # Determine the aspect relationship between user's Sun and season
+        user_sun_idx = zodiac_order.index(user_sun_sign) if user_sun_sign in zodiac_order else 0
+        aspect_distance = abs((season_idx - user_sun_idx) % 12)
+        
+        aspect_type = {
+            0: "your own sign season",
+            1: "a semi-sextile (subtle growth)",
+            2: "a sextile (opportunity)",
+            3: "a square (dynamic tension)", 
+            4: "a trine (flowing harmony)",
+            5: "a quincunx (adjustment needed)",
+            6: "your opposite sign season",
+        }.get(aspect_distance if aspect_distance <= 6 else 12 - aspect_distance, "an aspect")
+        
+        prompt = f"""Generate a personalized seasonal insight for how {current_season_sign} season affects this user.
+
+USER'S CHART:
+- Sun sign: {user_sun_sign}
+- Rising sign: {user_rising_sign}
+- {current_season_sign} lands in their {house_number}{self._get_ordinal(house_number)} house of {house_name}
+- Aspect to their Sun: This is {aspect_type}
+{f'- Additional context: {planets_context}' if planets_context else ''}
+
+CURRENT SEASON:
+- Sign: {current_season_sign}
+- Element: {current_element}
+
+Generate exactly 4 things:
+
+1. HEADLINE: A short, punchy 3-5 word headline about this season for them (e.g., "Your Opposite Sign Season", "Home Ground Activated", "Career Season Spotlight")
+
+2. SUBTEXT: A 1-sentence explanation of where this lands in their chart (e.g., "{current_season_sign} activates your {house_number}{self._get_ordinal(house_number)} house of {house_name.lower()}")
+
+3. MEANING: A 2-3 sentence paragraph explaining what this season means for them personally. Be specific about the house themes. Include actionable guidance.
+
+4. FOCUS_AREAS: Exactly 3 life areas to focus on (short phrases, 2-3 words each)
+
+RULES:
+- Be direct and specific, not vague
+- Use "you" and "your"
+- Reference the house themes naturally
+- Don't be overly mystical
+- Make it feel personal and relevant
+
+Format:
+HEADLINE: [text]
+SUBTEXT: [text]
+MEANING: [paragraph]
+FOCUS_AREAS: [area1], [area2], [area3]"""
+
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        headline = ""
+        subtext = ""
+        meaning = ""
+        focus_areas = []
+        
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("HEADLINE:"):
+                headline = line.replace("HEADLINE:", "").strip()
+            elif line.startswith("SUBTEXT:"):
+                subtext = line.replace("SUBTEXT:", "").strip()
+            elif line.startswith("MEANING:"):
+                meaning = line.replace("MEANING:", "").strip()
+            elif line.startswith("FOCUS_AREAS:"):
+                focus_raw = line.replace("FOCUS_AREAS:", "").strip()
+                focus_areas = [f.strip() for f in focus_raw.split(",") if f.strip()][:3]
+        
+        # Fallbacks
+        if not headline:
+            headline = f"{current_season_sign} Season"
+        if not subtext:
+            subtext = f"{current_season_sign} activates your {house_number}{self._get_ordinal(house_number)} house of {house_name.lower()}"
+        if not meaning:
+            meaning = f"This {current_season_sign} season highlights your {house_name.lower()} themes. Focus on {house_desc} as the {current_element.lower()} energy supports steady progress in this area."
+        if not focus_areas or len(focus_areas) < 3:
+            focus_areas = [house_name, "Self-reflection", "Intention setting"]
+        
+        result = {
+            "headline": headline,
+            "subtext": subtext,
+            "meaning": meaning,
+            "focus_areas": focus_areas,
+        }
+        
+        # Cache for season duration
+        self._set_cached(cache_key, result, self.SEASONAL_INSIGHT_TTL)
+        
+        return result
+
+    def _get_ordinal(self, n: int) -> str:
+
+        """Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)"""
+        if 11 <= (n % 100) <= 13:
+            return "th"
+        return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
 # Global singleton instance

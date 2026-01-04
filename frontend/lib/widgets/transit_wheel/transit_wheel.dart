@@ -169,13 +169,11 @@ class _TransitWheelState extends State<TransitWheel> with SingleTickerProviderSt
               // Zodiac sign icons
               ..._buildZodiacIcons(),
               
-              // Gap/Resonance arc between natal and transit (when selected)
-              if (widget.selectedPlanet != null)
-                _buildAlignmentArc(),
+              // New: Render ALL active aspect arcs (filtered by 5° orb on backend)
+              _buildAspectsLayer(),
               
-              // Ghost orb for natal position (when selected)
-              if (widget.selectedPlanet != null)
-                _buildNatalGhostOrb(),
+              // Ghost orbs for natal positions of active aspects
+              ..._buildNatalGhostOrbs(),
               
               // Center display
               _buildCenterDisplay(),
@@ -187,6 +185,77 @@ class _TransitWheelState extends State<TransitWheel> with SingleTickerProviderSt
         ),
       ],
     );
+  }
+
+  /// Builds a layer of arcs for all active planetary aspects.
+  Widget _buildAspectsLayer() {
+    return AnimatedBuilder(
+      animation: _arcAnimController,
+      builder: (context, child) {
+        return CustomPaint(
+          size: const Size(wheelSize, wheelSize),
+          painter: _TransitAspectsPainter(
+            planets: widget.alignmentData.planets,
+            animationValue: _arcAnimController.value,
+            selectedPlanetId: widget.selectedPlanet?.id,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build "ghost orbs" for natal positions of planets with active aspects.
+  List<Widget> _buildNatalGhostOrbs() {
+    final activePlanets = widget.alignmentData.planets;
+    
+    return activePlanets.map((planet) {
+      final isSelected = widget.selectedPlanet?.id == planet.id;
+      // Only show natal ghost for selected planet OR major gaps
+      if (!isSelected && planet.orb > 3.0) return const SizedBox.shrink();
+      
+      final planetData = _planets.firstWhere(
+        (p) => p.name == planet.name,
+        orElse: () => _planets.first,
+      );
+
+      final natalAngle = planetData.natalAngle ?? 0;
+      final position = getTransitPositionOnWheel(natalAngle, arcRadius);
+      final planetColor = Color(planet.colorValue);
+
+      return Positioned(
+        left: wheelSize / 2 + position.dx - (isSelected ? 14 : 10),
+        top: wheelSize / 2 + position.dy - (isSelected ? 14 : 10),
+        child: Opacity(
+          opacity: isSelected ? 1.0 : 0.4,
+          child: Container(
+            width: isSelected ? 28 : 20,
+            height: isSelected ? 28 : 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  planetColor.withValues(alpha: 0.3),
+                  Colors.transparent,
+                ],
+              ),
+              border: Border.all(
+                color: planetColor.withValues(alpha: 0.6),
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                planet.symbol,
+                style: TextStyle(
+                  fontSize: isSelected ? 12 : 9,
+                  color: planetColor.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList();
   }
 
   List<Widget> _buildZodiacIcons() {
@@ -242,123 +311,59 @@ class _TransitWheelState extends State<TransitWheel> with SingleTickerProviderSt
                 const SizedBox(height: 2),
                 // Status indicator
                 Text(
-                  selectedPlanet.status.toUpperCase(),
+                  selectedPlanet.status == 'integration' 
+                    ? 'INTEGRATION' 
+                    : selectedPlanet.aspectType.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 7,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1,
-                    color: selectedPlanet.isGap
-                        ? const Color(0xFFE84855)
-                        : const Color(0xFF00D4AA),
+                    color: _getStatusColor(selectedPlanet),
                     fontFamily: 'Space Grotesk',
                   ),
                 ),
               ]
             : [
-                // Default: prompt to tap a planet
-                Text(
-                  'TAP A',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.3),
-                    fontFamily: 'Space Grotesk',
+                // Default: Major Shift indicator
+                if (widget.alignmentData.isMajorLifeShift) ...[
+                  const Icon(Icons.auto_awesome, size: 14, color: Color(0xFFFFD700)),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'MAJOR',
+                    style: TextStyle(fontSize: 8, color: Color(0xFFFFD700), fontWeight: FontWeight.bold),
                   ),
-                ),
-                Text(
-                  'PLANET',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.3),
-                    fontFamily: 'Space Grotesk',
+                  const Text(
+                    'SHIFT',
+                    style: TextStyle(fontSize: 8, color: Color(0xFFFFD700), fontWeight: FontWeight.bold),
                   ),
-                ),
+                ] else ...[
+                   Text(
+                    'TAP A',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontFamily: 'Space Grotesk',
+                    ),
+                  ),
+                  Text(
+                    'PLANET',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontFamily: 'Space Grotesk',
+                    ),
+                  ),
+                ],
               ],
       ),
     );
   }
 
-  /// Build the animated arc between natal and transit positions.
-  Widget _buildAlignmentArc() {
-    final selectedPlanet = widget.selectedPlanet!;
-    final planetData = _planets.firstWhere(
-      (p) => p.name == selectedPlanet.name,
-      orElse: () => _planets.first,
-    );
-
-    return AnimatedBuilder(
-      animation: _arcAnimController,
-      builder: (context, child) {
-        return CustomPaint(
-          size: const Size(wheelSize, wheelSize),
-          painter: _AlignmentArcPainter(
-            natalAngle: planetData.natalAngle ?? 0,
-            transitAngle: planetData.angle,
-            isGap: selectedPlanet.isGap,
-            animationValue: _arcAnimController.value,
-          ),
-        );
-      },
-    );
-  }
-
-  /// Build the "ghost orb" showing natal position.
-  Widget _buildNatalGhostOrb() {
-    final selectedPlanet = widget.selectedPlanet!;
-    final planetData = _planets.firstWhere(
-      (p) => p.name == selectedPlanet.name,
-      orElse: () => _planets.first,
-    );
-
-    final natalAngle = planetData.natalAngle ?? 0;
-    final position = getTransitPositionOnWheel(natalAngle, arcRadius);
-    final planetColor = Color(selectedPlanet.colorValue);
-
-    return Positioned(
-      left: wheelSize / 2 + position.dx - 14,
-      top: wheelSize / 2 + position.dy - 14,
-      child: Column(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  planetColor.withValues(alpha: 0.3),
-                  Colors.transparent,
-                ],
-              ),
-              border: Border.all(
-                color: planetColor.withValues(alpha: 0.6),
-                width: 2,
-                strokeAlign: BorderSide.strokeAlignInside,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                selectedPlanet.symbol,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: planetColor.withValues(alpha: 0.8),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'YOU',
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-              color: planetColor,
-              fontFamily: 'Space Grotesk',
-            ),
-          ),
-        ],
-      ),
-    );
+  Color _getStatusColor(TransitAlignmentPlanet planet) {
+    if (planet.isIntegration) return const Color(0xFF94A3B8); // Slate
+    if (planet.isGap) return const Color(0xFFE84855); // Red
+    if (planet.isAlignment) return const Color(0xFFFFD700); // Gold
+    return const Color(0xFF00D4AA); // Seafoam
   }
 
   List<Widget> _buildPlanetOrbs() {
@@ -390,18 +395,16 @@ class _TransitWheelState extends State<TransitWheel> with SingleTickerProviderSt
   }
 }
 
-/// Custom painter for the gap/resonance arc.
-class _AlignmentArcPainter extends CustomPainter {
-  final double natalAngle;
-  final double transitAngle;
-  final bool isGap;
+/// Enhanced Custom Painter for planetary aspects using Astro-Fidelity logic.
+class _TransitAspectsPainter extends CustomPainter {
+  final List<TransitAlignmentPlanet> planets;
   final double animationValue;
+  final String? selectedPlanetId;
 
-  _AlignmentArcPainter({
-    required this.natalAngle,
-    required this.transitAngle,
-    required this.isGap,
+  _TransitAspectsPainter({
+    required this.planets,
     required this.animationValue,
+    this.selectedPlanetId,
   });
 
   @override
@@ -409,94 +412,152 @@ class _AlignmentArcPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     const radius = 85.0;
 
-    // Calculate arc angles (convert from wheel coordinates)
-    final startAngle = (natalAngle - 90) * (math.pi / 180);
-    
-    // Calculate the sweep angle (shortest path)
-    var diff = transitAngle - natalAngle;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    final sweepAngle = diff * (math.pi / 180);
+    for (var planet in planets) {
+      final isSelected = selectedPlanetId == planet.id;
+      
+      // Arc coordinates
+      final natalLon = planet.natal.longitude ?? 0.0;
+      final transitLon = planet.transit.longitude ?? 0.0;
+      
+      // Convert longitude to wheel angle (0 long = 270 deg / top of wheel)
+      final startAngle = (natalLon - 90) * (math.pi / 180);
+      
+      var diffLon = transitLon - natalLon;
+      if (diffLon > 180) diffLon -= 360;
+      if (diffLon < -180) diffLon += 360;
+      final sweepAngle = diffLon * (math.pi / 180);
 
-    final color = isGap ? const Color(0xFFE84855) : const Color(0xFF00D4AA);
-    
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isGap ? 3 : 4
-      ..strokeCap = StrokeCap.round;
-
-    if (isGap) {
-      // Dashed arc for gaps with animation
-      paint.strokeWidth = 3;
-      final dashLength = 8.0;
-      final gapLength = 6.0;
-      final totalDash = dashLength + gapLength;
-      
-      // Animate dash offset
-      final dashOffset = animationValue * totalDash;
-      
-      // Draw dashed arc segments
-      final arcLength = sweepAngle.abs() * radius;
-      var currentLength = -dashOffset;
-      
-      while (currentLength < arcLength) {
-        if (currentLength + dashLength > 0 && currentLength < arcLength) {
-          final segmentStart = math.max(0.0, currentLength);
-          final segmentEnd = math.min(arcLength, currentLength + dashLength);
-          
-          if (segmentEnd > segmentStart) {
-            final startFraction = segmentStart / arcLength;
-            final endFraction = segmentEnd / arcLength;
-            
-            final segmentStartAngle = startAngle + sweepAngle * startFraction;
-            final segmentSweepAngle = sweepAngle * (endFraction - startFraction);
-            
-            canvas.drawArc(
-              Rect.fromCircle(center: center, radius: radius),
-              segmentStartAngle,
-              segmentSweepAngle,
-              false,
-              paint..color = color.withValues(alpha: 0.4 + 0.5 * (1 - animationValue)),
-            );
-          }
-        }
-        currentLength += totalDash;
+      // Status Colors
+      Color color;
+      if (planet.isIntegration) {
+        color = const Color(0xFF94A3B8); // Slate
+      } else if (planet.isGap) {
+        color = const Color(0xFFE84855); // Red
+      } else if (planet.isAlignment) {
+        color = const Color(0xFFFFD700); // Gold
+      } else {
+        color = const Color(0xFF00D4AA).withValues(alpha: 0.6); // Ghost Seafoam
       }
-    } else {
-      // Solid arc for resonance with glow effect
-      // Outer glow
-      final glowPaint = Paint()
-        ..color = color.withValues(alpha: 0.2 + 0.3 * animationValue)
+
+      final paint = Paint()
+        ..color = isSelected ? color : color.withValues(alpha: 0.3)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 12
         ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-      
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-        glowPaint,
-      );
-      
-      // Main arc
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-        paint,
-      );
+        ..strokeWidth = (isSelected ? 3.5 : 1.5);
+
+      // Handle Pulsing for tight orbs (< 1.0)
+      if (planet.orb < 1.0 && (isSelected || !planet.isResonance)) {
+        final pulse = (math.sin(animationValue * math.pi * 2) + 1) / 2;
+        paint.strokeWidth += pulse * 2;
+        if (isSelected) {
+          // Inner Glow for peak
+          canvas.drawArc(
+            Rect.fromCircle(center: center, radius: radius),
+            startAngle,
+            sweepAngle,
+            false,
+            Paint()
+              ..color = color.withValues(alpha: 0.2 * pulse)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 10
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+          );
+        }
+      }
+
+      // Render Logic
+      if (planet.isIntegration) {
+        // Tier 4: Integration - Dashed Slate/Grey
+        _drawDashedArc(canvas, center, radius, startAngle, sweepAngle, paint..strokeWidth = 1.0);
+      } else if (planet.isResonance) {
+        // Tier 3: Flow/Support - Thin Static Seafoam
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          sweepAngle,
+          false,
+          paint,
+        );
+      } else if (planet.isApplying && (planet.isGap || planet.isAlignment)) {
+        // Tiers 1-2: Crisis/Power - Comet Trail
+        _drawCometTrail(canvas, center, radius, startAngle, sweepAngle, color, isSelected, animationValue);
+      } else {
+        // Fallback
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          sweepAngle,
+          false,
+          paint,
+        );
+      }
+    }
+  }
+
+  void _drawDashedArc(Canvas canvas, Offset center, double radius, double startAngle, double sweepAngle, Paint paint) {
+    const dashLen = 4.0;
+    const gapLen = 4.0;
+    final totalLen = dashLen + gapLen;
+    final arcLen = sweepAngle.abs() * radius;
+    final count = (arcLen / totalLen).floor();
+    
+    for (var i = 0; i < count; i++) {
+        final startFrac = (i * totalLen) / arcLen;
+        final endFrac = (i * totalLen + dashLen) / arcLen;
+        canvas.drawArc(
+            Rect.fromCircle(center: center, radius: radius),
+            startAngle + sweepAngle * startFrac,
+            sweepAngle * (endFrac - startFrac),
+            false,
+            paint,
+        );
+    }
+  }
+
+  void _drawCometTrail(Canvas canvas, Offset center, double radius, double startAngle, double sweepAngle, Color color, bool isSelected, double anim) {
+    // A comet trail is a gradient arc that tapers in opacity and/or width
+    // The "head" is at transitAngle, "tail" is back toward natalAngle
+    // However, our sweepAngle starts at natal and goes to transit.
+    
+    final segments = isSelected ? 20 : 10;
+    final baseWidth = isSelected ? 4.0 : 2.0;
+    
+    for (var i = 0; i < segments; i++) {
+        // Tail is at index 0 (near natal), Head is at segments-1 (near transit)
+        final fraction = i / segments;
+        final segmentStart = startAngle + sweepAngle * fraction;
+        final segmentSweep = sweepAngle / segments;
+        
+        final opacity = 0.1 + (0.9 * fraction);
+        final width = 0.5 + (baseWidth * fraction);
+        
+        canvas.drawArc(
+            Rect.fromCircle(center: center, radius: radius),
+            segmentStart,
+            segmentSweep,
+            false,
+            Paint()
+              ..color = color.withValues(alpha: isSelected ? opacity : opacity * 0.4)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = width
+              ..strokeCap = StrokeCap.round,
+        );
+    }
+    
+    // Pulse the head if selected
+    if (isSelected) {
+        final headPos = startAngle + sweepAngle;
+        final pulse = (math.sin(anim * math.pi * 4) + 1) / 2;
+        canvas.drawCircle(
+            Offset(center.dx + radius * math.cos(headPos), center.dy + radius * math.sin(headPos)),
+            2.0 + pulse * 2.0,
+            Paint()..color = color,
+        );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _AlignmentArcPainter oldDelegate) {
-    return oldDelegate.natalAngle != natalAngle ||
-        oldDelegate.transitAngle != transitAngle ||
-        oldDelegate.isGap != isGap ||
-        oldDelegate.animationValue != animationValue;
+  bool shouldRepaint(covariant _TransitAspectsPainter oldDelegate) {
+    return true; // Simple for now
   }
 }

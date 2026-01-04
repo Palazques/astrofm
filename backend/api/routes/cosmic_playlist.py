@@ -18,6 +18,10 @@ from models.cosmic_models import (
     TrackInfo,
     ZodiacSeasonRequest,
     ZodiacSeasonResponse,
+    ZodiacSeasonCardRequest,
+    ZodiacSeasonCardResponse,
+    PersonalInsight,
+    SeasonTrackInfo,
 )
 
 
@@ -372,4 +376,194 @@ async def generate_zodiac_season_playlist(request: ZodiacSeasonRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error generating zodiac season playlist: {str(e)}"
+        )
+
+
+# =============================================================================
+# Zodiac Season Card Endpoint (Personalized)
+# =============================================================================
+
+@router.post("/zodiac-season-card", response_model=ZodiacSeasonCardResponse)
+async def get_zodiac_season_card(request: ZodiacSeasonCardRequest):
+    """
+    Get personalized zodiac season card with AI insights and seasonal playlist.
+    
+    Combines:
+    - Current zodiac season info (sign, element, modality, ruling planet)
+    - AI-generated personal connection based on user's natal chart houses
+    - Curated seasonal playlist using existing playlist generation
+    
+    Cached for the entire zodiac season (~30 days).
+    
+    Args:
+        request: User's chart data and genre preferences
+        
+    Returns:
+        ZodiacSeasonCardResponse with season info, personal insight, and playlist
+    """
+    from datetime import datetime
+    from services.cosmic.playlist_builder import get_playlist_builder
+    from services.transits import get_current_moon_sign
+    from services.zodiac_utils import (
+        get_current_zodiac,
+        get_next_zodiac_change_date,
+        ZODIAC_ELEMENTS,
+        ZODIAC_MODALITIES,
+        ZODIAC_RULERS,
+        ELEMENT_COLORS,
+    )
+    from services.ai_service import get_ai_service
+    
+    service = get_app_spotify_service()
+    
+    if not service.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="App Spotify account not configured. Contact support."
+        )
+    
+    try:
+        # Get current zodiac info
+        zodiac_sign, element, date_range, symbol = get_current_zodiac()
+        modality = ZODIAC_MODALITIES.get(zodiac_sign, "Cardinal")
+        ruling_planet, ruling_symbol = ZODIAC_RULERS.get(zodiac_sign, ("Saturn", "♄"))
+        color1, color2 = ELEMENT_COLORS.get(element, ("#7D67FE", "#00D4AA"))
+        
+        # Generate cache key for this season
+        today = datetime.now()
+        zodiac_season_key = f"{zodiac_sign}_{today.year}"
+        cached_until = get_next_zodiac_change_date()
+        
+        # Generate personalized AI insight
+        ai_service = get_ai_service()
+        insight_data = ai_service.generate_seasonal_personal_insight(
+            current_season_sign=zodiac_sign,
+            current_element=element,
+            user_sun_sign=request.sun_sign,
+            user_rising_sign=request.rising_sign,
+            user_natal_planets=request.natal_planets,
+        )
+        
+        personal_insight = PersonalInsight(
+            headline=insight_data["headline"],
+            subtext=insight_data["subtext"],
+            meaning=insight_data["meaning"],
+            focus_areas=insight_data["focus_areas"],
+        )
+        
+        # Calculate which house the season activates for playlist naming
+        zodiac_order = [
+            "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+            "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+        ]
+        rising_idx = zodiac_order.index(request.rising_sign) if request.rising_sign in zodiac_order else 0
+        season_idx = zodiac_order.index(zodiac_sign) if zodiac_sign in zodiac_order else 0
+        house_number = ((season_idx - rising_idx) % 12) + 1
+        
+        house_names = {
+            1: "Self", 2: "Resources", 3: "Communication", 4: "Home",
+            5: "Creativity", 6: "Health", 7: "Partnerships", 8: "Transformation",
+            9: "Expansion", 10: "Career", 11: "Community", 12: "Spirituality"
+        }
+        house_name = house_names.get(house_number, "Focus")
+        
+        # Get current Moon sign for playlist variation
+        try:
+            current_moon_sign, _ = get_current_moon_sign()
+        except Exception:
+            current_moon_sign = "Capricorn"
+        
+        # Generate playlist using existing builder
+        builder = get_playlist_builder()
+        
+        try:
+            result = await builder.generate_playlist(
+                sun_sign=request.sun_sign,
+                moon_sign=request.moon_sign,
+                rising_sign=request.rising_sign,
+                current_moon_sign=current_moon_sign,
+                genre_preferences=request.genre_preferences,
+                target_tracks=12,  # Shorter playlist for season card
+            )
+            
+            # If successful, process result
+            if result.success:
+                tracks = []
+                total_seconds = 0
+                for t in result.tracks[:12]:
+                    duration_str = t.get("duration", "3:30")
+                    tracks.append(SeasonTrackInfo(
+                        id=t.get("id", ""),
+                        title=t["name"],
+                        artist=t["artist"],
+                        duration=duration_str,
+                        energy=int(t.get("energy", 0.7) * 100) if isinstance(t.get("energy"), float) else 70,
+                        url=t.get("url"),
+                    ))
+                    try:
+                        parts = duration_str.split(":")
+                        total_seconds += int(parts[0]) * 60 + int(parts[1])
+                    except:
+                        total_seconds += 210
+                
+                total_duration = f"{total_seconds // 60} min"
+                playlist_url = result.playlist_url
+            else:
+                # Handle logical failure (e.g. no tracks found)
+                print(f"Playlist builder returned failure: {result.error}")
+                tracks = []
+                total_duration = "0 min"
+                playlist_url = None
+        except Exception as e:
+            # Handle unexpected exceptions in builder
+            print(f"Unexpected error in playlist builder: {e}")
+            import traceback
+            traceback.print_exc()
+            tracks = []
+            total_duration = "0 min"
+            playlist_url = None
+        
+        # Generate vibe tags based on element
+        element_vibes = {
+            "Fire": ["Energetic", "Bold", "Passionate", "Driving"],
+            "Earth": ["Structured", "Grounded", "Earthy", "Focused"],
+            "Air": ["Eclectic", "Mental", "Light", "Social"],
+            "Water": ["Emotional", "Dreamy", "Flowing", "Deep"],
+        }
+        vibe_tags = element_vibes.get(element, ["Cosmic", "Aligned", "Seasonal", "Personal"])
+        
+        return ZodiacSeasonCardResponse(
+            success=True,
+            # Season info
+            zodiac_sign=zodiac_sign,
+            symbol=symbol,
+            element=element,
+            modality=modality,
+            date_range=date_range,
+            ruling_planet=ruling_planet,
+            ruling_symbol=ruling_symbol,
+            color1=color1,
+            color2=color2,
+            # Personal insight
+            personal_insight=personal_insight,
+            # Playlist
+            playlist_name=f"{zodiac_sign} Season × Your {house_number}{'st' if house_number == 1 else 'nd' if house_number == 2 else 'rd' if house_number == 3 else 'th'} House",
+            playlist_description=f"{element} beats for {house_name.lower()} focus",
+            total_duration=total_duration,
+            vibe_tags=vibe_tags,
+            tracks=tracks,
+            playlist_url=playlist_url,
+            # Cache metadata
+            zodiac_season_key=zodiac_season_key,
+            cached_until=cached_until.isoformat(),
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating zodiac season card: {str(e)}"
         )

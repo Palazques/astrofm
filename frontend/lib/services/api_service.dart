@@ -9,6 +9,7 @@ import '../models/playlist.dart';
 import '../models/alignment.dart';
 import '../models/attunement.dart';
 import '../models/prescription.dart';
+import '../models/zodiac_season_card.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -1045,6 +1046,75 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to generate blended playlist',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get personalized zodiac season card with AI insights and seasonal playlist.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  /// [natalPlanets] - List of natal planets [{name, sign, house}, ...]
+  /// [genrePreferences] - User's preferred genres
+  Future<ZodiacSeasonCardData> getZodiacSeasonCard({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+    List<Map<String, dynamic>> natalPlanets = const [],
+    List<String> genrePreferences = const ['indie rock', 'electronic', 'pop'],
+  }) async {
+    // First get natal chart to extract sign info
+    final chart = await calculateNatalChart(
+      datetime: datetime,
+      latitude: latitude,
+      longitude: longitude,
+      timezone: timezone,
+    );
+
+    // Extract signs from chart
+    final sunSign = chart.planets
+        .firstWhere((p) => p.name == 'Sun', orElse: () => chart.planets.first)
+        .sign;
+    final moonSign = chart.planets
+        .firstWhere((p) => p.name == 'Moon', orElse: () => chart.planets.first)
+        .sign;
+    final risingSign = chart.ascendantSign;
+
+    // Build natal planets list if not provided
+    final planets = natalPlanets.isNotEmpty
+        ? natalPlanets
+        : chart.planets
+            .map((p) => {
+                  'name': p.name,
+                  'sign': p.sign,
+                  'house': p.house,
+                })
+            .toList();
+
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/cosmic/zodiac-season-card'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'sun_sign': sunSign,
+            'moon_sign': moonSign,
+            'rising_sign': risingSign,
+            'natal_planets': planets,
+            'genre_preferences': genrePreferences,
+          }),
+        )
+        .timeout(const Duration(seconds: 60));
+
+    if (response.statusCode == 200) {
+      return ZodiacSeasonCardData.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get zodiac season card',
         statusCode: response.statusCode,
       );
     }

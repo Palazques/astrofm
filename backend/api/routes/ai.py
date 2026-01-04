@@ -47,12 +47,16 @@ def generate_daily_reading(request: DailyReadingRequest) -> DailyReadingResponse
         # Build response with new horoscope format
         return DailyReadingResponse(
             headline=result["headline"],
+            subheadline=result.get("subheadline", ""),
             horoscope=result["horoscope"],
             cosmic_weather=result["cosmic_weather"],
             energy_level=result["energy_level"],
             focus_area=result["focus_area"],
             moon_phase=result["moon_phase"],
             dominant_element=result["dominant_element"],
+            actionable_advice=result.get("actionable_advice", ""),
+            energy_label=result.get("energy_label", "Intensity"),
+            house_context=result.get("house_context", ""),
             playlist_params=PlaylistParams(**result["playlist_params"]),
             generated_at=result["generated_at"],
             # Legacy fields for backward compatibility
@@ -396,6 +400,7 @@ def get_transit_alignment(request: TransitAlignmentRequest) -> TransitAlignmentR
             planets=result["planets"],
             gap_count=result["gap_count"],
             resonance_count=result["resonance_count"],
+            is_major_life_shift=result.get("is_major_life_shift", False)
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

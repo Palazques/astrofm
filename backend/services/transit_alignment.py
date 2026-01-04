@@ -19,8 +19,11 @@ from services.ephemeris import (
     calculate_planet_position,
     calculate_ascendant,
     get_zodiac_sign,
+    calculate_natal_chart,
     PLANETS,
 )
+from services.sonification import PLANET_ROOT_NOTES, note_to_frequency
+from services.ai_service import get_ai_service
 
 
 # Planet symbols for display
@@ -83,132 +86,137 @@ TRANSIT_INSIGHTS: dict[str, dict[tuple[int, int], dict]] = {
 }
 
 
+# Slow planets for gap/resonance counts and major life shift anchor
+SLOW_PLANETS = {"Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"}
+
+def get_planet_insight(planet_name: str, natal_house: int, transit_house: int) -> dict:
+    """Fallback insight generator when AI bulk insights are missing."""
+    p_key = planet_name.lower()
+    
+    # Check if we have hardcoded insight for this house combo
+    if p_key in TRANSIT_INSIGHTS and (natal_house, transit_house) in TRANSIT_INSIGHTS[p_key]:
+        return TRANSIT_INSIGHTS[p_key][(natal_house, transit_house)]
+    
+    # Otherwise, generate a template-based fallback
+    natal_theme = HOUSE_THEMES.get(natal_house, "Life")
+    transit_theme = HOUSE_THEMES.get(transit_house, "Now")
+    
+    return {
+        "pull": f"The {planet_name} transitions from your house of {natal_theme} into the realm of {transit_theme}.",
+        "feelings": [
+            f"Focus on {natal_theme.lower()} matters",
+            f"New energy in {transit_theme.lower()}",
+            "Slight cosmic tension"
+        ],
+        "practice": f"Meditate on how {natal_theme.lower()} and {transit_theme.lower()} intersect today."
+    }
+
+def get_angular_distance(lon1: float, lon2: float) -> float:
+    """Calculate the shortest angular distance between two longitudes."""
+    diff = abs(lon1 - lon2) % 360
+    return diff if diff <= 180 else 360 - diff
+
 def determine_gap_or_resonance(
     natal_house: int,
     transit_house: int,
     natal_lon: float,
-    transit_lon: float,
+    transit_lon: float
 ) -> str:
     """
-    Determine if the natal-transit relationship is a gap or resonance.
-    
-    Gap (tension): Challenging aspects OR house distance >= 4
-    Resonance (harmony): Harmonious aspects OR same/adjacent houses
-    
-    Args:
-        natal_house: Natal planet's house (1-12)
-        transit_house: Transit planet's house (1-12)
-        natal_lon: Natal planet's ecliptic longitude
-        transit_lon: Transit planet's ecliptic longitude
-        
-    Returns:
-        'gap' or 'resonance'
+    Determine if the transit is a gap or resonance based on house distance and aspects.
+    This is a legacy function kept for test compatibility.
     """
-    # Check house distance (circular, so 1->12 is distance 1)
-    house_distance = min(
-        abs(natal_house - transit_house),
-        12 - abs(natal_house - transit_house)
-    )
+    # Check for aspects first
+    dist = get_angular_distance(natal_lon, transit_lon)
     
-    # Check for aspects
-    aspect = detect_aspect(natal_lon, transit_lon, "Natal", "Transit")
+    # Hard aspects = gap
+    if abs(dist - 90) <= 8 or abs(dist - 180) <= 8:
+        return "gap"
     
-    if aspect:
-        aspect_name = aspect["aspect"]
-        # Harmonious aspects = resonance
-        if aspect_name in ["Conjunction", "Trine", "Sextile"]:
-            return "resonance"
-        # Challenging aspects = gap  
-        if aspect_name in ["Opposition", "Square"]:
-            return "gap"
-    
-    # Fallback to house distance
-    if house_distance <= 1:  # Same or adjacent house
+    # Soft aspects = resonance
+    if abs(dist - 0) <= 8 or abs(dist - 60) <= 8 or abs(dist - 120) <= 8:
         return "resonance"
-    elif house_distance >= 4:  # Significant distance
+    
+    # Fall back to house distance
+    house_dist = min(abs(natal_house - transit_house), 12 - abs(natal_house - transit_house))
+    
+    if house_dist <= 1:
+        return "resonance"
+    elif house_dist >= 4:
         return "gap"
     else:
-        # Middle ground - slight tension
-        return "gap"
+        return "resonance"
 
-
-def get_planet_insight(
-    planet: str,
-    natal_house: int,
-    transit_house: int,
+def get_astro_fidelity_status(
+    natal_lon: float, 
+    transit_lon: float,
+    transit_velocity: float = 0.0,
 ) -> dict:
     """
-    Get planet-specific insight for a house-to-house transition.
+    Determine aspect type, orb, and fidelity status (gap, resonance, alignment, integration).
     
-    Args:
-        planet: Planet name (lowercase)
-        natal_house: Natal house (1-12)
-        transit_house: Transit house (1-12)
-        
-    Returns:
-        Dict with pull, feelings, practice keys.
-        Returns placeholder if insight not found.
+    Rule: Orb <= 5° required for any aspect.
+    Applying vs Separating based on transit velocity.
     """
-    planet_key = planet.lower()
-    house_key = (natal_house, transit_house)
+    distance = get_angular_distance(natal_lon, transit_lon)
     
-    if planet_key in TRANSIT_INSIGHTS and house_key in TRANSIT_INSIGHTS[planet_key]:
-        return TRANSIT_INSIGHTS[planet_key][house_key]
-    
-    # Placeholder insight when content not yet provided
-    natal_theme = HOUSE_THEMES.get(natal_house, "Unknown")
-    transit_theme = HOUSE_THEMES.get(transit_house, "Unknown")
-    
-    return {
-        "pull": f"Your {planet} lives in {natal_theme}. Today it's being pulled toward {transit_theme}.",
-        "feelings": [
-            f"Tension between {natal_theme.lower()} and {transit_theme.lower()}",
-            "Energy shifting between life areas",
-            "Awareness of different priorities",
-        ],
-        "practice": f"Notice where {natal_theme.lower()} and {transit_theme.lower()} intersect in your life today.",
+    aspects = {
+        "Conjunction": 0.0,
+        "Sextile": 60.0,
+        "Square": 90.0,
+        "Trine": 120.0,
+        "Opposition": 180.0
     }
+    
+    best_aspect = "None"
+    min_orb = 999.0
+    
+    for name, target in aspects.items():
+        orb = abs(distance - target)
+        if orb <= 5.0 and orb < min_orb:
+            min_orb = orb
+            best_aspect = name
+            
+    if best_aspect == "None":
+        return {
+            "status": "none",
+            "aspect_type": "None",
+            "orb": 0.0,
+            "is_applying": False
+        }
 
+    # Simplified Applying/Separating logic
+    # In astrology, a transit is applying if it hasn't reached exact degree yet
+    # Since we don't have perfect velocity vectors here, we approximate:
+    # Most transits move forward. If transit_lon < natal_lon (within orb), it is applying.
+    # Exception: Retrograde.
+    # More robust: check if (target - distance) is closing.
+    # For now, let's assume if distance at exact aspect is target:
+    # If currently moving TOWARDS the target degree.
+    
+    # Actually, let's use a simpler heuristic for now:
+    # If the transit is within the orb and hasn't hit the exact target yet.
+    # For Conjunction (target 0), if lon_diff is decreasing.
+    
+    # We'll set is_applying to True for now as a placeholder unless we pass velocity
+    is_applying = True
+    
+    status = "resonance"
+    if best_aspect in ["Square", "Opposition"]:
+        status = "gap"
+    elif best_aspect == "Conjunction":
+        status = "alignment"
+    
+    # Status Tiers override
+    if best_aspect in ["Trine", "Sextile"]:
+        status = "resonance" # Ghostly static green
 
-def calculate_natal_chart(
-    birth_datetime: datetime,
-    latitude: float,
-    longitude: float,
-) -> dict:
-    """
-    Calculate natal chart positions for all planets.
-    
-    Args:
-        birth_datetime: User's birth datetime
-        latitude: Birth location latitude
-        longitude: Birth location longitude
-        
-    Returns:
-        Dict with planets list containing name, longitude, sign, degree, house
-    """
-    julian_day = datetime_to_julian(birth_datetime)
-    ascendant = calculate_ascendant(julian_day, latitude, longitude)
-    
-    planets = []
-    for name, planet_id in PLANETS.items():
-        position = calculate_planet_position(planet_id, julian_day, ascendant)
-        sign, degree = get_zodiac_sign(position["longitude"])
-        
-        # Calculate house using Whole Sign system
-        # House 1 starts at Ascendant's sign
-        asc_sign_index = int(ascendant // 30)
-        planet_sign_index = int(position["longitude"] // 30)
-        house = ((planet_sign_index - asc_sign_index) % 12) + 1
-        
-        planets.append({
-            "name": name,
-            "longitude": position["longitude"],
-            "sign": sign,
-            "degree": degree,
-            "house": house,
-        })
-    
-    return {"planets": planets, "ascendant": ascendant}
+    return {
+        "status": status,
+        "aspect_type": best_aspect,
+        "orb": round(min_orb, 2),
+        "is_applying": is_applying
+    }
 
 
 def calculate_transit_alignment(
@@ -220,16 +228,7 @@ def calculate_transit_alignment(
 ) -> dict:
     """
     Calculate transit alignment between natal chart and current transits.
-    
-    Args:
-        birth_datetime: ISO format birth datetime string
-        latitude: Birth location latitude
-        longitude: Birth location longitude
-        timezone_str: Timezone string (e.g., 'America/Los_Angeles')
-        target_date: Optional target date for transits (defaults to now)
-        
-    Returns:
-        Dict with planets array containing alignment data for each planet
+    Uses Astro-Fidelity logic with orbs and tiered priorities.
     """
     # Parse birth datetime
     birth_dt = datetime.fromisoformat(birth_datetime.replace('Z', '+00:00'))
@@ -240,7 +239,8 @@ def calculate_transit_alignment(
     natal_chart = calculate_natal_chart(birth_dt, latitude, longitude)
     
     # Get current transits
-    transit_dt = None
+    curr_now = datetime.now(timezone.utc).replace(tzinfo=None)
+    transit_dt = curr_now
     if target_date:
         transit_dt = datetime.fromisoformat(target_date.replace('Z', '+00:00'))
         if transit_dt.tzinfo:
@@ -248,76 +248,148 @@ def calculate_transit_alignment(
     
     transits = get_current_transits(transit_dt)
     
-    # Calculate ascendant for current transits (use birth location for house context)
-    transit_jd = datetime_to_julian(transit_dt or datetime.now(timezone.utc).replace(tzinfo=None))
+    # Get transits for 1 hour later to determine Applying/Separating
+    import copy
+    from datetime import timedelta
+    later_dt = transit_dt + timedelta(hours=1)
+    later_transits = get_current_transits(later_dt)
+    
+    # Calculate transit house context
+    transit_jd = datetime_to_julian(transit_dt)
     transit_asc = calculate_ascendant(transit_jd, latitude, longitude)
     asc_sign_index = int(transit_asc // 30)
     
-    # Build alignment data for each planet
-    alignment_planets = []
-    gap_count = 0
-    resonance_count = 0
+    # Find user's Sun sign for AI personalization
+    user_sun_sign = next((p["sign"] for p in natal_chart["planets"] if p["name"] == "Sun"), "Aries")
+    
+    planet_moves = []
+    planet_details = []
     
     for natal_planet in natal_chart["planets"]:
-        # Find matching transit
-        transit_planet = next(
-            (t for t in transits if t["name"] == natal_planet["name"]),
-            None
-        )
+        name = natal_planet["name"]
+        transit_p = next((t for t in transits if t["name"] == name), None)
+        later_p = next((t for t in later_transits if t["name"] == name), None)
         
-        if not transit_planet:
-            continue
+        if not transit_p or not later_p: continue
         
         # Calculate transit house
-        transit_sign_index = int(transit_planet["longitude"] // 30)
+        transit_sign_index = int(transit_p["longitude"] // 30)
         transit_house = ((transit_sign_index - asc_sign_index) % 12) + 1
         
-        # Determine gap or resonance
-        status = determine_gap_or_resonance(
-            natal_planet["house"],
-            transit_house,
-            natal_planet["longitude"],
-            transit_planet["longitude"],
-        )
+        # Calculate Astro-Fidelity Status
+        # Check Applying/Separating by comparing orbs now vs later
+        # We need to detect which aspect they are near first
+        distance_now = get_angular_distance(natal_planet["longitude"], transit_p["longitude"])
+        distance_later = get_angular_distance(natal_planet["longitude"], later_p["longitude"])
         
-        if status == "gap":
-            gap_count += 1
+        # Aspect detection
+        fidelity = get_astro_fidelity_status(natal_planet["longitude"], transit_p["longitude"])
+        
+        if fidelity["aspect_type"] != "None":
+            target_deg = {"Conjunction":0, "Sextile":60, "Square":90, "Trine":120, "Opposition":180}[fidelity["aspect_type"]]
+            orb_now = abs(distance_now - target_deg)
+            orb_later = abs(distance_later - target_deg)
+            # Applying if orb is decreasing
+            fidelity["is_applying"] = orb_later < orb_now
+            
+            # If separating and not a conjunction/soft aspect, turn to Slate (integration)
+            if not fidelity["is_applying"]:
+                fidelity["status"] = "integration"
         else:
-            resonance_count += 1
+            # No aspect within 5 degrees
+            continue # Only show active aspects on the wheel
+
+        planet_moves.append({
+            "planet": name,
+            "natal_house": natal_planet["house"],
+            "transit_house": transit_house
+        })
+        planet_details.append({
+            "natal": natal_planet,
+            "transit": transit_p,
+            "transit_house": transit_house,
+            "fidelity": fidelity
+        })
+
+    # 2. Fetch AI insights in bulk (only for those in aspect)
+    # Temporarily disabled to speed up endpoint - using fallback insights
+    bulk_insights = {}
+    # TODO: Re-enable this when we have async/background processing
+    # try:
+    #     ai_service = get_ai_service()
+    #     bulk_insights = ai_service.generate_bulk_transit_insights(user_sun_sign, planet_moves)
+    # except Exception as e:
+    #     print(f"[WARN] AI bulk insights failed, using fallback: {e}")
+    #     bulk_insights = {}
+    
+    # 3. Build response
+    alignment_planets = []
+    major_gap_count = 0
+    major_resonance_count = 0
+    tight_aspect_count = 0
+    has_slow_anchor = False
+    
+    for detail in planet_details:
+        natal_p = detail["natal"]
+        transit_p = detail["transit"]
+        fid = detail["fidelity"]
+        name = natal_p["name"]
         
-        # Get planet-specific insight
-        insight = get_planet_insight(
-            natal_planet["name"],
-            natal_planet["house"],
-            transit_house,
-        )
+        # Priority Counters (Mars-Pluto)
+        if name in SLOW_PLANETS:
+            if fid["status"] == "gap": major_gap_count += 1
+            if fid["status"] == "resonance": major_resonance_count += 1
+            
+            # Anchor check for Stellium (orb <= 3)
+            if fid["orb"] <= 3.0:
+                has_slow_anchor = True
         
-        planet_data = {
-            "id": natal_planet["name"].lower(),
-            "name": natal_planet["name"],
-            "symbol": PLANET_SYMBOLS.get(natal_planet["name"], "?"),
-            "color": PLANET_COLORS.get(natal_planet["name"], "#FFFFFF"),
+        if fid["orb"] <= 3.0:
+            tight_aspect_count += 1
+
+        # Insight
+        planet_key = name.lower()
+        if planet_key in bulk_insights:
+            insight = bulk_insights[planet_key]
+        else:
+            insight = get_planet_insight(name, natal_p["house"], detail["transit_house"])
+            
+        # Frequency
+        root_note = PLANET_ROOT_NOTES.get(name, "C")
+        octave = 5 if name in ["Moon", "Mercury", "Venus"] else (3 if name in ["Saturn", "Uranus", "Neptune", "Pluto"] else 4)
+        freq = note_to_frequency(root_note, octave)
+        
+        alignment_planets.append({
+            "id": planet_key,
+            "name": name,
+            "symbol": PLANET_SYMBOLS.get(name, "?"),
+            "color": PLANET_COLORS.get(name, "#FFFFFF"),
             "natal": {
-                "sign": natal_planet["sign"],
-                "degree": round(natal_planet["degree"], 1),
-                "house": natal_planet["house"],
+                "sign": natal_p["sign"],
+                "degree": round(natal_p["sign_degree"], 1),
+                "house": natal_p["house"],
+                "longitude": natal_p["longitude"]
             },
             "transit": {
-                "sign": transit_planet["sign"],
-                "degree": round(transit_planet["sign_degree"], 1),
-                "house": transit_house,
-                "retrograde": transit_planet.get("retrograde", False),
+                "sign": transit_p["sign"],
+                "degree": round(transit_p["sign_degree"], 1),
+                "house": detail["transit_house"],
+                "retrograde": transit_p.get("retrograde", False),
+                "longitude": transit_p["longitude"]
             },
-            "status": status,
+            "frequency": freq,
+            "status": fid["status"],
+            "aspect_type": fid["aspect_type"],
+            "orb": fid["orb"],
+            "is_applying": fid["is_applying"],
             "pull": insight["pull"],
             "feelings": insight["feelings"],
             "practice": insight["practice"],
-        }
-        
-        alignment_planets.append(planet_data)
+        })
     
     return {
         "planets": alignment_planets,
-        "gap_count": gap_count,
-        "resonance_count": resonance_count,
+        "gap_count": major_gap_count,
+        "resonance_count": major_resonance_count,
+        "is_major_life_shift": (tight_aspect_count >= 3 and has_slow_anchor)
     }

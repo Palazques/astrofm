@@ -42,7 +42,7 @@ class AppSpotifyService:
         self.client_id = os.getenv("SPOTIFY_CLIENT_ID", "")
         self.client_secret = os.getenv("SPOTIFY_CLIENT_SECRET", "")
         self.refresh_token = os.getenv("ASTROFM_SPOTIFY_REFRESH_TOKEN", "")
-        self.redirect_uri = "http://127.0.0.1:8000/api/spotify/app-token-callback"
+        self.redirect_uri = "http://127.0.0.1:8000/api/cosmic/app-callback"
         
         self._access_token: Optional[str] = None
         self._token_expires: float = 0

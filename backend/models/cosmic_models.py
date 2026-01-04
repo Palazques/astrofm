@@ -139,3 +139,109 @@ class ZodiacSeasonResponse(BaseModel):
             }
         }
 
+
+class PersonalInsight(BaseModel):
+    """Personalized insight about how the zodiac season affects the user."""
+    headline: str = Field(..., description="Short headline e.g. 'Your Opposite Sign Season'")
+    subtext: str = Field(..., description="Context e.g. 'Capricorn activates your 7th house'")
+    meaning: str = Field(..., description="Full interpretation paragraph")
+    focus_areas: List[str] = Field(..., description="Life areas to focus on")
+
+
+class SeasonTrackInfo(BaseModel):
+    """Track info with energy level for display."""
+    id: str
+    title: str
+    artist: str
+    duration: str
+    energy: int = Field(..., ge=0, le=100, description="Energy level 0-100")
+    url: Optional[str] = None
+
+
+class ZodiacSeasonCardRequest(BaseModel):
+    """Request for personalized zodiac season card."""
+    
+    sun_sign: str = Field(..., description="User's Sun sign")
+    moon_sign: str = Field(..., description="User's Moon sign")
+    rising_sign: str = Field(..., description="User's Rising/Ascendant sign")
+    natal_planets: List[dict] = Field(
+        default=[],
+        description="User's natal planets [{name, sign, house}, ...]"
+    )
+    genre_preferences: List[str] = Field(
+        default=["indie rock", "electronic", "pop"],
+        description="User's preferred music genres"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "sun_sign": "Cancer",
+                "moon_sign": "Pisces",
+                "rising_sign": "Gemini",
+                "natal_planets": [
+                    {"name": "Sun", "sign": "Cancer", "house": 2},
+                    {"name": "Moon", "sign": "Pisces", "house": 10},
+                ],
+                "genre_preferences": ["indie rock", "electronic"]
+            }
+        }
+
+
+class ZodiacSeasonCardResponse(BaseModel):
+    """Response for personalized zodiac season card."""
+    
+    success: bool
+    # Season info
+    zodiac_sign: str = Field(..., description="Current zodiac season sign")
+    symbol: str = Field(..., description="Unicode zodiac symbol")
+    element: str = Field(..., description="Element (Fire/Earth/Air/Water)")
+    modality: str = Field(..., description="Modality (Cardinal/Fixed/Mutable)")
+    date_range: str = Field(..., description="Date range for this season")
+    ruling_planet: str = Field(..., description="Ruling planet name")
+    ruling_symbol: str = Field(..., description="Ruling planet symbol")
+    color1: str = Field(..., description="Primary hex color for theming")
+    color2: str = Field(..., description="Secondary hex color for theming")
+    # Personal connection
+    personal_insight: PersonalInsight
+    # Playlist
+    playlist_name: str = Field(..., description="Playlist display name")
+    playlist_description: str = Field(..., description="Playlist vibe description")
+    total_duration: str = Field(..., description="Total duration e.g. '47 min'")
+    vibe_tags: List[str] = Field(..., description="Vibe tags e.g. ['Structured', 'Earthy']")
+    tracks: List[SeasonTrackInfo] = []
+    playlist_url: Optional[str] = None
+    # Cache metadata
+    zodiac_season_key: str = Field(..., description="Cache key e.g. 'Capricorn_2026'")
+    cached_until: str = Field(..., description="ISO date when cache expires")
+    error: Optional[str] = None
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "zodiac_sign": "Capricorn",
+                "symbol": "♑",
+                "element": "Earth",
+                "modality": "Cardinal",
+                "date_range": "Dec 22 - Jan 19",
+                "ruling_planet": "Saturn",
+                "ruling_symbol": "♄",
+                "color1": "#7D67FE",
+                "color2": "#00D4AA",
+                "personal_insight": {
+                    "headline": "Your Opposite Sign Season",
+                    "subtext": "Capricorn activates your 7th house of partnerships",
+                    "meaning": "This season illuminates your relationships...",
+                    "focus_areas": ["Partnerships", "Boundaries", "Commitments"]
+                },
+                "playlist_name": "Capricorn Season × Your 7th House",
+                "playlist_description": "Grounded beats for partnership focus",
+                "total_duration": "47 min",
+                "vibe_tags": ["Structured", "Ambitious", "Earthy"],
+                "tracks": [],
+                "zodiac_season_key": "Capricorn_2026",
+                "cached_until": "2026-01-19"
+            }
+        }
+

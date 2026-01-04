@@ -176,12 +176,16 @@ class DailyReadingResponse(BaseModel):
     actual planetary positions, personalized by Sun sign.
     """
     headline: str = Field(..., description="Short punchy headline (3-5 words)")
+    subheadline: str = Field(default="", description="Contextual subtitle (e.g. house placement)")
     horoscope: str = Field(..., description="2-3 sentence daily horoscope")
     cosmic_weather: str = Field(..., description="Today's cosmic weather summary with real transit data")
     energy_level: int = Field(..., ge=0, le=100, description="Day's energy level 0-100")
     focus_area: str = Field(..., description="Life area to focus on today")
     moon_phase: str = Field(..., description="Current moon phase name")
     dominant_element: str = Field(..., description="Dominant element today (Fire/Earth/Air/Water)")
+    actionable_advice: str = Field(default="", description="Specific, actionable advice for today (the 'So What?')")
+    energy_label: str = Field(default="Intensity", description="Label for the energy bar (Volatility or Vitality)")
+    house_context: str = Field(default="", description="The specific life area (natal house) being activated")
     playlist_params: PlaylistParams = Field(..., description="Playlist generation parameters")
     generated_at: str = Field(..., description="Generation timestamp ISO format")
     
@@ -487,6 +491,7 @@ class NatalPositionData(BaseModel):
     sign: str = Field(..., description="Zodiac sign")
     degree: float = Field(..., ge=0, le=30, description="Degree within sign (0-30)")
     house: int = Field(..., ge=1, le=12, description="House placement (1-12)")
+    longitude: Optional[float] = Field(None, description="Absolute longitude (0-360)")
 
 
 class TransitPositionData(BaseModel):
@@ -495,6 +500,7 @@ class TransitPositionData(BaseModel):
     degree: float = Field(..., ge=0, le=30, description="Degree within sign (0-30)")
     house: int = Field(..., ge=1, le=12, description="House placement (1-12)")
     retrograde: bool = Field(default=False, description="Is planet retrograde")
+    longitude: Optional[float] = Field(None, description="Absolute longitude (0-360)")
 
 
 class TransitAlignmentPlanet(BaseModel):
@@ -508,7 +514,11 @@ class TransitAlignmentPlanet(BaseModel):
     color: str = Field(..., description="Planet color hex code")
     natal: NatalPositionData = Field(..., description="Natal position")
     transit: TransitPositionData = Field(..., description="Current transit position")
-    status: str = Field(..., description="'gap' or 'resonance'")
+    frequency: float = Field(..., ge=0, description="Steiner-accurate frequency in Hz")
+    status: str = Field(..., description="'gap', 'resonance', 'alignment', or 'integration'")
+    aspect_type: str = Field("None", description="Type of aspect (e.g., 'Square', 'Conjunction')")
+    orb: float = Field(0.0, description="Distance from exact aspect in degrees")
+    is_applying: bool = Field(True, description="True if the aspect is closing/building")
     pull: str = Field(..., description="Explanation of the tension/harmony")
     feelings: list[str] = Field(..., description="3-4 symptom descriptions")
     practice: str = Field(..., description="Actionable guidance")
@@ -565,5 +575,6 @@ class TransitAlignmentResponse(BaseModel):
         ...,
         description="Alignment data for each planet"
     )
-    gap_count: int = Field(..., ge=0, description="Number of planets in gap")
-    resonance_count: int = Field(..., ge=0, description="Number of planets in resonance")
+    gap_count: int = Field(..., ge=0, description="Number of major gaps (Mars-Pluto)")
+    resonance_count: int = Field(..., ge=0, description="Number of major resonances")
+    is_major_life_shift: bool = Field(False, description="True if 3+ planets are in tight aspect with an anchor planet")

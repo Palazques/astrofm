@@ -1152,12 +1152,21 @@ class _AlignScreenState extends State<AlignScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            if (alignmentData.isMajorLifeShift) ...[
+               _buildStatusBadge(
+                count: 0,
+                label: 'Major Life Shift',
+                color: const Color(0xFFFFD700),
+                isStellium: true,
+              ),
+              const SizedBox(width: 8),
+            ],
             _buildStatusBadge(
               count: alignmentData.gapCount,
-              label: 'Gaps',
+              label: 'Major Gaps',
               color: const Color(0xFFE84855),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             _buildStatusBadge(
               count: alignmentData.resonanceCount,
               label: 'Resonances',
@@ -1178,6 +1187,10 @@ class _AlignScreenState extends State<AlignScreen> {
             selectedPlanet: _selectedTransitPlanet,
             onPlanetSelected: (planet) {
               setState(() => _selectedTransitPlanet = planet);
+              // Play the planet's Steiner frequency as feedback
+              if (planet != null) {
+                _audioService.playFrequency(planet.frequency);
+              }
             },
           ),
         ),
@@ -1195,6 +1208,7 @@ class _AlignScreenState extends State<AlignScreen> {
     required int count,
     required String label,
     required Color color,
+    bool isStellium = false,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1215,7 +1229,7 @@ class _AlignScreenState extends State<AlignScreen> {
           ),
           const SizedBox(width: 6),
           Text(
-            '$count $label',
+            isStellium ? label : '$count $label',
             style: GoogleFonts.syne(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -1228,8 +1242,20 @@ class _AlignScreenState extends State<AlignScreen> {
   }
   
   Widget _buildPlanetInsightCard(TransitAlignmentPlanet planet) {
-    final isGap = planet.isGap;
-    final statusColor = isGap ? const Color(0xFFE84855) : const Color(0xFF00D4AA);
+    Color statusColor;
+    String statusLabel = planet.status.toUpperCase();
+    
+    if (planet.isIntegration) {
+      statusColor = const Color(0xFF94A3B8);
+      statusLabel = 'INTEGRATION';
+    } else if (planet.isGap) {
+      statusColor = const Color(0xFFE84855);
+    } else if (planet.isAlignment) {
+      statusColor = const Color(0xFFFFD700);
+      statusLabel = 'ALIGNMENT';
+    } else {
+      statusColor = const Color(0xFF00D4AA);
+    }
     
     return GlassCard(
       padding: EdgeInsets.zero,
@@ -1315,13 +1341,50 @@ class _AlignScreenState extends State<AlignScreen> {
                     ),
                   ),
                   child: Text(
-                    planet.status.toUpperCase(),
+                    statusLabel,
                     style: GoogleFonts.syne(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: statusColor,
                       letterSpacing: 1,
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // New: Orb and Applying/Separating subtitle
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: statusColor.withAlpha(20),
+              border: Border(bottom: BorderSide(color: Colors.white.withAlpha(15))),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  planet.isApplying ? Icons.trending_up : Icons.trending_down,
+                  size: 14,
+                  color: statusColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  planet.isApplying ? 'APPLYING' : 'SEPARATING',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'ORB: ${planet.orb.toStringAsFixed(1)}°',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withAlpha(153),
                   ),
                 ),
               ],
@@ -1423,7 +1486,7 @@ class _AlignScreenState extends State<AlignScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isGap ? 'THE PULL' : 'THE HARMONY',
+                  planet.isGap ? 'THE PULL' : 'THE HARMONY',
                   style: GoogleFonts.syne(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,

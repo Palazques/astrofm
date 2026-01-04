@@ -62,6 +62,46 @@ ZODIAC_SYMBOLS: Dict[str, str] = {
     "Pisces": "♓",
 }
 
+# Zodiac modalities
+ZODIAC_MODALITIES: Dict[str, str] = {
+    "Aries": "Cardinal",
+    "Cancer": "Cardinal",
+    "Libra": "Cardinal",
+    "Capricorn": "Cardinal",
+    "Taurus": "Fixed",
+    "Leo": "Fixed",
+    "Scorpio": "Fixed",
+    "Aquarius": "Fixed",
+    "Gemini": "Mutable",
+    "Virgo": "Mutable",
+    "Sagittarius": "Mutable",
+    "Pisces": "Mutable",
+}
+
+# Zodiac ruling planets and symbols
+ZODIAC_RULERS: Dict[str, Tuple[str, str]] = {
+    "Aries": ("Mars", "♂"),
+    "Taurus": ("Venus", "♀"),
+    "Gemini": ("Mercury", "☿"),
+    "Cancer": ("Moon", "☽"),
+    "Leo": ("Sun", "☉"),
+    "Virgo": ("Mercury", "☿"),
+    "Libra": ("Venus", "♀"),
+    "Scorpio": ("Pluto", "♇"),
+    "Sagittarius": ("Jupiter", "♃"),
+    "Capricorn": ("Saturn", "♄"),
+    "Aquarius": ("Uranus", "♅"),
+    "Pisces": ("Neptune", "♆"),
+}
+
+# Element-based theme colors (hex)
+ELEMENT_COLORS: Dict[str, Tuple[str, str]] = {
+    "Fire": ("#FF6B35", "#E84855"),      # Orange to red
+    "Earth": ("#7D67FE", "#00D4AA"),     # Purple to teal
+    "Air": ("#64B5F6", "#E1BEE7"),       # Light blue to lavender
+    "Water": ("#00B4D8", "#1565C0"),     # Cyan to deep blue
+}
+
 
 # =============================================================================
 # ELEMENT-TO-AUDIO FEATURE PROFILES
