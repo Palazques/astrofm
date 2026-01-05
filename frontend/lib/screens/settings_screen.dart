@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/design_tokens.dart';
+import '../config/onboarding_options.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/onboarding/gradient_toggle.dart';
+import '../widgets/genre_preferences_modal.dart';
 import '../services/spotify_service.dart';
 import '../services/storage_service.dart';
+import '../services/api_service.dart';
+import '../services/session_cache_service.dart';
+import '../models/birth_data.dart';
+import '../models/sonification.dart';
 
 /// Settings screen with subscription, notifications, account, and app preferences.
 class SettingsScreen extends StatefulWidget {
@@ -17,6 +23,44 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // Profile data (merged from ProfileScreen)
+  final ApiService _apiService = ApiService();
+  BirthData? _birthData;
+  ChartSonification? _chartData;
+  List<String> _selectedGenres = [];
+  List<String> _selectedSubgenres = [];
+  
+  // Extract zodiac signs from chart data
+  String get _sunSign {
+    if (_chartData == null) return 'Loading...';
+    final sun = _chartData!.planets.where((p) => p.planet == 'Sun').firstOrNull;
+    return sun?.sign ?? 'Unknown';
+  }
+  
+  String get _moonSign {
+    if (_chartData == null) return 'Loading...';
+    final moon = _chartData!.planets.where((p) => p.planet == 'Moon').firstOrNull;
+    return moon?.sign ?? 'Unknown';
+  }
+  
+  String get _risingSign {
+    if (_chartData == null) return 'Loading...';
+    return _chartData!.ascendantSign;
+  }
+  
+  Map<String, dynamic> get _profileUser => {
+    'name': _birthData?.name ?? 'User',
+    'username': '@cosmic${(_birthData?.name ?? 'user').toLowerCase()}',
+    'avatarColors': [AppColors.hotPink, AppColors.cosmicPurple, AppColors.teal],
+    'birthDate': _birthData?.formattedDate ?? 'Not set',
+    'birthTime': _birthData?.formattedTime ?? 'Not set',
+    'birthLocation': _birthData?.locationName ?? 'Not set',
+    'sign': _sunSign,
+    'rising': _risingSign,
+    'moon': _moonSign,
+    'joinedDate': 'November 2024',
+  };
+
   // Mock subscription state - in real app this would come from backend
   bool _isPremium = false;
   
@@ -73,8 +117,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadBirthData();
+    _loadGenrePreferences();
     _checkSpotifyConnection();
     _loadNotificationPreferences();
+  }
+
+  // Profile data loading methods (merged from ProfileScreen)
+  Future<void> _loadBirthData() async {
+    final stored = await storageService.loadBirthData();
+    if (mounted && stored != null) {
+      setState(() => _birthData = stored);
+      _loadChartData(stored);
+    }
+  }
+  
+  Future<void> _loadChartData(BirthData birthData) async {
+    final cache = SessionCacheService();
+    if (cache.userSonification != null) {
+      setState(() {
+        _chartData = cache.userSonification;
+      });
+      return;
+    }
+    
+    try {
+      final chart = await _apiService.getUserSonification(
+        datetime: birthData.datetime,
+        latitude: birthData.latitude,
+        longitude: birthData.longitude,
+        timezone: birthData.timezone,
+      );
+      if (mounted) {
+        cache.cacheUserSonification(chart);
+        setState(() {
+          _chartData = chart;
+        });
+      }
+    } catch (e) {
+      // Chart loading failed, continue without chart data
+    }
+  }
+  
+  Future<void> _loadGenrePreferences() async {
+    final prefs = await storageService.loadGenres();
+    if (mounted) {
+      setState(() {
+        _selectedGenres = prefs.genres;
+        _selectedSubgenres = prefs.subgenres;
+      });
+    }
+  }
+  
+  void _openGenreEditor() {
+    GenrePreferencesModal.show(
+      context,
+      initialGenres: _selectedGenres,
+      initialSubgenres: _selectedSubgenres,
+      onSaved: _loadGenrePreferences,
+    );
   }
 
   Future<void> _loadNotificationPreferences() async {
@@ -664,6 +765,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 20),
 
+                // Profile Section (NEW - merged from ProfileScreen)
+                _buildProfileSection(),
+                const SizedBox(height: 24),
+
+                // Music Preferences Section (NEW - merged from ProfileScreen)
+                _buildMusicPreferencesSection(),
+                const SizedBox(height: 24),
+
                 // Subscription Section
                 _buildSubscriptionSection(),
                 const SizedBox(height: 24),
@@ -682,6 +791,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // About & Legal Section
                 _buildAboutLegalSection(),
+                const SizedBox(height: 24),
+
+                // Sign Out Button (NEW - merged from ProfileScreen)
+                _buildSignOutButton(),
                 const SizedBox(height: 24),
 
                 // App Version Footer
@@ -1281,6 +1394,266 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: textColor,
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // PROFILE SECTION BUILDERS (merged from ProfileScreen)
+  // ============================================================
+  
+  Widget _buildProfileSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Profile'),
+        GlassCard(
+          child: Column(
+            children: [
+              // Profile Orb
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: _profileUser['avatarColors'] as List<Color>),
+                  boxShadow: [BoxShadow(color: AppColors.hotPink.withAlpha(102), blurRadius: 30, spreadRadius: 5)],
+                ),
+                child: Center(
+                  child: Text(
+                    (_profileUser['name'] as String)[0],
+                    style: GoogleFonts.syne(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Name
+              Text(_profileUser['name'] as String, style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+              Text(_profileUser['username'] as String, style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white.withAlpha(128))),
+              const SizedBox(height: 12),
+
+              // Sign Tags
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _buildSignTag('☉', _profileUser['sign'] as String, AppColors.electricYellow),
+                  _buildSignTag('☽', _profileUser['moon'] as String, AppColors.hotPink),
+                  _buildSignTag('↑', _profileUser['rising'] as String, AppColors.cosmicPurple),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Birth Info
+              Text(
+                '${_profileUser['birthDate']} • ${_profileUser['birthTime']}',
+                style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(102)),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                _profileUser['birthLocation'] as String,
+                style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(102)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              
+              // Edit Birth Data button
+              _buildMenuItem(
+                icon: Icons.edit_calendar_rounded,
+                label: 'Edit Birth Data',
+                color: AppColors.cosmicPurple,
+                onTap: () {
+                  Navigator.pushNamed(context, '/birth-input').then((_) {
+                    _loadBirthData();
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignTag(String symbol, String sign, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withAlpha(26),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withAlpha(51)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(symbol, style: TextStyle(fontSize: 12, color: color)),
+          const SizedBox(width: 5),
+          Text(sign, style: GoogleFonts.syne(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMusicPreferencesSection() {
+    final hasGenres = _selectedGenres.isNotEmpty;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Music Preferences'),
+            TextButton(
+              onPressed: _openGenreEditor,
+              child: Text(
+                'Edit',
+                style: GoogleFonts.syne(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.cosmicPurple,
+                ),
+              ),
+            ),
+          ],
+        ),
+        GlassCard(
+          child: hasGenres
+              ? Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _selectedGenres.map((genre) {
+                    final subgenres = _selectedSubgenres
+                        .where((s) => getSubgenresFor(genre).contains(s))
+                        .toList();
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.cosmicPurple.withAlpha(51),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.cosmicPurple.withAlpha(77)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.music_note_rounded, size: 12, color: AppColors.cosmicPurple),
+                              const SizedBox(width: 5),
+                              Text(
+                                genre,
+                                style: GoogleFonts.syne(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (subgenres.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10, top: 3),
+                            child: Text(
+                              subgenres.join(', '),
+                              style: GoogleFonts.spaceGrotesk(fontSize: 10, color: Colors.white.withAlpha(128)),
+                            ),
+                          ),
+                      ],
+                    );
+                  }).toList(),
+                )
+              : Column(
+                  children: [
+                    Icon(Icons.library_music_rounded, size: 36, color: Colors.white.withAlpha(51)),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No genres selected',
+                      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(128)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tap "Edit" to set your preferences',
+                      style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.white.withAlpha(77)),
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _showSignOutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.backgroundMid,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withAlpha(26)),
+        ),
+        title: Text(
+          'Sign Out?',
+          style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to sign out of your account?',
+          style: GoogleFonts.spaceGrotesk(fontSize: 14, color: Colors.white.withAlpha(179)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(128)),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.red.withAlpha(26),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.red.withAlpha(51)),
+            ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+              },
+              child: Text(
+                'Sign Out',
+                style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.red),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignOutButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.red.withAlpha(26),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.red.withAlpha(51)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _showSignOutDialog,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.logout_rounded, color: AppColors.red, size: 18),
+                const SizedBox(width: 10),
+                Text('Sign Out', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.red)),
               ],
             ),
           ),

@@ -22,10 +22,9 @@ class BottomNavBar extends StatelessWidget {
 
   static const List<NavItem> items = [
     NavItem(id: 'home', label: 'Home', icon: Icons.home_rounded),
-    NavItem(id: 'sound', label: 'Sound', icon: Icons.mic_rounded),
+    NavItem(id: 'soundscape', label: 'Soundscape', icon: Icons.queue_music_rounded),
     NavItem(id: 'align', label: 'Align', icon: Icons.layers_rounded),
     NavItem(id: 'friends', label: 'Friends', icon: Icons.people_rounded),
-    NavItem(id: 'profile', label: 'Profile', icon: Icons.person_rounded),
   ];
 
   const BottomNavBar({

@@ -146,7 +146,9 @@ class TrackResolver:
             if result:
                 return self._parse_track_result(result)
         except Exception as e:
-            print(f"[TrackResolver] Exact search failed: {e}")
+            import traceback
+            print(f"[TrackResolver] Exact search failed: {type(e).__name__}: {e}")
+            traceback.print_exc()
         
         return None
     

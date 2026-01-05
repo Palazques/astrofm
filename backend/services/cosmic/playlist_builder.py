@@ -96,12 +96,16 @@ class CosmicPlaylistBuilder:
             print(f"[PlaylistBuilder] Generating playlist for {sun_sign} Sun, {moon_sign} Moon")
             
             # Step 1: Map astrology to music attributes
+            from services.transits import get_detailed_transit_summary
+            transit_summary = get_detailed_transit_summary()
+            
             music_prompt = generate_music_prompt(
                 sun_sign=sun_sign,
                 moon_sign=moon_sign,
                 rising_sign=rising_sign,
                 current_moon_sign=current_moon_sign,
                 genre_preferences=genre_preferences,
+                transit_summary=transit_summary,
             )
             
             print(f"[PlaylistBuilder] Music prompt: {music_prompt.vibe_description[:100]}...")

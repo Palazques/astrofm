@@ -3,10 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
 import '../../models/friend_data.dart';
 import '../../models/friend_connection.dart';
+import '../../models/sonification.dart';
 import '../../services/synastry_service.dart';
 
 /// Detail card shown when a friend is selected in the constellation.
-/// Enhanced with synastry data including shared frequency, aspect info, and cosmic genre.
+/// Enhanced with synastry data, alignment result, and play blend functionality.
 class FriendDetailCard extends StatefulWidget {
   final FriendData friend;
   final List<FriendData> connectedFriends;
@@ -16,6 +17,18 @@ class FriendDetailCard extends StatefulWidget {
   
   /// User's dominant element (defaults to Water for demo).
   final String userElement;
+  
+  /// Alignment result data (null if not yet aligned)
+  final AlignmentResponse? alignmentResult;
+  
+  /// Whether alignment is currently running
+  final bool isAligning;
+  
+  /// Whether blend audio is currently playing
+  final bool isPlayingBlend;
+  
+  /// Callback to trigger play/stop blend
+  final VoidCallback? onPlayBlendTap;
 
   const FriendDetailCard({
     super.key,
@@ -25,6 +38,10 @@ class FriendDetailCard extends StatefulWidget {
     required this.onAlignTap,
     required this.onConnectedFriendTap,
     this.userElement = 'Water',
+    this.alignmentResult,
+    this.isAligning = false,
+    this.isPlayingBlend = false,
+    this.onPlayBlendTap,
   });
 
   @override
@@ -156,6 +173,12 @@ class _FriendDetailCardState extends State<FriendDetailCard>
                   if (widget.connectedFriends.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     _buildMutuals(),
+                  ],
+                  
+                  // Alignment Result Section (shown when aligned or aligning)
+                  if (widget.alignmentResult != null || widget.isAligning) ...[
+                    const SizedBox(height: 20),
+                    _buildAlignmentResult(),
                   ],
                   
                   const SizedBox(height: 16),
@@ -938,6 +961,204 @@ class _FriendDetailCardState extends State<FriendDetailCard>
           );
         }),
       ],
+    );
+  }
+
+  /// Alignment result section with score, reading, and play blend button
+  Widget _buildAlignmentResult() {
+    // Show loading state
+    if (widget.isAligning) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _friendColor.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(_friendColor),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Aligning frequencies...',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 14,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final result = widget.alignmentResult!;
+    final score = result.analysis.alignmentScore;
+    final isHarmonious = score >= 70;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _friendColor.withValues(alpha: 0.15),
+            _secondaryColor.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _friendColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Score Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [_friendColor, _secondaryColor],
+                ).createShader(bounds),
+                child: Text(
+                  '$score%',
+                  style: GoogleFonts.syne(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ALIGNED',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.6),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isHarmonious
+                          ? const Color(0xFF00D4AA).withValues(alpha: 0.2)
+                          : const Color(0xFFFAFF0E).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isHarmonious ? 'Harmonious' : 'Dynamic',
+                      style: GoogleFonts.syne(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isHarmonious
+                            ? const Color(0xFF00D4AA)
+                            : const Color(0xFFFAFF0E),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // AI Reading
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border(
+                left: BorderSide(color: _friendColor, width: 3),
+              ),
+            ),
+            child: Text(
+              result.explanation,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                height: 1.5,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Play Blend Button
+          GestureDetector(
+            onTap: widget.onPlayBlendTap,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: widget.isPlayingBlend
+                    ? null
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [_friendColor, _secondaryColor],
+                      ),
+                color: widget.isPlayingBlend
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : null,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: widget.isPlayingBlend
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: _friendColor.withValues(alpha: 0.4),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                border: widget.isPlayingBlend
+                    ? Border.all(color: _friendColor.withValues(alpha: 0.5))
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    widget.isPlayingBlend
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    widget.isPlayingBlend ? 'Stop Blend' : 'Play Blend',
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

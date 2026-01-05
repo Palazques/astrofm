@@ -115,6 +115,10 @@ class PlaylistRequest(BaseModel):
         le=180,
         description="Current location longitude (defaults to birth location)"
     )
+    genre_preferences: List[str] = Field(
+        default_factory=list,
+        description="User's preferred music genres"
+    )
     
     @field_validator('birth_datetime', 'current_datetime')
     @classmethod

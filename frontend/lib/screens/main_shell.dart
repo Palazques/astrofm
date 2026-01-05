@@ -2,10 +2,27 @@ import 'package:flutter/material.dart';
 import '../config/design_tokens.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'home_screen.dart';
-import 'sound_screen.dart';
+import 'soundscape_screen.dart';
 import 'align_screen.dart';
 import 'connections_screen.dart';
-import 'profile_screen.dart';
+
+/// Controller to switch tabs from child screens.
+class MainShellController extends InheritedWidget {
+  final void Function(String tab) switchTab;
+
+  const MainShellController({
+    super.key,
+    required this.switchTab,
+    required super.child,
+  });
+
+  static MainShellController? of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<MainShellController>();
+  }
+
+  @override
+  bool updateShouldNotify(MainShellController oldWidget) => false;
+}
 
 /// Main app shell with bottom navigation.
 class MainShell extends StatefulWidget {
@@ -18,18 +35,22 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   String _activeTab = 'home';
 
+  void _switchTab(String tab) {
+    setState(() {
+      _activeTab = tab;
+    });
+  }
+
   int _getTabIndex(String tab) {
     switch (tab) {
       case 'home':
         return 0;
-      case 'sound':
+      case 'soundscape':
         return 1;
       case 'align':
         return 2;
       case 'friends':
         return 3;
-      case 'profile':
-        return 4;
       default:
         return 0;
     }
@@ -37,42 +58,44 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.backgroundGradient,
-        ),
-        child: Stack(
-          children: [
-            // Main content with state persistence
-            Positioned.fill(
-              child: IndexedStack(
-                index: _getTabIndex(_activeTab),
-                children: const [
-                  HomeScreen(),
-                  SoundScreen(),
-                  AlignScreen(),
-                  ConnectionsScreen(),
-                  ProfileScreen(),
-                ],
+    return MainShellController(
+      switchTab: _switchTab,
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.backgroundGradient,
+          ),
+          child: Stack(
+            children: [
+              // Main content with state persistence
+              Positioned.fill(
+                child: IndexedStack(
+                  index: _getTabIndex(_activeTab),
+                  children: const [
+                    HomeScreen(),
+                    SoundscapeScreen(),
+                    AlignScreen(),
+                    ConnectionsScreen(),
+                  ],
+                ),
               ),
-            ),
 
-            // Bottom navigation
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: BottomNavBar(
-                activeTab: _activeTab,
-                onTabChanged: (tab) {
-                  setState(() {
-                    _activeTab = tab;
-                  });
-                },
+              // Bottom navigation
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: BottomNavBar(
+                  activeTab: _activeTab,
+                  onTabChanged: (tab) {
+                    setState(() {
+                      _activeTab = tab;
+                    });
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

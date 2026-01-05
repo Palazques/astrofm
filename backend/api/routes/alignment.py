@@ -14,6 +14,9 @@ from models.schemas import (
     TransitsResponse,
     TransitPosition,
     AspectData,
+    FriendSuggestionsRequest,
+    FriendSuggestionsResponse,
+    FriendHarmonySuggestion,
 )
 from services.ephemeris import calculate_natal_chart
 from services.transits import get_retrograde_period
@@ -23,6 +26,7 @@ from services.alignment import (
     calculate_friend_alignment,
     get_moon_phase,
 )
+from services.friend_harmony import get_friend_suggestions
 
 router = APIRouter(prefix="/api/alignment", tags=["alignment"])
 
@@ -234,4 +238,68 @@ async def get_transits() -> TransitsResponse:
         raise HTTPException(
             status_code=500,
             detail=f"Error getting transits: {str(e)}"
+        )
+
+
+@router.post("/friend-suggestions", response_model=FriendSuggestionsResponse)
+async def get_friend_alignment_suggestions(request: FriendSuggestionsRequest) -> FriendSuggestionsResponse:
+    """
+    Get ranked friend alignment suggestions for today.
+    
+    Returns the top 3 friends to align with based on:
+    - Lunar harmony (60% weight): Moon trine/sextile to friend's Sun/Moon
+    - Personal transits (30% weight): Venus/Mercury in friendship houses
+    - Conflict check (-10% penalty): Saturn/Mars squares
+    
+    Results are cached per user for the calendar day.
+    
+    Args:
+        request: User ID and list of friends with their sign data
+        
+    Returns:
+        Top 3 friend suggestions with scores, glow colors, and context strings
+    """
+    try:
+        # Convert Pydantic models to dicts for service
+        friends_data = [
+            {
+                "id": f.id,
+                "name": f.name,
+                "sun_sign": f.sun_sign,
+                "moon_sign": f.moon_sign or f.sun_sign,  # Fallback to sun sign
+                "avatar_colors": f.avatar_colors or []
+            }
+            for f in request.friends
+        ]
+        
+        # Call the harmony service
+        result = get_friend_suggestions(
+            user_id=request.user_id,
+            friends=friends_data,
+            force_refresh=request.force_refresh
+        )
+        
+        # Build response
+        suggestions = [
+            FriendHarmonySuggestion(
+                friend_id=s["friend_id"],
+                score=s["score"],
+                glow_color=s["glow_color"],
+                context_string=s["context_string"],
+                harmony_type=s["harmony_type"]
+            )
+            for s in result["suggestions"]
+        ]
+        
+        return FriendSuggestionsResponse(
+            suggestions=suggestions,
+            current_moon_sign=result["current_moon_sign"],
+            refresh_at=result["refresh_at"],
+            from_cache=result.get("from_cache", False)
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting friend suggestions: {str(e)}"
         )

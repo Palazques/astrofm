@@ -318,7 +318,7 @@ For playlist parameters, include as JSON on a separate line:
         sun_sign = sun_planet.get('sign', 'Unknown')
         
         # Cache by Sun sign + date (same horoscope for all Leos on the same day)
-        cache_key = self._generate_cache_key("daily_horoscope_v6", {
+        cache_key = self._generate_cache_key("daily_horoscope_v7", {
             "sun_sign": sun_sign,
             "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         })
@@ -433,26 +433,30 @@ RULES:
         lines = response.strip().split("\n")
         for line in lines:
             line = line.strip()
-            if line.startswith("HEADLINE:"):
-                headline = line.replace("HEADLINE:", "").strip()
-            elif line.startswith("SUBHEADLINE:"):
-                subheadline = line.replace("SUBHEADLINE:", "").strip()
-            elif line.startswith("HOROSCOPE:"):
-                horoscope = line.replace("HOROSCOPE:", "").strip()
-            elif line.startswith("ADVICE:"):
-                advice = line.replace("ADVICE:", "").strip()
-            elif line.startswith("FOCUS_AREA:"):
-                focus_area = line.replace("FOCUS_AREA:", "").strip()
-            elif line.startswith("ENERGY_LEVEL:"):
+            # Remove markdown bolding and other markers for easier parsing
+            clean_line = line.replace("*", "").replace("#", "").strip()
+            
+            if clean_line.upper().startswith("HEADLINE:"):
+                headline = clean_line[len("HEADLINE:"):].strip()
+            elif clean_line.upper().startswith("SUBHEADLINE:"):
+                subheadline = clean_line[len("SUBHEADLINE:"):].strip()
+            elif clean_line.upper().startswith("HOROSCOPE:"):
+                horoscope = clean_line[len("HOROSCOPE:"):].strip()
+            elif clean_line.upper().startswith("ADVICE:"):
+                advice = clean_line[len("ADVICE:"):].strip()
+            elif clean_line.upper().startswith("FOCUS_AREA:"):
+                focus_area = clean_line[len("FOCUS_AREA:"):].strip()
+            elif clean_line.upper().startswith("ENERGY_LEVEL:"):
                 try:
-                    energy_level = int(line.replace("ENERGY_LEVEL:", "").strip())
+                    energy_val = clean_line[len("ENERGY_LEVEL:"):].strip()
+                    energy_level = int(energy_val)
                     energy_level = max(0, min(100, energy_level))
                 except ValueError:
                     pass
-            elif line.startswith("PLAYLIST_JSON:"):
+            elif clean_line.upper().startswith("PLAYLIST_JSON:"):
                 try:
                     import json
-                    json_str = line.replace("PLAYLIST_JSON:", "").strip()
+                    json_str = clean_line[len("PLAYLIST_JSON:"):].strip()
                     playlist_params = json.loads(json_str)
                 except (json.JSONDecodeError, ValueError):
                     pass
@@ -462,6 +466,12 @@ RULES:
             headline = f"{day_energy} {moon_phase}"
         if not horoscope:
             horoscope = f"The {moon_phase} Moon in {moon_sign} brings {day_energy.lower()} energy today. As a {sun_sign}, lean into this rhythm rather than fighting it. Trust what feels right."
+        if not advice:
+            # Fallback advice based on energy
+            if day_energy in ["Intense", "Powerful", "Dynamic"]:
+                advice = "Take a moment to breathe before reacting to external pressure."
+            else:
+                advice = "Move with the flow of today's natural rhythm."
         
         # Build clean cosmic weather string
         cosmic_weather = f"{moon_phase} Moon in {moon_sign}. {retro_text}."

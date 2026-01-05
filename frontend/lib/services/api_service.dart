@@ -10,6 +10,8 @@ import '../models/alignment.dart';
 import '../models/attunement.dart';
 import '../models/prescription.dart';
 import '../models/zodiac_season_card.dart';
+import '../models/friend_harmony.dart';
+import '../models/friend_data.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -236,6 +238,47 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get friend Sound Signature alignment',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get friend alignment suggestions for today ("Listen to Your Friends Blend").
+  /// 
+  /// Returns top 3 friends to align with based on lunar harmony, transits, and conflicts.
+  /// Results are cached on the backend for the calendar day.
+  Future<FriendSuggestionsResponse> getFriendSuggestions({
+    required List<FriendData> friends,
+    String userId = 'default',
+    bool forceRefresh = false,
+  }) async {
+    final friendsData = friends.map((f) => {
+      'id': f.id,
+      'name': f.name,
+      'sun_sign': f.sunSign,
+      'moon_sign': f.moonSign,
+      'rising_sign': f.risingSign,
+      'avatar_colors': f.avatarColors,
+    }).toList();
+
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/alignment/friend-suggestions'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'friends': friendsData,
+            'force_refresh': forceRefresh,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return FriendSuggestionsResponse.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get friend suggestions',
         statusCode: response.statusCode,
       );
     }

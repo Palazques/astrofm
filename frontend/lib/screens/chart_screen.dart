@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/natal_chart.dart';
 
 /// Screen to display the calculated natal chart.
@@ -117,10 +118,28 @@ class ChartScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(width: 48), // Balance the back button
+          IconButton(
+            onPressed: () => _shareChart(),
+            icon: const Icon(Icons.share_rounded, color: Colors.white),
+          ),
         ],
       ),
     );
+  }
+
+  void _shareChart() {
+    final planets = chart.planets.map((p) => '• ${p.name}: ${p.sign} ${p.signDegree.toStringAsFixed(1)}°${p.retrogradeSymbol}').join('\n');
+    
+    final text = '''✨ MY NATAL CHART
+
+⭐ Ascendant: ${chart.formattedAscendant}
+
+🌟 PLANETARY POSITIONS
+$planets
+
+— Discover your cosmic blueprint at Astro.FM''';
+    
+    Share.share(text);
   }
 
   Widget _buildAscendantCard() {

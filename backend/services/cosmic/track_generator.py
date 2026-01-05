@@ -63,32 +63,30 @@ class TrackSuggestion:
 
 
 # Prompt template for track generation
-TRACK_GENERATION_PROMPT = """You are a music curator creating a cosmic playlist.
+TRACK_GENERATION_PROMPT = """You are a master music curator and intuitive astrologer. 
+Your task is to translate a specific cosmic alignment into a {track_count}-song "Sonic Transit" (playlist).
 
-Generate a playlist of {track_count} songs for someone with this astrological vibe:
+### The Cosmic Vibe
+**Astrological Narrative:** {vibe_description}
+**Energy Signature:** {mood_keywords}
+**Native Genres:** {genres}
 
-**Vibe:** {vibe_description}
+### Audio Architecture
+- **Energy Intensity:** {energy_range} (0=ambient/low, 1=high/driving)
+- **Emotional Palette:** {valence_range} (0=melancholic/introspective, 1=euphoric/joyful)
+- **Rhythmic Pulse:** {tempo_range} BPM
 
-**Mood Keywords:** {mood_keywords}
+### Curation Guidelines
+1. **Genre Synthesis:** 
+   - 70% should stay within the "Native Genres."
+   - 30% should be "Boundary Pushing" tracks—songs that technically live in other genres but perfectly capture the *astrological frequency* described above.
+2. **Dynamic Flow:** The playlist should feel like a transit—starting with an entry point, reaching a "peak" of energy mid-way, and settling into a resolution.
+3. **Selection Quality:** Mix well-known "Essential" tracks (60%) with hidden "Obsidian" deep cuts (40%). 
+4. **Veracity:** Only suggest tracks that definitely exist on Spotify.
 
-**Their Preferred Genres:** {genres}
-
-**Audio Targets:**
-- Energy: {energy_range} (0=calm, 1=intense)
-- Mood: {valence_range} (0=melancholic, 1=euphoric)
-- Tempo: {tempo_range} BPM
-
-**Requirements:**
-- 70% should be from their preferred genres
-- 20% from adjacent/related genres (e.g., if they like indie, include some post-rock or shoegaze)
-- 10% tasteful surprises that match the cosmic vibe
-- Include a mix of well-known tracks (60%) and deeper cuts (40%)
-- Songs MUST actually exist on Spotify
-- Avoid extremely obscure tracks that might not be on Spotify
-
-Return ONLY a valid JSON array with no additional text:
+Return ONLY a valid JSON array of objects with these keys:
 [
-  {{"artist": "Artist Name", "title": "Song Title", "reason": "Brief reason why this fits"}},
+  {{"artist": "Name", "title": "Song", "reason": "Why this specific track connects to the {vibe_description}?"}},
   ...
 ]
 """

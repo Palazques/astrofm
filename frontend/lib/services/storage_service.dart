@@ -44,6 +44,10 @@ class StorageKeys {
   static const String notifMoon = 'notif_moon';
   static const String notifTransit = 'notif_transit';
   static const String notifFriend = 'notif_friend';
+  
+  // Friend Suggestions Cache
+  static const String friendSuggestions = 'friend_suggestions';
+  static const String friendSuggestionsDate = 'friend_suggestions_date';
 }
 
 /// Service for managing local storage operations.
@@ -460,6 +464,51 @@ class StorageService {
       'transit': prefs.getBool(StorageKeys.notifTransit) ?? false,
       'friend': prefs.getBool(StorageKeys.notifFriend) ?? true,
     };
+  }
+
+  // ================================
+  // Friend Suggestions Cache
+  // ================================
+
+  /// Save friend suggestions to cache with today's date.
+  Future<void> saveFriendSuggestions(Map<String, dynamic> suggestionsData) async {
+    final prefs = await _getPrefs();
+    final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
+    
+    await prefs.setString(StorageKeys.friendSuggestions, jsonEncode(suggestionsData));
+    await prefs.setString(StorageKeys.friendSuggestionsDate, today);
+  }
+
+  /// Load cached friend suggestions if from today.
+  /// Returns null if no cache or cache is from a different day.
+  Future<Map<String, dynamic>?> loadFriendSuggestions() async {
+    final prefs = await _getPrefs();
+    
+    // Check if cache is from today
+    final cachedDate = prefs.getString(StorageKeys.friendSuggestionsDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    if (cachedDate != today) {
+      return null; // Cache is stale (different day)
+    }
+    
+    // Load cached suggestions
+    final suggestionsJson = prefs.getString(StorageKeys.friendSuggestions);
+    if (suggestionsJson == null) return null;
+    
+    try {
+      return jsonDecode(suggestionsJson) as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Check if we have valid friend suggestions cached for today.
+  Future<bool> hasTodaysFriendSuggestions() async {
+    final prefs = await _getPrefs();
+    final cachedDate = prefs.getString(StorageKeys.friendSuggestionsDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    return cachedDate == today && prefs.containsKey(StorageKeys.friendSuggestions);
   }
 }
 

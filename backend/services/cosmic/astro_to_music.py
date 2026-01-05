@@ -6,7 +6,7 @@ into musical attributes (energy, tempo, mood) for playlist generation.
 
 S2: Documentation Rule - Clear docstrings for all functions.
 """
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -151,6 +151,7 @@ def generate_music_prompt(
     current_moon_sign: str,
     genre_preferences: List[str],
     dominant_element: Optional[str] = None,
+    transit_summary: Optional[Dict[str, Any]] = None,
 ) -> MusicPrompt:
     """
     Generate a music prompt from astrological data.
@@ -162,17 +163,19 @@ def generate_music_prompt(
         current_moon_sign: Today's Moon sign (transit)
         genre_preferences: User's preferred genres
         dominant_element: Optional override for dominant element
+        transit_summary: Optional detailed summary of today's transits
         
     Returns:
         MusicPrompt with audio targets and mood keywords
     """
     # Determine dominant element from big three
+    elements = [
+        SIGN_ELEMENTS.get(sun_sign, "Fire"),
+        SIGN_ELEMENTS.get(moon_sign, "Water"),
+        SIGN_ELEMENTS.get(rising_sign, "Earth"),
+    ]
+    
     if not dominant_element:
-        elements = [
-            SIGN_ELEMENTS.get(sun_sign, "Fire"),
-            SIGN_ELEMENTS.get(moon_sign, "Water"),
-            SIGN_ELEMENTS.get(rising_sign, "Earth"),
-        ]
         # Count occurrences
         element_counts = {e: elements.count(e) for e in set(elements)}
         dominant_element = max(element_counts, key=element_counts.get)
@@ -180,14 +183,27 @@ def generate_music_prompt(
     # Get base profile from dominant element
     profile = ELEMENT_AUDIO_PROFILES.get(dominant_element, ELEMENT_AUDIO_PROFILES["Fire"])
     
-    # Apply transit modifier (current Moon sign)
-    moon_mod = MOON_SIGN_MODIFIERS.get(current_moon_sign, {"energy": 0, "valence": 0, "keyword": ""})
+    # Get transit modifier (current Moon sign and weather)
+    moon_mod = MOON_SIGN_MODIFIERS.get(current_moon_sign, {"energy": 0, "valence": 0, "keyword": "reflective"})
     
     # Calculate targets with modifiers
     energy_min = max(0, profile["energy"][0] + moon_mod["energy"])
     energy_max = min(1, profile["energy"][1] + moon_mod["energy"])
     valence_min = max(0, profile["valence"][0] + moon_mod["valence"])
     valence_max = min(1, profile["valence"][1] + moon_mod["valence"])
+    
+    # Adjust for day energy if transit summary exists
+    if transit_summary:
+        day_energy = transit_summary.get("day_energy", "Dynamic")
+        if day_energy == "Intense":
+            energy_min = min(1, energy_min + 0.1)
+            energy_max = min(1, energy_max + 0.1)
+        elif day_energy == "Flowing":
+            valence_min = min(1, valence_min + 0.1)
+            valence_max = min(1, valence_max + 0.1)
+        elif day_energy == "Intuitive":
+            energy_min = max(0, energy_min - 0.1)
+            energy_max = max(0, energy_max - 0.1)
     
     # Collect mood keywords
     keywords = list(profile["keywords"])
@@ -202,22 +218,37 @@ def generate_music_prompt(
     moon_element = SIGN_ELEMENTS.get(moon_sign, "Water")
     moon_profile = ELEMENT_AUDIO_PROFILES.get(moon_element, {})
     if "keywords" in moon_profile:
-        keywords.append(moon_profile["keywords"][0])  # Add primary keyword
+        keywords.append(moon_profile["keywords"][0])
     
-    # Add today's transit vibe
+    # Add today's transit keywords
     if moon_mod["keyword"]:
         keywords.append(moon_mod["keyword"])
+        
+    if transit_summary:
+        keywords.append(transit_summary.get("day_energy", "Cosmic").lower())
+        retro_planets = transit_summary.get("retrograde_planets", [])
+        if retro_planets:
+            keywords.append("introspective")
+            keywords.append("nostalgic")
     
     # Deduplicate keywords
-    keywords = list(dict.fromkeys(keywords))[:8]
+    keywords = list(dict.fromkeys(keywords))[:10]
     
-    # Build vibe description
+    # Build rich vibe description
     sun_symbol = ZODIAC_SYMBOLS.get(sun_sign, "")
-    vibe_description = (
-        f"{sun_sign} {sun_symbol} energy: {profile['vibe']}. "
-        f"Emotional undertone from {moon_sign} Moon adds {ELEMENT_AUDIO_PROFILES.get(moon_element, {}).get('vibe', 'depth')}. "
-        f"Today's {current_moon_sign} Moon brings a {moon_mod['keyword']} mood."
+    base_vibe = (
+        f"A personalized cosmic mix for a {sun_sign} {sun_symbol} (Sun), "
+        f"{moon_sign} {ZODIAC_SYMBOLS.get(moon_sign, '')} (Moon), and "
+        f"{rising_sign} rising."
     )
+    
+    weather_desc = ""
+    if transit_summary:
+        weather_desc = f" The current cosmic weather is {transit_summary.get('day_energy')} with {transit_summary.get('cosmic_weather')}."
+    else:
+        weather_desc = f" Today's {current_moon_sign} Moon brings a {moon_mod['keyword']} atmosphere."
+        
+    vibe_description = f"{base_vibe}{weather_desc} The focus is on {profile['vibe']} textures blended with {ELEMENT_AUDIO_PROFILES.get(SIGN_ELEMENTS.get(moon_sign, 'Water'), {}).get('vibe', 'watery')} undertones."
     
     return MusicPrompt(
         vibe_description=vibe_description,

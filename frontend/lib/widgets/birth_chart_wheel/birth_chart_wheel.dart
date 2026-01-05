@@ -7,7 +7,7 @@ import 'painters/zodiac_icon_painter.dart';
 import 'painters/aspect_line_painter.dart';
 import 'widgets/planet_orb.dart';
 import 'widgets/center_display.dart';
-import 'widgets/planet_info_card.dart';
+import 'widgets/planet_sound_detail.dart';
 
 /// Interactive Birth Chart Wheel widget.
 /// 
@@ -288,7 +288,7 @@ class _BirthChartWheelState extends State<BirthChartWheel>
         // Planet info card (when selected)
         if (_selectedPlanet != null) ...[
           const SizedBox(height: 20),
-          PlanetInfoCard(
+          PlanetSoundDetail(
             planet: _selectedPlanet!,
             aspects: aspectsForSelected,
             allPlanets: _planets,

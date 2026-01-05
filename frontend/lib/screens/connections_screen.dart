@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../config/design_tokens.dart';
+import 'main_shell.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/add_friend_sheet.dart';
@@ -9,7 +11,14 @@ import '../widgets/connections/friend_detail_card.dart';
 import '../widgets/connections/background_stars.dart';
 import '../widgets/connections/connections_empty_state.dart';
 import '../models/friend_data.dart';
+import '../models/sonification.dart';
+import '../models/friend_harmony.dart';
 import '../services/compatibility_service.dart';
+import '../services/api_service.dart';
+import '../services/audio_service.dart';
+import '../services/storage_service.dart';
+import '../data/test_users.dart';
+import '../widgets/connections/friend_harmony_card.dart';
 
 /// Connections (Friends) screen.
 class ConnectionsScreen extends StatefulWidget {
@@ -24,10 +33,22 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
   final _compatibilityService = CompatibilityService();
+  final _apiService = ApiService();
+  final _audioService = AudioService();
+  final _storageService = StorageService();
 
   // Constellation selection state
   FriendData? _selectedFriend;
   FriendData? _hoveredFriend;
+  
+  // Alignment state
+  Map<int, AlignmentResponse> _alignmentResults = {};
+  int? _aligningFriendId;
+  bool _isPlayingBlend = false;
+  
+  // Friend suggestions state ("Listen to Your Friends Blend")
+  FriendSuggestionsResponse? _friendSuggestions;
+  bool _isLoadingSuggestions = false;
 
   // Friends data as FriendData objects
   late List<FriendData> _friends;
@@ -98,10 +119,39 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     _pendingRequests = [
       {'id': 101, 'name': 'Chris Lee', 'sign': 'Capricorn', 'color1': AppColors.cosmicPurple, 'color2': AppColors.electricYellow},
     ];
+    
+    // Fetch friend suggestions
+    _loadFriendSuggestions();
+  }
+  
+  Future<void> _loadFriendSuggestions() async {
+    if (_friends.isEmpty) return;
+    
+    setState(() => _isLoadingSuggestions = true);
+    
+    try {
+      final suggestions = await _apiService.getFriendSuggestions(
+        friends: _friends,
+        userId: 'default',
+      );
+      
+      if (mounted) {
+        setState(() {
+          _friendSuggestions = suggestions;
+          _isLoadingSuggestions = false;
+        });
+      }
+    } catch (e) {
+      print('[FriendSuggestions] Error: $e');
+      if (mounted) {
+        setState(() => _isLoadingSuggestions = false);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _stopBlend();
     _searchController.dispose();
     super.dispose();
   }
@@ -226,25 +276,102 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     Navigator.pushNamed(context, '/friend-profile', arguments: friend);
   }
 
-  void _quickAlignFriend(FriendData friend) {
-    Navigator.pushNamed(context, '/align');
+  void _inviteFriends() {
+    Share.share(
+      '✨ Join me on Astro.FM! ✨\n\n'
+      'Discover your cosmic sound, align with friends, and vibe to AI-curated playlists based on your birth chart.\n\n'
+      '🌟 Download now and find your frequency: https://astro.fm/invite\n\n'
+      '#AstroFM #CosmicVibes',
+    );
+  }
+
+  /// Run alignment calculation for a friend
+  Future<void> _runFriendAlignment(FriendData friend) async {
+    // Stop any currently playing blend
+    _stopBlend();
+    
+    setState(() => _aligningFriendId = friend.id);
+    
+    try {
+      // Get user birth data from storage
+      final userBirthData = await _storageService.loadBirthData();
+      final userDatetime = userBirthData?.datetime ?? defaultTestBirthData['datetime'] as String;
+      final userLatitude = userBirthData?.latitude ?? defaultTestBirthData['latitude'] as double;
+      final userLongitude = userBirthData?.longitude ?? defaultTestBirthData['longitude'] as double;
+      final userTimezone = userBirthData?.timezone ?? defaultTestBirthData['timezone'] as String;
+      
+      // Call Sound Signature alignment API for friend
+      final alignmentResult = await _apiService.getFriendSoundSignatureAlignment(
+        userDatetime: userDatetime,
+        userLatitude: userLatitude,
+        userLongitude: userLongitude,
+        userTimezone: userTimezone,
+        friendDatetime: friend.birthDatetime ?? '1992-03-21T14:30:00',
+        friendLatitude: friend.birthLatitude ?? 40.7128,
+        friendLongitude: friend.birthLongitude ?? -74.0060,
+        friendName: friend.name.split(' ')[0],
+      );
+      
+      if (mounted) {
+        setState(() {
+          _alignmentResults[friend.id] = alignmentResult;
+          _aligningFriendId = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _aligningFriendId = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Alignment failed: ${e.toString()}'),
+            backgroundColor: Colors.red.shade900,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
+  }
+  
+  /// Play the alignment blend audio
+  void _playBlend() {
+    if (_selectedFriend == null) return;
+    
+    final alignmentResult = _alignmentResults[_selectedFriend!.id];
+    if (alignmentResult == null) return;
+    
+    if (_isPlayingBlend) {
+      _stopBlend();
+      return;
+    }
+    
+    _audioService.playAlignmentSound(alignmentResult.sound);
+    setState(() => _isPlayingBlend = true);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.access_time_rounded, color: AppColors.cosmicPurple, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text('Starting alignment with ${friend.name}...', style: GoogleFonts.spaceGrotesk(color: Colors.white)),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.backgroundMid,
+        content: Text('🎵 Playing alignment meditation (${(alignmentResult.sound.suggestedDuration / 60).toStringAsFixed(0)} min)'),
+        backgroundColor: AppColors.teal,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+    
+    // Listen for playback completion
+    _audioService.playingStream.listen((isPlaying) {
+      if (!isPlaying && mounted && _isPlayingBlend) {
+        setState(() => _isPlayingBlend = false);
+      }
+    });
+  }
+  
+  /// Stop playing the blend audio
+  void _stopBlend() {
+    if (_isPlayingBlend) {
+      _audioService.stop();
+      setState(() => _isPlayingBlend = false);
+    }
   }
 
   @override
@@ -266,7 +393,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
               children: [
                 AppHeader(
                   showBackButton: false,
-                  showMenuButton: true,
+                  showMenuButton: false,
                   title: 'Connections',
                   rightAction: Container(
                     decoration: BoxDecoration(
@@ -299,6 +426,47 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                 if (friends.isEmpty) ...[
                   ConnectionsEmptyState(onAddFriend: _showAddFriendSheet),
                 ] else ...[
+                  // Friend Harmony Card ("Listen to Your Friends Blend")
+                  if (_isLoadingSuggestions || (_friendSuggestions != null && _friendSuggestions!.suggestions.isNotEmpty)) ...[
+                    FriendHarmonyCard(
+                      suggestion: _friendSuggestions?.suggestions.first ?? FriendHarmonySuggestion(
+                        friendId: 0,
+                        score: 0,
+                        glowColor: '#7D67FE',
+                        contextString: 'Loading...',
+                        harmonyType: 'lunar',
+                      ),
+                      friend: _friendSuggestions != null && _friendSuggestions!.suggestions.isNotEmpty
+                          ? _friends.firstWhere(
+                              (f) => f.id == _friendSuggestions!.suggestions.first.friendId,
+                              orElse: () => _friends.first,
+                            )
+                          : null,
+                      currentMoonSign: _friendSuggestions?.currentMoonSign ?? 'Loading',
+                      isLoading: _isLoadingSuggestions,
+                      onTap: () {
+                        if (_friendSuggestions != null && _friendSuggestions!.suggestions.isNotEmpty) {
+                          final suggestedFriend = _friends.firstWhere(
+                            (f) => f.id == _friendSuggestions!.suggestions.first.friendId,
+                            orElse: () => _friends.first,
+                          );
+                          setState(() => _selectedFriend = suggestedFriend);
+                        }
+                      },
+                      onAlignTap: () {
+                        if (_friendSuggestions != null && _friendSuggestions!.suggestions.isNotEmpty) {
+                          final suggestedFriend = _friends.firstWhere(
+                            (f) => f.id == _friendSuggestions!.suggestions.first.friendId,
+                            orElse: () => _friends.first,
+                          );
+                          setState(() => _selectedFriend = suggestedFriend);
+                          _runFriendAlignment(suggestedFriend);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  
                   // Constellation Map Section Header
                   Row(
                     children: [
@@ -332,9 +500,17 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                       friend: _selectedFriend!,
                       connectedFriends: _getConnectedFriends(_selectedFriend!),
                       onProfileTap: () => _navigateToFriendProfileFromData(_selectedFriend!),
-                      onAlignTap: () => _quickAlignFriend(_selectedFriend!),
+                      onAlignTap: () => _runFriendAlignment(_selectedFriend!),
                       onConnectedFriendTap: (friend) => setState(() => _selectedFriend = friend),
+                      alignmentResult: _alignmentResults[_selectedFriend!.id],
+                      isAligning: _aligningFriendId == _selectedFriend!.id,
+                      isPlayingBlend: _isPlayingBlend,
+                      onPlayBlendTap: _playBlend,
                     ),
+                  
+                  // Invite Friends CTA
+                  const SizedBox(height: 24),
+                  _buildInviteFriendsCta(),
                 ],
               ],
             ),
@@ -458,6 +634,71 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInviteFriendsCta() {
+    return GestureDetector(
+      onTap: _inviteFriends,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.cosmicPurple.withAlpha(51),
+              AppColors.hotPink.withAlpha(38),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.hotPink.withAlpha(51)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.cosmicPurple, AppColors.hotPink],
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.share_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Invite Friends',
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Share your cosmic link & grow your constellation',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      color: Colors.white.withAlpha(153),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: Colors.white.withAlpha(102),
+            ),
+          ],
+        ),
       ),
     );
   }

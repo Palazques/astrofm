@@ -578,3 +578,39 @@ class TransitAlignmentResponse(BaseModel):
     gap_count: int = Field(..., ge=0, description="Number of major gaps (Mars-Pluto)")
     resonance_count: int = Field(..., ge=0, description="Number of major resonances")
     is_major_life_shift: bool = Field(False, description="True if 3+ planets are in tight aspect with an anchor planet")
+
+
+# Friend Harmony Suggestions Models (for "Listen to Your Friends Blend")
+
+class FriendDataForSuggestion(BaseModel):
+    """Friend data required for harmony suggestion calculation."""
+    id: int = Field(..., description="Friend's unique ID")
+    name: str = Field(..., description="Friend's display name")
+    sun_sign: str = Field(..., description="Friend's natal Sun sign")
+    moon_sign: Optional[str] = Field(None, description="Friend's natal Moon sign (optional)")
+    rising_sign: Optional[str] = Field(None, description="Friend's rising sign (optional)")
+    avatar_colors: Optional[list[int]] = Field(None, description="Avatar gradient color hex values")
+
+
+class FriendSuggestionsRequest(BaseModel):
+    """Request model for friend alignment suggestions."""
+    user_id: str = Field(default="default", description="User ID for caching")
+    friends: list[FriendDataForSuggestion] = Field(..., description="List of friends to analyze")
+    force_refresh: bool = Field(default=False, description="Bypass cache if True")
+
+
+class FriendHarmonySuggestion(BaseModel):
+    """A single friend harmony suggestion."""
+    friend_id: int = Field(..., description="Friend's unique ID")
+    score: int = Field(..., ge=0, le=100, description="Harmony score 0-100")
+    glow_color: str = Field(..., description="Hex color for UI glow effect")
+    context_string: str = Field(..., description="Human-readable reason for suggestion")
+    harmony_type: str = Field(..., description="Type: 'lunar', 'transit', or 'mixed'")
+
+
+class FriendSuggestionsResponse(BaseModel):
+    """Response model for friend alignment suggestions."""
+    suggestions: list[FriendHarmonySuggestion] = Field(..., description="Top 3 friend suggestions")
+    current_moon_sign: str = Field(..., description="Current Moon sign for context")
+    refresh_at: str = Field(..., description="Next refresh time (ISO format)")
+    from_cache: bool = Field(default=False, description="True if returned from cache")

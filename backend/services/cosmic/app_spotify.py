@@ -173,7 +173,7 @@ class AppSpotifyService:
             f"{self.client_id}:{self.client_secret}".encode()
         ).decode()
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 SPOTIFY_TOKEN_URL,
                 headers={
@@ -206,7 +206,7 @@ class AppSpotifyService:
         
         token = await self.get_access_token()
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{SPOTIFY_API_BASE}/me",
                 headers={"Authorization": f"Bearer {token}"},
@@ -235,7 +235,7 @@ class AppSpotifyService:
         """
         token = await self.get_access_token()
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{SPOTIFY_API_BASE}/search",
                 headers={"Authorization": f"Bearer {token}"},
@@ -275,7 +275,8 @@ class AppSpotifyService:
         token = await self.get_access_token()
         user_id = await self.get_user_id()
         
-        async with httpx.AsyncClient() as client:
+        print(f"[AppSpotify] Creating playlist: {name}")
+        async with httpx.AsyncClient(timeout=30.0) as client:
             # Create empty playlist
             response = await client.post(
                 f"{SPOTIFY_API_BASE}/users/{user_id}/playlists",

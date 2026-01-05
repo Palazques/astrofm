@@ -93,6 +93,10 @@ class VibeParameters(BaseModel):
         max_length=500,
         description="2-3 sentence description of cosmic weather"
     )
+    genres: List[str] = Field(
+        default_factory=list,
+        description="Musical genres mapping to this vibe"
+    )
     
     @field_validator('target_energy', 'target_valence', 'intensity_range')
     @classmethod

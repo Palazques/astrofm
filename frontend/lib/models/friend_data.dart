@@ -14,6 +14,7 @@ class FriendData {
   final String status; // 'online' or 'offline'
   final String? lastAligned;
   final List<String>? mutualPlanets;
+  final String? currentMood; // Current emotional state for Cosmic Connection display
   
   // Birth data for API synastry calculations
   final String? birthDatetime;    // ISO format
@@ -36,6 +37,7 @@ class FriendData {
     this.status = 'online',
     this.lastAligned,
     this.mutualPlanets,
+    this.currentMood,
     this.birthDatetime,
     this.birthLatitude,
     this.birthLongitude,
@@ -84,6 +86,7 @@ class FriendData {
       status: json['status'] as String? ?? 'offline',
       lastAligned: json['last_aligned'] as String?,
       mutualPlanets: (json['mutual_planets'] as List?)?.cast<String>(),
+      currentMood: json['current_mood'] as String?,
       birthDatetime: json['birth_datetime'] as String?,
       birthLatitude: (json['birth_latitude'] as num?)?.toDouble(),
       birthLongitude: (json['birth_longitude'] as num?)?.toDouble(),
@@ -107,6 +110,7 @@ class FriendData {
     'status': status,
     'last_aligned': lastAligned,
     'mutual_planets': mutualPlanets,
+    'current_mood': currentMood,
     'birth_datetime': birthDatetime,
     'birth_latitude': birthLatitude,
     'birth_longitude': birthLongitude,
@@ -136,6 +140,7 @@ class FriendData {
       modality: 'Mutable',
       compatibilityScore: compatibility,
       status: status,
+      currentMood: 'Reflective',
     );
   }
 }

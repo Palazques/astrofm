@@ -465,7 +465,8 @@ def calculate_vibe_parameters(
     natal_chart: dict,
     current_datetime: datetime,
     latitude: float,
-    longitude: float
+    longitude: float,
+    genre_preferences: List[str] = None
 ) -> VibeParameters:
     """
     Main function: Calculate playlist vibe parameters from chart and transits.
@@ -607,5 +608,6 @@ def calculate_vibe_parameters(
         intensity_range=intensity_range,
         time_of_day=time_of_day,
         modality_preference=modality_preference,
-        cosmic_weather_summary=cosmic_weather_summary
+        cosmic_weather_summary=cosmic_weather_summary,
+        genres=genre_preferences or []
     )
