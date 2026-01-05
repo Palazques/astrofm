@@ -15,8 +15,6 @@ if sys.platform == 'win32':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # CRITICAL: Load environment variables BEFORE importing routes
-# Routes import AIService which reads keys at instantiation time
-# Use explicit path to ensure .env is found regardless of working directory
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
@@ -35,54 +33,37 @@ from api.routes.attunement import router as attunement_router
 from api.routes.prescription import router as prescription_router
 from api.routes.user_library import router as user_library_router
 from api.routes.cosmic_playlist import router as cosmic_router
+from api.routes.discover import router as discover_router
 from models.schemas import HealthResponse
 from services.ephemeris import init_ephemeris, check_ephemeris_available
 
-# API version
 API_VERSION = "0.1.0"
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifespan handler for startup/shutdown events.
-    """
     # Startup: Initialize Swiss Ephemeris
-    ephe_path = os.getenv("EPHE_PATH")
-    init_ephemeris(ephe_path)
-    print(f"[*] Astro.FM Backend v{API_VERSION} started")
-    print(f"[*] Swiss Ephemeris initialized: {check_ephemeris_available()}")
-    
+    init_ephemeris()
     yield
-    
-    # Shutdown
-    print("[*] Astro.FM Backend shutting down")
+    # Shutdown logic if needed
+    pass
 
-
-# Create FastAPI app
 app = FastAPI(
     title="Astro.FM API",
-    description="Backend API for astrological calculations and data sonification",
+    description="Astrological calculation and interpretation engine",
     version=API_VERSION,
     lifespan=lifespan
 )
 
-# Configure CORS for Flutter app communication
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",      # Flutter web dev
-        "http://localhost:8080",      # Alternative Flutter web
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8080",
-        "*"  # Allow all for development - restrict in production
-    ],
+    allow_origins=["*"],  # Adjust in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
+# Include all routers (prefixes are handled within the routers themselves)
 app.include_router(charts_router)
 app.include_router(geocoding_router)
 app.include_router(sonification_router)
@@ -95,7 +76,7 @@ app.include_router(attunement_router)
 app.include_router(prescription_router)
 app.include_router(user_library_router)
 app.include_router(cosmic_router)
-
+app.include_router(discover_router)
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 async def health_check() -> HealthResponse:
@@ -108,7 +89,6 @@ async def health_check() -> HealthResponse:
         ephemeris_available=check_ephemeris_available()
     )
 
-
 @app.get("/", tags=["system"])
 async def root():
     """
@@ -120,7 +100,6 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
-
 
 if __name__ == "__main__":
     import uvicorn
