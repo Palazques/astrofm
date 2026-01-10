@@ -22,7 +22,7 @@ from services.alignment_sound import (
     generate_alignment_sound,
 )
 
-router = APIRouter(prefix="/api/sonification", tags=["sonification"])
+router = APIRouter(tags=["sonification"])
 
 
 @router.post("/user", response_model=ChartSonification)

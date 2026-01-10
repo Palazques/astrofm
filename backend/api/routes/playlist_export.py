@@ -19,7 +19,7 @@ from services.vibe_calculator import calculate_vibe_parameters
 from services.playlist_matcher import generate_playlist_from_dataset
 
 
-router = APIRouter(prefix="/api/playlist", tags=["playlist-export"])
+router = APIRouter(tags=["playlist-export"])
 
 
 # =============================================================================

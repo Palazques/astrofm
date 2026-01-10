@@ -19,7 +19,7 @@ from services.ephemeris import calculate_natal_chart
 from services.transits import get_transit_summary, get_detailed_transit_summary
 
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(tags=["ai"])
 
 
 @router.post("/daily-reading", response_model=DailyReadingResponse)

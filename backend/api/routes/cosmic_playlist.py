@@ -25,7 +25,7 @@ from models.cosmic_models import (
 )
 
 
-router = APIRouter(prefix="/api/cosmic", tags=["cosmic-playlist"])
+router = APIRouter(tags=["cosmic-playlist"])
 
 
 # =============================================================================

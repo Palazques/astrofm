@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from services.spotify_service import get_spotify_service, SpotifyTokens
 
 
-router = APIRouter(prefix="/api/spotify", tags=["spotify"])
+router = APIRouter(tags=["spotify"])
 
 
 # =============================================================================

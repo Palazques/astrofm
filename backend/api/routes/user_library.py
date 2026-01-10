@@ -13,7 +13,7 @@ from services.user_library_db import get_stats, get_total_tracks
 from services.features_backfill_service import backfill_pending_features
 
 
-router = APIRouter(prefix="/api/user-library", tags=["user-library"])
+router = APIRouter(tags=["user-library"])
 
 
 class SpotifySyncRequest(BaseModel):

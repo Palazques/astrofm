@@ -10,10 +10,12 @@ import 'discover_screen.dart';
 /// Controller to switch tabs from child screens.
 class MainShellController extends InheritedWidget {
   final void Function(String tab) switchTab;
+  final String activeTab;
 
   const MainShellController({
     super.key,
     required this.switchTab,
+    required this.activeTab,
     required super.child,
   });
 
@@ -22,7 +24,8 @@ class MainShellController extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(MainShellController oldWidget) => false;
+  bool updateShouldNotify(MainShellController oldWidget) => 
+      activeTab != oldWidget.activeTab;
 }
 
 /// Main app shell with bottom navigation.
@@ -63,6 +66,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return MainShellController(
       switchTab: _switchTab,
+      activeTab: _activeTab,
       child: Scaffold(
         body: Container(
           decoration: const BoxDecoration(

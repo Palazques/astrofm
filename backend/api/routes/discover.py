@@ -16,7 +16,7 @@ from services.event_service import (
 )
 from services.seasonal_guidance import get_seasonal_guidance, SeasonalGuidance
 
-router = APIRouter(prefix="/api/discover", tags=["discover"])
+router = APIRouter(tags=["discover"])
 event_service = EventService()
 
 

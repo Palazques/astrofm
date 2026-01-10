@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
@@ -45,6 +46,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   Map<int, AlignmentResponse> _alignmentResults = {};
   int? _aligningFriendId;
   bool _isPlayingBlend = false;
+  StreamSubscription<bool>? _playingSubscription;
   
   // Friend suggestions state ("Listen to Your Friends Blend")
   FriendSuggestionsResponse? _friendSuggestions;
@@ -150,8 +152,23 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Stop audio when navigating away from the friends tab
+    final controller = MainShellController.of(context);
+    if (controller != null && controller.activeTab != 'friends') {
+      // User navigated away from friends tab - stop any playing audio
+      if (_isPlayingBlend) {
+        _stopBlend();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _stopBlend();
+    _playingSubscription?.cancel();
+    _playingSubscription = null;
     _searchController.dispose();
     super.dispose();
   }
@@ -358,8 +375,11 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
       ),
     );
     
+    // Cancel any existing subscription before creating a new one
+    _playingSubscription?.cancel();
+    
     // Listen for playback completion
-    _audioService.playingStream.listen((isPlaying) {
+    _playingSubscription = _audioService.playingStream.listen((isPlaying) {
       if (!isPlaying && mounted && _isPlayingBlend) {
         setState(() => _isPlayingBlend = false);
       }
@@ -368,9 +388,15 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   
   /// Stop playing the blend audio
   void _stopBlend() {
+    _playingSubscription?.cancel();
+    _playingSubscription = null;
     if (_isPlayingBlend) {
       _audioService.stop();
-      setState(() => _isPlayingBlend = false);
+      if (mounted) {
+        setState(() => _isPlayingBlend = false);
+      } else {
+        _isPlayingBlend = false;
+      }
     }
   }
 

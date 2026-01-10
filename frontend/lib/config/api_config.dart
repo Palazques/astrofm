@@ -28,6 +28,7 @@ class ApiConfig {
   // Attunement endpoints
   static const String attunementAnalyzeEndpoint = '/api/attunement/analyze';
   static const String attunementWeeklyDigestEndpoint = '/api/attunement/weekly-digest';
+  static const String attunementSoundRecommendationsEndpoint = '/api/attunement/sound-recommendations';
   
   // Spotify endpoints
   static const String spotifyAuthUrlEndpoint = '/api/spotify/auth-url';

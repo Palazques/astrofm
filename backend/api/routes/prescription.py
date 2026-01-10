@@ -18,7 +18,7 @@ from models.prescription_schemas import (
 from services.prescription_service import calculate_prescription
 from services.ai_service import get_ai_service
 
-router = APIRouter(prefix="/api/prescription", tags=["prescription"])
+router = APIRouter(tags=["prescription"])
 
 
 @router.post("/cosmic", response_model=CosmicPrescription)

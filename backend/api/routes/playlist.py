@@ -11,7 +11,7 @@ from services.ephemeris import calculate_natal_chart
 from services.vibe_calculator import calculate_vibe_parameters
 from services.playlist_matcher import generate_playlist, generate_blended_playlist
 
-router = APIRouter(prefix="/api/playlist", tags=["playlist"])
+router = APIRouter(tags=["playlist"])
 
 
 @router.post("/generate", response_model=PlaylistResult)

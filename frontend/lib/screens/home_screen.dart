@@ -4,11 +4,9 @@ import 'package:share_plus/share_plus.dart';
 import '../config/design_tokens.dart';
 import 'main_shell.dart';
 import '../widgets/app_header.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/daily_sound_wheel/daily_sound_wheel.dart';
 import '../widgets/birth_chart_wheel/birth_chart_wheel.dart';
 import '../widgets/skeleton_loader.dart';
-import '../widgets/inline_error.dart';
 import '../services/audio_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -16,8 +14,15 @@ import '../services/session_cache_service.dart';
 import '../models/sonification.dart';
 import '../models/ai_responses.dart';
 import '../models/birth_data.dart';
+import '../models/sound_recommendation.dart';
 import '../services/playlist_service.dart';
+import '../widgets/sound_recommendation_card.dart';
 import '../data/test_users.dart';
+// New modular components
+import '../widgets/home/daily_essence_card.dart';
+import '../widgets/home/full_reading_modal.dart';
+import '../widgets/home/mode_toggle.dart';
+import '../widgets/home/cta_button_group.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -40,14 +45,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _readingError;
   bool _isLoadingSonification = true;
   
+  // Sound recommendations
+  SoundRecommendationsResponse? _soundRecommendations;
+  bool _isLoadingRecommendations = false;
+  
   // Chart mode toggle: 'my_chart' or 'sky_mode'
   String _chartMode = 'my_chart';
-  
-  // Carousel state for Today's Reading (Old) - Removed as redundant with new card layout
-  
-
-  
-
   
   // Birth data from storage (or fallback to test data)
   BirthData? _birthData;
@@ -98,8 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
-  // alignmentScore is now dynamic from _alignmentScore state variable
-
   @override
   void initState() {
     super.initState();
@@ -112,7 +113,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _audioService.playingStream.listen((isPlaying) {
       if (mounted && !isPlaying) {
         setState(() {
-          // _isPlayingUserSound is removed
           _isPlayingDailySound = false;
         });
       }
@@ -143,10 +143,10 @@ class _HomeScreenState extends State<HomeScreen> {
     
     // Load sonification data
     _loadSonificationData();
+    
+    // Load sound recommendations (in parallel)
+    _loadSoundRecommendations();
   }
-  
-
-
 
   @override
   void dispose() {
@@ -202,7 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isLoadingSonification = false);
       }
     }
-    // Note: _loadDailyReading is now called independently in _loadBirthDataAndInit
   }
   
   Future<void> _loadDailyReading() async {
@@ -250,8 +249,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
-
   void _shareHoroscope() {
     if (_dailyReading == null) return;
     
@@ -284,7 +281,6 @@ ${reading.horoscope}
       _audioService.playChartSound(_dailySonification!);
       setState(() {
         _isPlayingDailySound = true;
-        // _isPlayingUserSound is removed
       });
     }
   }
@@ -304,12 +300,37 @@ ${reading.horoscope}
             ),
             const SizedBox(height: 16),
 
-            // Today's Resonance (Daily Reading at top)
-            _buildTodaysResonance(),
+            // Compact Daily Essence Card (collapsible horoscope)
+            DailyEssenceCard(
+              reading: _dailyReading,
+              isLoading: _isLoadingReading,
+              error: _readingError,
+              onRetry: _loadDailyReading,
+              onExpand: () {
+                if (_dailyReading != null) {
+                  FullReadingModal.show(
+                    context, 
+                    _dailyReading!,
+                    onShare: _shareHoroscope,
+                  );
+                }
+              },
+              onShare: _shareHoroscope,
+            ),
+            const SizedBox(height: 20),
+
+            // CTA Buttons (elevated position - above the fold)
+            CtaButtonGroup(
+              onAlignTap: () => MainShellController.of(context)?.switchTab('align'),
+              onDiscoverTap: () => MainShellController.of(context)?.switchTab('soundscape'),
+            ),
             const SizedBox(height: 24),
 
             // Mode Toggle
-            _buildModeToggle(),
+            ChartModeToggle(
+              activeMode: _chartMode,
+              onModeChanged: (mode) => setState(() => _chartMode = mode),
+            ),
             const SizedBox(height: 20),
 
             // Sound/Chart Section based on mode
@@ -318,86 +339,12 @@ ${reading.horoscope}
             else
               _buildSoundOrbsSection(),
             const SizedBox(height: 20),
-
-            // CTA Buttons
-            _buildCtaButtons(),
+            
+            // Simplified Sound Recommendation (primary only)
+            if (_soundRecommendations != null)
+              _buildSoundRecommendationSection(),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildModeToggle() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withAlpha(20)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _chartMode = 'my_chart'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _chartMode == 'my_chart' 
-                      ? AppColors.cosmicPurple.withAlpha(77) 
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(26),
-                  border: _chartMode == 'my_chart' 
-                      ? Border.all(color: AppColors.cosmicPurple.withAlpha(128)) 
-                      : null,
-                ),
-                child: Center(
-                  child: Text(
-                    'MY CHART',
-                    style: GoogleFonts.syne(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _chartMode == 'my_chart' 
-                          ? Colors.white 
-                          : Colors.white.withAlpha(128),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _chartMode = 'sky_mode'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _chartMode == 'sky_mode' 
-                      ? AppColors.electricYellow.withAlpha(77) 
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(26),
-                  border: _chartMode == 'sky_mode' 
-                      ? Border.all(color: AppColors.electricYellow.withAlpha(128)) 
-                      : null,
-                ),
-                child: Center(
-                  child: Text(
-                    'SKY MODE',
-                    style: GoogleFonts.syne(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _chartMode == 'sky_mode' 
-                          ? Colors.white 
-                          : Colors.white.withAlpha(128),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -542,467 +489,67 @@ ${reading.horoscope}
     );
   }
 
-
-
-  Widget _buildCtaButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: _CtaButton(
-            label: 'Align Now',
-            icon: Icons.access_time_rounded,
-            gradient: const LinearGradient(
-              colors: [AppColors.cosmicPurple, AppColors.hotPink],
-            ),
-            onPressed: () => MainShellController.of(context)?.switchTab('align'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _CtaButton(
-            label: 'Discover',
-            icon: Icons.music_note_rounded,
-            gradient: const LinearGradient(
-              colors: [AppColors.electricYellow, Color(0xFFE5EB0D)],
-            ),
-            textColor: AppColors.background,
-            onPressed: () => MainShellController.of(context)?.switchTab('soundscape'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTodaysResonance() {
-    // Show error state with retry
-    if (_readingError != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildReadingHeader(),
-          const SizedBox(height: 12),
-          GlassCard(
-            child: InlineError(
-              message: _readingError!,
-              onRetry: _loadDailyReading,
-            ),
-          ),
-        ],
+  Future<void> _loadSoundRecommendations() async {
+    if (_isLoadingRecommendations) return;
+    
+    setState(() => _isLoadingRecommendations = true);
+    
+    try {
+      final recommendations = await _apiService.getSoundRecommendations(
+        datetime: _birthDataMap['datetime'] as String,
+        latitude: _birthDataMap['latitude'] as double,
+        longitude: _birthDataMap['longitude'] as double,
+        timezone: _birthDataMap['timezone'] as String,
       );
+      
+      if (mounted) {
+        setState(() {
+          _soundRecommendations = recommendations;
+          _isLoadingRecommendations = false;
+        });
+      }
+    } catch (e) {
+      // Silently fail - card just won't show
+      if (mounted) {
+        setState(() => _isLoadingRecommendations = false);
+      }
+    }
+  }
+  
+  Widget _buildSoundRecommendationSection() {
+    if (_soundRecommendations == null) {
+      return const SizedBox.shrink();
     }
     
-    // Show skeleton while loading
-    if (_isLoadingReading && _dailyReading == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildReadingHeader(),
-          const SizedBox(height: 12),
-          SkeletonLoader(
-            width: double.infinity,
-            height: 180,
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.white.withAlpha(15),
-          ),
-        ],
-      );
-    }
-    
-    // New horoscope-style card
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHoroscopeCard(),
-      ],
-    );
-  }
-  
-  /// Build the premium luxury horoscope card inspired by the latest design
-  Widget _buildHoroscopeCard() {
-    final reading = _dailyReading;
-    if (reading == null) {
-      return GlassCard(
-        child: Text(
-          'Connecting to the cosmos...',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 13,
-            height: 1.6,
-            color: Colors.white.withAlpha(179),
-          ),
-        ),
-      );
-    }
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0F),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withAlpha(20)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cosmicPurple.withAlpha(24),
-            blurRadius: 50,
-            spreadRadius: -10,
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // Background Glow Orb (Subtle)
-          Positioned(
-            top: -40,
-            right: -20,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.electricYellow.withAlpha(30),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header Row: DATE & SHARE
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.electricYellow,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'TODAY\'S READING',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 10,
-                            color: Colors.white.withAlpha(128),
-                            letterSpacing: 2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '•',
-                          style: TextStyle(color: Colors.white.withAlpha(77)),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatCurrentDate(),
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 10,
-                            color: Colors.white.withAlpha(102),
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () => _shareHoroscope(),
-                      child: const Icon(Icons.share_outlined, size: 14, color: Colors.white60),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // MAIN HEADLINE (Gradient)
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Colors.white, AppColors.electricYellow, AppColors.hotPink],
-                    stops: [0.0, 0.4, 1.0],
-                  ).createShader(bounds),
-                  child: Text(
-                    reading.headline.toUpperCase(),
-                    style: GoogleFonts.syne(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                
-                // SUBHEADLINE
-                Text(
-                  reading.subheadline,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 15,
-                    color: Colors.white.withAlpha(180),
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // TAGS / INFO PILLS
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildLuxuryInfoPill(
-                      '○', 
-                      reading.moonPhase, 
-                      AppColors.electricYellow
-                    ),
-                    if (reading.houseContext.isNotEmpty)
-                      _buildLuxuryInfoPill(
-                        '⬡', 
-                        reading.houseContext.split(' ').last, 
-                        AppColors.cosmicPurple
-                      ),
-                    _buildLuxuryInfoPill(
-                      '◈', 
-                      reading.dominantElement, 
-                      const Color(0xFF00B4D8)
-                    ),
-                    _buildLuxuryInfoPill(
-                      '◎', 
-                      reading.focusArea, 
-                      AppColors.hotPink
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // THE MESSAGE (HOROSCOPE)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.cosmicPurple.withAlpha(20),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.cosmicPurple.withAlpha(40)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('✦', style: TextStyle(color: AppColors.cosmicPurple)),
-                          const SizedBox(width: 8),
-                          Text(
-                            'THE MESSAGE',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.cosmicPurple,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        reading.horoscope,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14,
-                          color: Colors.white.withAlpha(200),
-                          height: 1.6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // TODAY'S MOVE (ADVICE)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.electricYellow.withAlpha(15),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.electricYellow.withAlpha(30)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('→', style: TextStyle(color: AppColors.electricYellow)),
-                          const SizedBox(width: 8),
-                          Text(
-                            'TODAY\'S MOVE',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.electricYellow,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '"${reading.actionableAdvice}"',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withAlpha(230),
-                          fontStyle: FontStyle.italic,
-                          height: 1.6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-
-                
-                // Cosmic weather technical footer
-                Text(
-                  reading.cosmicWeather,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    color: Colors.white.withAlpha(100),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-
-
-  /// Build the luxury version of the info pill
-  Widget _buildLuxuryInfoPill(String emoji, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withAlpha(40),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(80), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            emoji, 
-            style: TextStyle(
-              fontSize: emoji.length > 1 ? 10 : 12, 
-              color: color
-            )
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build the header row for Today's Reading section
-  Widget _buildReadingHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'TODAY\'S READING',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withAlpha(128),
-              letterSpacing: 2,
-            ),
-          ),
-          // Moon phase indicator from reading
-          if (_dailyReading != null)
-            Text(
-              _dailyReading!.moonPhaseEmoji,
-              style: const TextStyle(fontSize: 16),
-            ),
-        ],
-      ),
-    );
-  }
-  
-
-  
-
-}
-
-class _CtaButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Gradient gradient;
-  final Color textColor;
-  final VoidCallback? onPressed;
-
-  const _CtaButton({
-    required this.label,
-    required this.icon,
-    required this.gradient,
-    this.textColor = Colors.white,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: (gradient as LinearGradient).colors.first.withAlpha(77),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: textColor, size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  label,
-                  style: GoogleFonts.syne(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return SoundRecommendationCard(
+      recommendations: _soundRecommendations!,
+      onPrimaryTap: () {
+        // Play the primary recommendation sound
+        final primary = _soundRecommendations!.primaryRecommendation;
+        if (primary != null) {
+          _audioService.playFrequency(primary.frequency);
+        }
+      },
+      onLifeAreaSelect: (lifeAreaKey) async {
+        // Load specific life area recommendation
+        try {
+          final rec = await _apiService.getSoundRecommendationByLifeArea(
+            datetime: _birthDataMap['datetime'] as String,
+            latitude: _birthDataMap['latitude'] as double,
+            longitude: _birthDataMap['longitude'] as double,
+            lifeAreaKey: lifeAreaKey,
+            timezone: _birthDataMap['timezone'] as String,
+          );
+          // Play it
+          _audioService.playFrequency(rec.frequency);
+        } catch (e) {
+          // Silently handle
+        }
+      },
+      onSecondaryTap: (rec) {
+        // Play the tapped secondary recommendation
+        _audioService.playFrequency(rec.frequency);
+      },
     );
   }
 }

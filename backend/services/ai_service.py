@@ -337,10 +337,11 @@ For playlist parameters, include as JSON on a separate line:
         day_energy = current_transits.get('day_energy', 'Flowing')
         cosmic_weather_raw = current_transits.get('cosmic_weather', '')
         current_season = current_transits.get('sun_sign', 'Unknown')
+        all_planets = current_transits.get('planets', {})
         
         # Build aspects string for prompt
         if major_aspects:
-            aspects_text = "\n".join([f"- {a['planets']} {a['aspect']} (orb: {a['orb']}°)" for a in major_aspects[:4]])
+            aspects_text = "\n".join([f"- {a['planets']} {a['aspect']} (orb: {a['orb']}°)" for a in major_aspects[:5]])
         else:
             aspects_text = "- No major aspects today"
         
@@ -349,6 +350,41 @@ For playlist parameters, include as JSON on a separate line:
             retro_text = ", ".join(retrograde_planets) + " retrograde"
         else:
             retro_text = "No planets retrograde"
+        
+        # Determine the MOST SIGNIFICANT transit of the day (not just Moon)
+        # Priority: 1) Major aspects, 2) Retrogrades, 3) Moon phase extremes
+        primary_focus = ""
+        technical_detail = ""
+        
+        if major_aspects and len(major_aspects) > 0:
+            # Focus on the tightest/most significant aspect
+            top_aspect = major_aspects[0]
+            primary_focus = f"{top_aspect['planets']} {top_aspect['aspect']}"
+            technical_detail = f"The {top_aspect['planets']} {top_aspect['aspect']} (orb: {top_aspect['orb']}°) is today's dominant cosmic signal"
+        elif retrograde_planets:
+            # Focus on retrograde energy
+            primary_focus = f"{retrograde_planets[0]} Retrograde"
+            technical_detail = f"{retrograde_planets[0]} retrograde is reshaping {retrograde_planets[0].lower()}'s usual expression"
+        elif moon_phase in ["New Moon", "Full Moon", "First Quarter", "Last Quarter"]:
+            # Moon phase is significant only if it's a major phase
+            primary_focus = f"{moon_phase} in {moon_sign}"
+            technical_detail = f"The {moon_phase} in {moon_sign} marks a pivotal lunar moment"
+        else:
+            # Default to overall energy
+            primary_focus = f"{dominant_element} Energy Dominance"
+            technical_detail = f"Today's sky is saturated with {dominant_element} element energy"
+        
+        # Build planet positions summary (all planets, not just Moon)
+        planet_positions = []
+        for planet_name in ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]:
+            if planet_name in all_planets:
+                p_data = all_planets[planet_name]
+                p_sign = p_data.get('sign', 'Unknown')
+                is_rx = p_data.get('retrograde', False)
+                rx_marker = " ℞" if is_rx else ""
+                planet_positions.append(f"{planet_name} in {p_sign}{rx_marker}")
+        
+        planets_summary = ", ".join(planet_positions) if planet_positions else "Planetary data unavailable"
         
         # Life areas based on dominant aspects
         focus_areas = ["Self-Expression", "Relationships", "Career", "Inner World", 
@@ -362,13 +398,13 @@ For playlist parameters, include as JSON on a separate line:
         # Determine energy label context
         energy_label = "Volatility Index" if day_energy in ["Intense", "Powerful", "Dynamic"] else "Vitality Battery"
         
-        # Calculate house localization (where is the transiting moon in user's houses)
+        # Calculate house localization (optional context, not primary)
         house_context = ""
         user_asc = birth_chart.get("ascendant", 0)
         moon_data = current_transits.get("planets", {}).get("Moon", {})
         moon_lon = moon_data.get("longitude", 0)
         
-        if moon_lon:
+        if moon_lon and user_asc:
             asc_sign_index = int(user_asc // 30)
             moon_sign_index = int(moon_lon // 30)
             moon_house = (moon_sign_index - asc_sign_index) % 12 + 1
@@ -379,42 +415,56 @@ For playlist parameters, include as JSON on a separate line:
                 7: "Partnerships", 8: "Transformation", 9: "Expansion",
                 10: "Career & Reputation", 11: "Community", 12: "Inner World"
             }
-            house_context = f"The {moon_phase} occurs in your {moon_house}th house of {themes.get(moon_house, 'Life')}"
+            house_context = f"Moon transits your {moon_house}th house ({themes.get(moon_house, 'Life')})"
         
-        # Build the horoscope prompt
-        prompt = f"""Generate a daily horoscope for {sun_sign} based on TODAY'S cosmic weather.
+        # Build the horoscope prompt (rebalanced to emphasize ALL cosmic weather)
+        prompt = f"""Generate a daily horoscope for {sun_sign} based on TODAY'S OVERALL COSMIC WEATHER.
 
 TODAY'S SKY ({datetime.now(timezone.utc).strftime("%B %d, %Y")}):
-- Sun in {current_season} ({current_season} Season)
-- Moon: {moon_phase} in {moon_sign} ({moon_phase_percent}% illuminated)
-- Dominant Element: {dominant_element}
-- {retro_text}
-- Personal Context: {house_context}
+CURRENT PLANETARY POSITIONS:
+{planets_summary}
+
+MOON PHASE: {moon_phase} in {moon_sign} ({moon_phase_percent}% illuminated)
+
+DOMINANT COSMIC SIGNAL: {primary_focus}
+{retro_text}
 
 KEY PLANETARY ASPECTS TODAY:
 {aspects_text}
 
-OVERALL ENERGY: {day_energy} (Displaying as: {energy_label})
+OVERALL ENERGY: {day_energy}
+DOMINANT ELEMENT: {dominant_element}
+{f"PERSONAL CONTEXT: {house_context}" if house_context else ""}
+
+IMPORTANT: Focus on the MOST SIGNIFICANT cosmic event today. This could be:
+- A major planetary aspect (if present)
+- A retrograde planet's influence (if present)  
+- The Sun's seasonal energy in {current_season}
+- The dominant {dominant_element} element theme
+- The Moon phase (if it's a New/Full Moon or major phase)
+
+Do NOT default to only talking about the Moon unless it's truly the most significant transit today.
 
 Follow the "Event → Feeling → Action" framework:
-1. EVENT: Reflect TODAY'S specific transits (Moon sign, house placement, or aspects).
-2. FEELING: Speak to how {sun_sign} types will experience this energy emotionally.
-3. ACTION: Identify the "So What?" - a blunt, specific, behavioral check to take today.
+1. EVENT: Identify and explain the MOST SIGNIFICANT cosmic event today (aspect, retrograde, element dominance, or major Moon phase).
+2. FEELING: Speak to how {sun_sign} will experience this specific energy emotionally and practically.
+3. ACTION: Give a blunt, specific behavioral action for today.
 
 FORMAT (each on its own line):
-HEADLINE: [3-5 word punchy title. All caps vibe.]
-SUBHEADLINE: [One sentence explaining the technical activation, e.g. "The {moon_phase} Moon in your {moon_lon // 30}th house is a peak signal"]
-HOROSCOPE: [2-3 sentences. Explain the Event and Feeling (The Message). Be blunt.]
-ADVICE: [One specific action/behavior to take (Today's Move). No more than 15 words.]
+HEADLINE: [3-5 word punchy title reflecting today's PRIMARY cosmic event]
+SUBHEADLINE: [One sentence technical explanation of the main activation: "{technical_detail}"]
+HOROSCOPE: [2-3 sentences. Focus on the primary cosmic event and how it affects {sun_sign}. Be blunt and specific.]
+ADVICE: [One specific action/behavior to take. No more than 15 words.]
 FOCUS_AREA: [One area: Self-Expression, Relationships, Career, Inner World, Communication, Finances, Adventure, or Home Life]
-ENERGY_LEVEL: [1-100 based on the {energy_label}]
+ENERGY_LEVEL: [1-100 based on overall intensity]
 PLAYLIST_JSON: {{"bpm_min": int, "bpm_max": int, "energy": 0.0-1.0, "valence": 0.0-1.0, "genres": ["genre1", "genre2"], "key_mode": "major/minor"}}
 
 RULES:
 - TONE: Blunt, direct, existential (Co-Star style).
-- Reference technical placements naturally but explain their weight.
-- Synthesis: Explain how the {retro_text} interacts with today's {day_energy} energy.
-- Use "you" and "your" consistently."""
+- PRIORITIZE the most significant cosmic event, not just the Moon.
+- Synthesize multiple factors if they're equally important.
+- Use "you" and "your" consistently.
+- Be specific about which planetary energy is driving today."""
 
         response = self._generate_response(prompt)
         
@@ -463,24 +513,51 @@ RULES:
         
         # Fallbacks if parsing failed
         if not headline:
-            headline = f"{day_energy} {moon_phase}"
+            headline = primary_focus  # Use the primary cosmic focus, not just Moon
+        if not subheadline:
+            subheadline = technical_detail  # Use the technical detail we calculated
         if not horoscope:
-            horoscope = f"The {moon_phase} Moon in {moon_sign} brings {day_energy.lower()} energy today. As a {sun_sign}, lean into this rhythm rather than fighting it. Trust what feels right."
+            # Build a more comprehensive fallback based on what's happening
+            if major_aspects:
+                horoscope = f"Today's {major_aspects[0]['planets']} {major_aspects[0]['aspect']} brings {day_energy.lower()} energy. As a {sun_sign}, you'll feel this in how you {default_focus.lower()}. Pay attention to the signals."
+            elif retrograde_planets:
+                horoscope = f"With {retrograde_planets[0]} retrograde, today asks you to slow down and reconsider. As a {sun_sign}, this {day_energy.lower()} energy affects your {default_focus.lower()}. Trust the process."
+            else:
+                horoscope = f"The {dominant_element} element dominates today's sky, bringing {day_energy.lower()} energy. As a {sun_sign}, lean into this rhythm rather than fighting it. Trust what feels right."
         if not advice:
-            # Fallback advice based on energy
-            if day_energy in ["Intense", "Powerful", "Dynamic"]:
+            # Fallback advice based on primary focus
+            if major_aspects:
+                advice = "Pay attention to how relationships and dynamics shift today."
+            elif retrograde_planets:
+                advice = "Review, revise, and reconsider before moving forward."
+            elif day_energy in ["Intense", "Powerful", "Dynamic"]:
                 advice = "Take a moment to breathe before reacting to external pressure."
             else:
                 advice = "Move with the flow of today's natural rhythm."
         
-        # Build clean cosmic weather string
-        cosmic_weather = f"{moon_phase} Moon in {moon_sign}. {retro_text}."
-        if major_aspects:
-            cosmic_weather += f" {major_aspects[0]['planets']} {major_aspects[0]['aspect']}."
+        # Build comprehensive cosmic weather string (not Moon-centric)
+        cosmic_weather_parts = []
+        
+        # Start with the most significant element
+        if major_aspects and len(major_aspects) > 0:
+            cosmic_weather_parts.append(f"{major_aspects[0]['planets']} {major_aspects[0]['aspect']}")
+        
+        # Add Moon phase
+        cosmic_weather_parts.append(f"{moon_phase} Moon in {moon_sign}")
+        
+        # Add retrogrades if present
+        if retrograde_planets:
+            cosmic_weather_parts.append(retro_text)
+        
+        # Add second aspect if present
+        if major_aspects and len(major_aspects) > 1:
+            cosmic_weather_parts.append(f"{major_aspects[1]['planets']} {major_aspects[1]['aspect']}")
+        
+        cosmic_weather = ". ".join(cosmic_weather_parts) + "."
         
         result = {
             "headline": headline,
-            "subheadline": subheadline or house_context,
+            "subheadline": subheadline or technical_detail,  # Use technical detail, not just Moon house context
             "horoscope": horoscope,
             "actionable_advice": advice,
             "energy_label": energy_label,

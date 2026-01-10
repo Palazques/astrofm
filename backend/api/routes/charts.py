@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import BirthDataRequest, NatalChartResponse, PlanetPosition
 from services.ephemeris import calculate_natal_chart
 
-router = APIRouter(prefix="/api/charts", tags=["charts"])
+router = APIRouter(tags=["charts"])
 
 
 @router.post("/natal", response_model=NatalChartResponse)

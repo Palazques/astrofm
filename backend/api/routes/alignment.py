@@ -28,7 +28,7 @@ from services.alignment import (
 )
 from services.friend_harmony import get_friend_suggestions
 
-router = APIRouter(prefix="/api/alignment", tags=["alignment"])
+router = APIRouter(tags=["alignment"])
 
 
 @router.post("/daily", response_model=DailyAlignmentResponse)

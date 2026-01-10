@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 
 from services.geocoding import search_locations, LocationResult
 
-router = APIRouter(prefix="/api/geocode", tags=["geocoding"])
+router = APIRouter(tags=["geocoding"])
 
 
 @router.get("/search", response_model=list[LocationResult])

@@ -12,6 +12,7 @@ import '../models/prescription.dart';
 import '../models/zodiac_season_card.dart';
 import '../models/friend_harmony.dart';
 import '../models/friend_data.dart';
+import '../models/sound_recommendation.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -784,6 +785,82 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get weekly digest',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get personalized sound recommendations based on natal chart gaps and resonances.
+  /// Returns planetary frequencies to listen to, with life area context.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [timezone] - Timezone name (default: UTC)
+  Future<SoundRecommendationsResponse> getSoundRecommendations({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.attunementSoundRecommendationsEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return SoundRecommendationsResponse.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get sound recommendations',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get sound recommendation for a specific life area.
+  ///
+  /// [datetime] - Birth date and time in ISO format
+  /// [latitude] - Birth location latitude
+  /// [longitude] - Birth location longitude
+  /// [lifeAreaKey] - Life area key (e.g., "career_purpose", "partnerships")
+  /// [timezone] - Timezone name (default: UTC)
+  Future<SoundRecommendation> getSoundRecommendationByLifeArea({
+    required String datetime,
+    required double latitude,
+    required double longitude,
+    required String lifeAreaKey,
+    String timezone = 'UTC',
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.attunementSoundRecommendationsEndpoint}/by-life-area'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'datetime': datetime,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone,
+            'life_area_key': lifeAreaKey,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return SoundRecommendation.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get life area recommendation',
         statusCode: response.statusCode,
       );
     }
