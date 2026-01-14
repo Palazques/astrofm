@@ -597,11 +597,11 @@ class _AlignScreenState extends State<AlignScreen> {
               end: Alignment.bottomRight,
               colors: [
                 const Color(0xFF1A1A2E),
-                color.withOpacity(0.15),
+                color.withAlpha(38),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withAlpha(77)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -633,7 +633,7 @@ class _AlignScreenState extends State<AlignScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]),
+                    gradient: LinearGradient(colors: [color, color.withAlpha(179)]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1609,6 +1609,7 @@ class _AlignScreenState extends State<AlignScreen> {
           gapCount: _attunementData!.gaps.length,
           resonanceCount: _attunementData!.resonances.length,
           dominantEnergy: _attunementData!.dominantGapEnergy,
+          backgroundImage: 'assets/images/card_backgrounds/alignment_dashboard_bg.png',
         ),
         const SizedBox(height: 16),
         

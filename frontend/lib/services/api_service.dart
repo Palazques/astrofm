@@ -13,6 +13,7 @@ import '../models/zodiac_season_card.dart';
 import '../models/friend_harmony.dart';
 import '../models/friend_data.dart';
 import '../models/sound_recommendation.dart';
+import '../models/seasonal_pulse.dart';
 
 /// Service for communicating with the backend API.
 class ApiService {
@@ -1235,6 +1236,26 @@ class ApiService {
       final error = jsonDecode(response.body);
       throw ApiException(
         message: error['detail'] ?? 'Failed to get zodiac season card',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  /// Get the current zodiac season's collective focus playlists.
+  ///
+  /// Returns globally shared themed playlists for the current season.
+  /// All users receive the same playlists for collective seasonal alignment.
+  Future<SeasonalPulseResponse> getSeasonalPulse() async {
+    final response = await _client
+        .get(Uri.parse('${ApiConfig.baseUrl}/api/cosmic/seasonal-pulse'))
+        .timeout(const Duration(seconds: 60));
+
+    if (response.statusCode == 200) {
+      return SeasonalPulseResponse.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        message: error['detail'] ?? 'Failed to get seasonal pulse',
         statusCode: response.statusCode,
       );
     }

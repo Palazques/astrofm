@@ -164,9 +164,9 @@ class _PrescribeTabState extends State<PrescribeTab> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withAlpha(26),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: Colors.red.withAlpha(77)),
       ),
       child: Column(
         children: [
@@ -194,7 +194,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
             ElevatedButton(
               onPressed: widget.onRetry,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.withOpacity(0.2),
+                backgroundColor: Colors.red.withAlpha(51),
               ),
               child: const Text('Retry'),
             ),
@@ -259,13 +259,13 @@ class _PrescribeTabState extends State<PrescribeTab> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF9333EA).withOpacity(0.15),
+            const Color(0xFF9333EA).withAlpha(38),
             const Color(0xFF1A1A2E),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF9333EA).withOpacity(0.3),
+          color: const Color(0xFF9333EA).withAlpha(77),
         ),
       ),
       child: Column(
@@ -276,7 +276,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
             rx.whatsHappening,
             style: GoogleFonts.spaceGrotesk(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withAlpha(230),
               height: 1.5,
             ),
           ),
@@ -287,7 +287,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
             rx.howItFeels,
             style: GoogleFonts.spaceGrotesk(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withAlpha(179),
               height: 1.5,
               fontStyle: FontStyle.italic,
             ),
@@ -298,10 +298,10 @@ class _PrescribeTabState extends State<PrescribeTab> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF9333EA).withOpacity(0.15),
+              color: const Color(0xFF9333EA).withAlpha(38),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF9333EA).withOpacity(0.3),
+                color: const Color(0xFF9333EA).withAlpha(77),
               ),
             ),
             child: Column(
@@ -331,7 +331,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
                   rx.whatItDoes,
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 13,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withAlpha(204),
                     height: 1.4,
                   ),
                 ),
@@ -375,14 +375,14 @@ class _PrescribeTabState extends State<PrescribeTab> {
                           colors: [Color(0xFF9333EA), Color(0xFF6366F1)],
                         )
                       : null,
-                  color: !isSelected ? Colors.white.withOpacity(0.05) : null,
+                  color: !isSelected ? Colors.white.withAlpha(13) : null,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected 
                         ? const Color(0xFF9333EA) 
                         : isRecommended 
-                            ? const Color(0xFF9333EA).withOpacity(0.5)
-                            : Colors.white.withOpacity(0.1),
+                            ? const Color(0xFF9333EA).withAlpha(128)
+                            : Colors.white.withAlpha(26),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -413,7 +413,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
                         margin: const EdgeInsets.only(top: 4),
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF9333EA).withOpacity(0.3),
+                          color: const Color(0xFF9333EA).withAlpha(77),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -457,7 +457,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
                     '♆',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withAlpha(179),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -479,9 +479,9 @@ class _PrescribeTabState extends State<PrescribeTab> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withAlpha(20),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withAlpha(26)),
             ),
             child: Row(
               children: [
@@ -541,12 +541,12 @@ class _PrescribeTabState extends State<PrescribeTab> {
                               colors: [Color(0xFF9333EA), Color(0xFF6366F1)],
                             )
                           : null,
-                      color: !isSelected ? Colors.white.withOpacity(0.05) : null,
+                      color: !isSelected ? Colors.white.withAlpha(13) : null,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected 
                             ? const Color(0xFF9333EA) 
-                            : Colors.white.withOpacity(0.1),
+                            : Colors.white.withAlpha(26),
                       ),
                     ),
                     child: Column(
@@ -596,7 +596,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
           boxShadow: [
             BoxShadow(
               color: (_isPlaying ? Colors.red : const Color(0xFF9333EA))
-                  .withOpacity(0.3),
+                  .withAlpha(77),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -634,7 +634,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withAlpha(13),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -665,7 +665,7 @@ class _PrescribeTabState extends State<PrescribeTab> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withAlpha(8),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(

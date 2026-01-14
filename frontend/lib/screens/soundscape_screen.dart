@@ -4,17 +4,28 @@ import '../config/design_tokens.dart';
 import '../widgets/app_header.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/inline_error.dart';
-import '../widgets/zodiac_season_card_widget.dart';
 import '../widgets/cosmic_wave_loader.dart';
+import '../widgets/focus_area_card.dart';
+import '../widgets/vibe_preview_sheet.dart';
 import '../services/api_service.dart';
-import '../services/storage_service.dart';
 import '../services/spotify_service.dart';
 import '../services/playlist_service.dart';
-import '../models/zodiac_season_card.dart';
+import '../services/storage_service.dart';
+import '../models/seasonal_pulse.dart';
 import '../models/birth_data.dart';
-import '../data/test_users.dart';
 
-/// Soundscape screen - the new Playlist Hub for music & curation.
+final playlistService = PlaylistService();
+final storageService = StorageService();
+
+const defaultTestBirthData = {
+  'datetime': '1995-03-15T14:30:00',
+  'latitude': 37.7749,
+  'longitude': -122.4194,
+  'timezone': 'America/Los_Angeles',
+};
+
+/// Soundscape screen - Cosmic Playlist Hub.
+/// Displays both personal daily playlists AND seasonal collective playlists.
 class SoundscapeScreen extends StatefulWidget {
   const SoundscapeScreen({super.key});
 
@@ -32,11 +43,11 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
   // User's genre preferences
   List<String> _userMainGenres = [];
   
-  // Zodiac Season Card state
-  ZodiacSeasonCardData? _zodiacSeasonCard;
-  bool _isLoadingSeasonCard = false;
-  String? _seasonCardError;
-  
+  // Seasonal pulse state
+  SeasonalPulseResponse? _seasonalPulse;
+  bool _isLoadingSeasonalPulse = false;
+  String? _seasonalPulseError;
+
   Map<String, dynamic> get _birthDataMap => _birthData != null 
     ? {
         'datetime': _birthData!.datetime,
@@ -82,40 +93,32 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       });
     }
     
-    // Load Zodiac Season Card
-    _loadZodiacSeasonCard();
+    // Load Seasonal Pulse
+    _loadSeasonalPulse();
   }
   
-  Future<void> _loadZodiacSeasonCard() async {
-    if (_isLoadingSeasonCard) return;
+  Future<void> _loadSeasonalPulse() async {
+    if (_isLoadingSeasonalPulse) return;
     
     setState(() {
-      _isLoadingSeasonCard = true;
-      _seasonCardError = null;
+      _isLoadingSeasonalPulse = true;
+      _seasonalPulseError = null;
     });
     
     try {
-      final card = await _apiService.getZodiacSeasonCard(
-        datetime: _birthDataMap['datetime'] as String,
-        latitude: _birthDataMap['latitude'] as double,
-        longitude: _birthDataMap['longitude'] as double,
-        timezone: _birthDataMap['timezone'] as String,
-        genrePreferences: _userMainGenres.isNotEmpty 
-            ? _userMainGenres 
-            : ['indie rock', 'electronic', 'pop'],
-      );
+      final pulse = await _apiService.getSeasonalPulse();
       
       if (mounted) {
         setState(() {
-          _zodiacSeasonCard = card;
-          _isLoadingSeasonCard = false;
+          _seasonalPulse = pulse;
+          _isLoadingSeasonalPulse = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _seasonCardError = 'Could not load season card';
-          _isLoadingSeasonCard = false;
+          _seasonalPulseError = 'Could not load seasonal focus';
+          _isLoadingSeasonalPulse = false;
         });
       }
     }
@@ -141,8 +144,6 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
   }
 
   Future<void> _generatePlaylist() async {
-    // Extract signs - in a real app, these would come from the birth chart data
-    // For now we'll use sun as the current sign and fallbacks for others
     String sunSign = _getCurrentZodiacSign();
     String moonSign = 'Pisces';
     String risingSign = 'Scorpio';
@@ -164,6 +165,31 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       await _spotifyService.openPlaylist(playlistService.spotifyPlaylistUrl!);
     }
   }
+  
+  Color _getElementColor() {
+    if (_seasonalPulse == null) return AppColors.cosmicPurple;
+    
+    // Parse the color from the API response
+    try {
+      final colorStr = _seasonalPulse!.color1;
+      if (colorStr.startsWith('#')) {
+        final hex = colorStr.substring(1);
+        return Color(int.parse('FF$hex', radix: 16));
+      }
+    } catch (e) {
+      // Fallback to default
+    }
+    
+    // Fallback based on element
+    final elementColors = {
+      'Fire': const Color(0xFFFF6B6B),
+      'Earth': const Color(0xFF2ECC71),
+      'Air': const Color(0xFF3498DB),
+      'Water': const Color(0xFF1ABC9C),
+    };
+    
+    return elementColors[_seasonalPulse!.element] ?? AppColors.cosmicPurple;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,32 +207,15 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Zodiac Season Card (Feature)
-            _buildZodiacSeasonCardSection(),
-            const SizedBox(height: 24),
-
-            // Cosmic Queue (Playlists)
+            // Your Cosmic Queue (Personal Daily Playlist)
             _buildCosmicQueue(),
+            const SizedBox(height: 32),
+
+            // Seasonal Focus (Collective Playlists)
+            _buildSeasonalFocusSection(),
           ],
         ),
       ),
-    );
-  }
-  
-  Widget _buildZodiacSeasonCardSection() {
-    return ZodiacSeasonCardWidget(
-      data: _zodiacSeasonCard,
-      isLoading: _isLoadingSeasonCard,
-      errorMessage: _seasonCardError,
-      onRetry: _loadZodiacSeasonCard,
-      onPlayPressed: () {
-        // Could trigger Spotify playback here
-      },
-      onOpenSpotify: () {
-        if (_zodiacSeasonCard?.playlistUrl != null) {
-          _spotifyService.openPlaylist(_zodiacSeasonCard!.playlistUrl!);
-        }
-      },
     );
   }
   
@@ -481,6 +490,201 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
           ),
         ],
       ),
+    );
+  }
+  
+  Widget _buildSeasonalFocusSection() {
+    // Loading state
+    if (_isLoadingSeasonalPulse) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Seasonal Focus',
+            style: GoogleFonts.syne(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const GlassCard(
+            padding: EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+            child: CosmicWaveLoader(),
+          ),
+        ],
+      );
+    }
+    
+    // Error state (but don't block the page)
+    // Error state
+    if (_seasonalPulseError != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Seasonal Focus',
+            style: GoogleFonts.syne(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassCard(
+            child: InlineError(
+              message: _seasonalPulseError!,
+              onRetry: _loadSeasonalPulse,
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // No data state
+    if (_seasonalPulse == null || _seasonalPulse!.themes.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _seasonalPulse != null 
+            ? _buildCompactSeasonHeader(_getElementColor())
+            : Text(
+                'Seasonal Focus',
+                style: GoogleFonts.syne(
+                  fontSize: 16,                                            
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+          const SizedBox(height: 12),
+          GlassCard(
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+            child: Column(
+              children: [
+                Icon(Icons.auto_awesome_outlined, size: 32, color: Colors.white.withAlpha(50)),
+                const SizedBox(height: 12),
+                Text(
+                  'Aligning with the cosmos...',
+                  style: GoogleFonts.spaceGrotesk(color: Colors.white.withAlpha(128)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // Seasonal focus with themed playlists
+    final elementColor = _getElementColor();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Compact season header
+        _buildCompactSeasonHeader(elementColor),
+        const SizedBox(height: 16),
+        
+        // Focus area grid
+        _buildFocusGrid(elementColor),
+      ],
+    );
+  }
+  
+  Widget _buildCompactSeasonHeader(Color elementColor) {
+    final pulse = _seasonalPulse!;
+    
+    return Row(
+      children: [
+        // Small orb with zodiac symbol
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                elementColor.withAlpha(80),
+                elementColor.withAlpha(40),
+              ],
+            ),
+            border: Border.all(color: elementColor.withAlpha(128)),
+            boxShadow: [
+              BoxShadow(
+                color: elementColor.withAlpha(60),
+                blurRadius: 12,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              pulse.symbol,
+              style: TextStyle(
+                fontSize: 24,
+                color: Colors.white.withAlpha(230),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        
+        // Season info
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Seasonal Focus',
+                style: GoogleFonts.syne(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                '${pulse.activeSign} • ${pulse.dateRange}',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 11,
+                  color: Colors.white.withAlpha(128),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildFocusGrid(Color elementColor) {
+    final themes = _seasonalPulse!.themes;
+    
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: themes.map((theme) {
+        return SizedBox(
+          width: (MediaQuery.of(context).size.width - 52) / 2, // 2 columns with padding
+          child: FocusAreaCard(
+            theme: theme,
+            elementColor: elementColor,
+            onTap: () => _showVibePreview(theme, elementColor),
+            backgroundImage: 'assets/images/card_backgrounds/focus_area_bg.png',
+          ),
+        );
+      }).toList(),
+    );
+  }
+  
+  void _showVibePreview(SeasonalTheme theme, Color elementColor) {
+    VibePreviewSheet.show(
+      context,
+      theme: theme,
+      elementColor: elementColor,
+      onOpenSpotify: () {
+        if (theme.playlistUrl != null && theme.playlistUrl!.isNotEmpty) {
+          _spotifyService.openPlaylist(theme.playlistUrl!);
+        }
+      },
     );
   }
 }

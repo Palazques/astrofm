@@ -46,13 +46,13 @@ class WheelPainter extends CustomPainter {
   }) {
     if (fill) {
       final fillPaint = Paint()
-        ..color = Colors.white.withOpacity(fillOpacity)
+        ..color = Colors.white.withValues(alpha: fillOpacity)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(center, radius, fillPaint);
     }
 
     final strokePaint = Paint()
-      ..color = Colors.white.withOpacity(opacity)
+      ..color = Colors.white.withValues(alpha: opacity)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     canvas.drawCircle(center, radius, strokePaint);
@@ -60,7 +60,7 @@ class WheelPainter extends CustomPainter {
 
   void _drawHouseDividers(Canvas canvas, Offset center) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = Colors.white.withAlpha(20)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -98,7 +98,7 @@ class WheelPainter extends CustomPainter {
         style: TextStyle(
           fontFamily: 'Space Grotesk',
           fontSize: 10,
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withAlpha(51),
         ),
       );
       textPainter.layout();

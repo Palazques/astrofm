@@ -276,6 +276,14 @@ class AppSpotifyService:
         user_id = await self.get_user_id()
         
         print(f"[AppSpotify] Creating playlist: {name}")
+        print(f"[AppSpotify] User ID: {user_id}")
+        payload = {
+            "name": name,
+            "description": description,
+            "public": public,
+        }
+        print(f"[AppSpotify] Payload: {payload}")
+        
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Create empty playlist
             response = await client.post(
@@ -284,11 +292,7 @@ class AppSpotifyService:
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "name": name,
-                    "description": description,
-                    "public": public,
-                },
+                json=payload,
             )
             
             if response.status_code not in (200, 201):

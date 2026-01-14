@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/attunement.dart';
+import 'background_image_card.dart';
 
 /// Map of planet names to their emoji representations.
 const Map<String, String> planetEmojis = {
@@ -53,12 +54,12 @@ class AttunementPlanetCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isSelected
-                ? [statusColor.withOpacity(0.3), statusColor.withOpacity(0.1)]
-                : [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.04)],
+                ? [statusColor.withAlpha(77), statusColor.withAlpha(26)]
+                : [Colors.white.withAlpha(20), Colors.white.withAlpha(10)],
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? statusColor : Colors.white.withOpacity(0.1),
+            color: isSelected ? statusColor : Colors.white.withAlpha(26),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -82,7 +83,7 @@ class AttunementPlanetCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
+                    color: statusColor.withAlpha(51),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -119,7 +120,7 @@ class AttunementPlanetCard extends StatelessWidget {
               planet.explanation,
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withAlpha(179),
                 height: 1.4,
               ),
             ),
@@ -130,7 +131,7 @@ class AttunementPlanetCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
+                  color: statusColor.withAlpha(38),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -173,7 +174,7 @@ class _IntensityComparisonRow extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withAlpha(128),
             ),
           ),
         ),
@@ -182,7 +183,7 @@ class _IntensityComparisonRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: percent / 100,
-              backgroundColor: Colors.white.withOpacity(0.1),
+              backgroundColor: Colors.white.withAlpha(26),
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 6,
             ),
@@ -193,7 +194,7 @@ class _IntensityComparisonRow extends StatelessWidget {
           '$percent%',
           style: TextStyle(
             fontSize: 11,
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withAlpha(153),
           ),
         ),
       ],
@@ -224,7 +225,7 @@ class AttunementDurationSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withAlpha(13),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -366,7 +367,7 @@ class _ModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = isEnabled ? color : color.withOpacity(0.3);
+    final effectiveColor = isEnabled ? color : color.withAlpha(77);
     
     return GestureDetector(
       onTap: onTap,
@@ -378,13 +379,13 @@ class _ModeButton extends StatelessWidget {
               ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [effectiveColor.withOpacity(0.4), effectiveColor.withOpacity(0.2)],
+                  colors: [effectiveColor.withAlpha(102), effectiveColor.withAlpha(51)],
                 )
               : null,
-          color: !isSelected ? Colors.white.withOpacity(0.05) : null,
+          color: !isSelected ? Colors.white.withAlpha(13) : null,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? effectiveColor : Colors.white.withOpacity(0.1),
+            color: isSelected ? effectiveColor : Colors.white.withAlpha(26),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -426,6 +427,8 @@ class AlignmentDashboardCard extends StatelessWidget {
   final int gapCount;
   final int resonanceCount;
   final String? dominantEnergy;
+  /// Optional background image asset path.
+  final String? backgroundImage;
 
   const AlignmentDashboardCard({
     super.key,
@@ -433,6 +436,7 @@ class AlignmentDashboardCard extends StatelessWidget {
     required this.gapCount,
     required this.resonanceCount,
     this.dominantEnergy,
+    this.backgroundImage,
   });
 
   @override
@@ -444,6 +448,90 @@ class AlignmentDashboardCard extends StatelessWidget {
             ? const Color(0xFFFFA726)
             : const Color(0xFFFF6B6B);
 
+    // Card content
+    final content = Column(
+      children: [
+        // Score display
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$alignmentScore',
+              style: TextStyle(
+                fontSize: 56,
+                fontWeight: FontWeight.bold,
+                color: scoreColor,
+                height: 1,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '%',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: scoreColor.withAlpha(179),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Cosmic Alignment',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.white.withAlpha(153),
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Stats row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _StatChip(
+              icon: '🔴',
+              label: '$gapCount Gap${gapCount != 1 ? 's' : ''}',
+              color: const Color(0xFFFF6B6B),
+            ),
+            const SizedBox(width: 16),
+            _StatChip(
+              icon: '🟢',
+              label: '$resonanceCount Resonance${resonanceCount != 1 ? 's' : ''}',
+              color: const Color(0xFF4ECDC4),
+            ),
+          ],
+        ),
+        
+        if (dominantEnergy != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Focus: $dominantEnergy',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withAlpha(128),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    // Wrap with appropriate card widget
+    if (backgroundImage != null) {
+      return BackgroundImageCard(
+        imagePath: backgroundImage,
+        borderRadius: 20,
+        borderColor: scoreColor.withAlpha(77),
+        padding: const EdgeInsets.all(20),
+        overlayOpacity: 0.5,
+        child: content,
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -451,86 +539,17 @@ class AlignmentDashboardCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            scoreColor.withOpacity(0.2),
-            Colors.black.withOpacity(0.3),
+            scoreColor.withAlpha(51),
+            Colors.black.withAlpha(77),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: scoreColor.withOpacity(0.3),
+          color: scoreColor.withAlpha(77),
           width: 1,
         ),
       ),
-      child: Column(
-        children: [
-          // Score display
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$alignmentScore',
-                style: TextStyle(
-                  fontSize: 56,
-                  fontWeight: FontWeight.bold,
-                  color: scoreColor,
-                  height: 1,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  '%',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: scoreColor.withOpacity(0.7),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Cosmic Alignment',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.6),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Stats row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StatChip(
-                icon: '🔴',
-                label: '$gapCount Gap${gapCount != 1 ? 's' : ''}',
-                color: const Color(0xFFFF6B6B),
-              ),
-              const SizedBox(width: 16),
-              _StatChip(
-                icon: '🟢',
-                label: '$resonanceCount Resonance${resonanceCount != 1 ? 's' : ''}',
-                color: const Color(0xFF4ECDC4),
-              ),
-            ],
-          ),
-          
-          if (dominantEnergy != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Focus: $dominantEnergy',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.5),
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ],
-      ),
+      child: content,
     );
   }
 }
@@ -552,7 +571,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withAlpha(38),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -578,14 +597,124 @@ class _StatChip extends StatelessWidget {
 /// Weekly digest card for Sound screen.
 class WeeklyDigestCard extends StatelessWidget {
   final WeeklyDigest digest;
+  /// Optional background image asset path.
+  final String? backgroundImage;
 
   const WeeklyDigestCard({
     super.key,
     required this.digest,
+    this.backgroundImage,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Card content
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            const Icon(Icons.calendar_today, color: Colors.purple, size: 18),
+            const SizedBox(width: 8),
+            const Text(
+              'Weekly Sound Digest',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.purple.withAlpha(51),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${digest.averageAlignment}% avg',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.purple,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Best and challenging days
+        Row(
+          children: [
+            Expanded(
+              child: _DayCard(
+                label: 'Best Day',
+                day: digest.bestDay,
+                score: digest.bestDayScore,
+                color: const Color(0xFF4ECDC4),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _DayCard(
+                label: 'Challenging',
+                day: digest.challengingDay,
+                score: digest.challengingDayScore,
+                color: const Color(0xFFFF6B6B),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // Summary
+        Text(
+          digest.summary,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white.withAlpha(179),
+            height: 1.4,
+          ),
+        ),
+        
+        // Common gaps
+        if (digest.commonGaps.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: digest.commonGaps.map((planet) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${planetEmojis[planet] ?? '⭐'} $planet',
+                style: const TextStyle(fontSize: 11, color: Colors.white70),
+              ),
+            )).toList(),
+          ),
+        ],
+      ],
+    );
+
+    // Wrap with appropriate card widget
+    if (backgroundImage != null) {
+      return BackgroundImageCard(
+        imagePath: backgroundImage,
+        borderRadius: 16,
+        borderColor: Colors.purple.withAlpha(77),
+        padding: const EdgeInsets.all(16),
+        overlayOpacity: 0.5,
+        child: content,
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -593,108 +722,16 @@ class WeeklyDigestCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.purple.withOpacity(0.2),
-            Colors.blue.withOpacity(0.1),
+            Colors.purple.withAlpha(51),
+            Colors.blue.withAlpha(26),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.purple.withOpacity(0.3),
+          color: Colors.purple.withAlpha(77),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, color: Colors.purple, size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Weekly Sound Digest',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${digest.averageAlignment}% avg',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.purple,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Best and challenging days
-          Row(
-            children: [
-              Expanded(
-                child: _DayCard(
-                  label: 'Best Day',
-                  day: digest.bestDay,
-                  score: digest.bestDayScore,
-                  color: const Color(0xFF4ECDC4),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _DayCard(
-                  label: 'Challenging',
-                  day: digest.challengingDay,
-                  score: digest.challengingDayScore,
-                  color: const Color(0xFFFF6B6B),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Summary
-          Text(
-            digest.summary,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.7),
-              height: 1.4,
-            ),
-          ),
-          
-          // Common gaps
-          if (digest.commonGaps.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: digest.commonGaps.map((planet) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${planetEmojis[planet] ?? '⭐'} $planet',
-                  style: const TextStyle(fontSize: 11, color: Colors.white70),
-                ),
-              )).toList(),
-            ),
-          ],
-        ],
-      ),
+      child: content,
     );
   }
 }
@@ -718,7 +755,7 @@ class _DayCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -728,7 +765,7 @@ class _DayCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: color.withOpacity(0.8),
+              color: color.withAlpha(204),
             ),
           ),
           const SizedBox(height: 4),

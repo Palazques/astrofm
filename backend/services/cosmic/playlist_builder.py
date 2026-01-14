@@ -207,6 +207,176 @@ class CosmicPlaylistBuilder:
                 error=str(e),
             )
     
+    async def generate_seasonal_playlist(
+        self,
+        sign: str,
+        element: str,
+        theme: str,
+        month: str,
+        genre_preferences: List[str],
+        target_tracks: int = 12,
+    ) -> CosmicPlaylistResult:
+        """
+        Generate a global seasonal playlist for a specific theme.
+        
+        This creates shared playlists for all users based on the collective
+        energy of the zodiac season and a specific life area theme.
+        
+        Args:
+            sign: Zodiac sign (e.g., "Capricorn")
+            element: Element (Fire, Earth, Air, Water)
+            theme: Life area theme (e.g., "Professional Legacy")
+            month: Month identifier for caching (e.g., "Jan_2026")
+            genre_preferences: Genres to incorporate
+            target_tracks: Number of tracks to include
+            
+        Returns:
+            CosmicPlaylistResult with playlist URL and track info
+        """
+        # Generate cache key (global, not user-specific)
+        cache_key = f"global_season_{sign.lower()}_{theme.lower().replace(' & ', '_').replace(' ', '_')}_{month}"
+        
+        # Check cache
+        if cache_key in _playlist_cache:
+            print(f"[PlaylistBuilder] Returning cached seasonal playlist: {cache_key}")
+            return _playlist_cache[cache_key]
+        
+        try:
+            print(f"[PlaylistBuilder] Generating seasonal playlist: {sign} - {theme}")
+            
+            # Import seasonal theme prompt generator
+            from services.seasonal_themes import generate_theme_prompt
+            
+            # Generate the music prompt using seasonal theme logic
+            prompt_text = generate_theme_prompt(
+                sign=sign,
+                element=element,
+                theme=theme,
+                genre_preferences=genre_preferences,
+            )
+            print(f"[PlaylistBuilder] Prompt generated: {prompt_text[:50]}...")
+            
+            # Convert to MusicPrompt format (properly matched to dataclass)
+            from .astro_to_music import MusicPrompt, ELEMENT_AUDIO_PROFILES
+            
+            # Get base profile for the element
+            profile = ELEMENT_AUDIO_PROFILES.get(element, ELEMENT_AUDIO_PROFILES["Fire"])
+            
+            music_prompt = MusicPrompt(
+                vibe_description=prompt_text,
+                mood_keywords=profile["keywords"] + [theme.lower()],
+                genres=genre_preferences,
+                energy_target=profile["energy"],
+                valence_target=profile["valence"],
+                tempo_range=profile["tempo"],
+            )
+            
+            # Step 2: Generate AI track suggestions
+            print(f"[PlaylistBuilder] Requesting track suggestions for {theme}...")
+            suggestions = await generate_track_suggestions(
+                music_prompt=music_prompt,
+                track_count=target_tracks + 3,  # Get a few extra for filtering
+            )
+            print(f"[PlaylistBuilder] Suggestions received: {len(suggestions) if suggestions else 0}")
+            
+            if not suggestions:
+                # Fallback to simple genre-based generation
+                print(f"[PlaylistBuilder] Main generation failed for seasonal, trying fallback...")
+                suggestions = await generate_fallback_tracks(
+                    genres=genre_preferences,
+                    count=target_tracks + 3,
+                )
+            
+            if not suggestions:
+                return CosmicPlaylistResult(
+                    success=False,
+                    playlist_url="",
+                    playlist_name="",
+                    track_count=0,
+                    vibe_summary="",
+                    tracks=[],
+                    sun_sign=sign,
+                    element=element,
+                    error="Could not generate track suggestions for seasonal theme",
+                )
+            
+            # Step 3: Resolve to Spotify tracks
+            resolved_tracks = await self.resolver.resolve_batch(
+                suggestions=suggestions,
+                target_count=target_tracks,
+            )
+            
+            if len(resolved_tracks) < 5:
+                return CosmicPlaylistResult(
+                    success=False,
+                    playlist_url="",
+                    playlist_name="",
+                    track_count=0,
+                    vibe_summary="",
+                    tracks=[],
+                    sun_sign=sign,
+                    element=element,
+                    error="Could not find enough tracks on Spotify for seasonal theme",
+                )
+
+            
+            # Step 4: Create playlist on app's Spotify account
+            playlist_name = f"{sign} Season: {theme}"
+            track_uris = [t.uri for t in resolved_tracks]
+            
+            # Sanitize description (remove newlines from prompt text)
+            clean_prompt = prompt_text[:120].replace("\n", " ").strip()
+            
+            playlist = await self.spotify.create_playlist(
+                name=playlist_name,
+                description=f"🌟 {clean_prompt}... | Global {sign} Season Playlist | Generated by Astro.fm",
+                track_uris=track_uris,
+                public=True,
+            )
+            
+            # Build result
+            result = CosmicPlaylistResult(
+                success=True,
+                playlist_url=playlist["url"],
+                playlist_name=playlist_name,
+                track_count=len(resolved_tracks),
+                vibe_summary=f"{element} energy for {theme.lower()}",
+                tracks=[
+                    {
+                        "name": t.name,
+                        "artist": t.artist,
+                        "url": t.url,
+                        "album_art": t.album_art,
+                    }
+                    for t in resolved_tracks
+                ],
+                sun_sign=sign,
+                element=element,
+            )
+            
+            # Cache for entire month (global cache, not user-specific)
+            _playlist_cache[cache_key] = result
+            
+            print(f"[PlaylistBuilder] Created seasonal playlist: {playlist_name} with {len(resolved_tracks)} tracks")
+            return result
+            
+        except Exception as e:
+            print(f"[PlaylistBuilder] Seasonal playlist error: {e}")
+            import traceback
+            traceback.print_exc()
+            return CosmicPlaylistResult(
+                success=False,
+                playlist_url="",
+                playlist_name="",
+                track_count=0,
+                vibe_summary="",
+                tracks=[],
+                sun_sign=sign,
+                element=element,
+                error=str(e),
+            )
+
+    
     def _generate_playlist_name(self, sun_sign: str) -> str:
         """Generate a unique playlist name."""
         symbol = get_zodiac_symbol(sun_sign)

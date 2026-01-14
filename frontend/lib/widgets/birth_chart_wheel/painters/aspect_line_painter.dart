@@ -48,7 +48,7 @@ class AspectLinePainter extends CustomPainter {
 
     // Draw glow effect first
     final glowPaint = Paint()
-      ..color = aspect.color.withOpacity(isPlaying ? 0.4 : 0.2)
+      ..color = aspect.color.withAlpha(isPlaying ? 102 : 51)
       ..style = PaintingStyle.stroke
       ..strokeWidth = isPlaying ? 6 : 4
       ..strokeCap = StrokeCap.round
@@ -62,7 +62,7 @@ class AspectLinePainter extends CustomPainter {
 
     // Draw main line
     final mainPaint = Paint()
-      ..color = aspect.color.withOpacity(isPlaying ? 1.0 * animationValue : 0.7)
+      ..color = aspect.color.withValues(alpha: isPlaying ? 1.0 * animationValue : 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = isPlaying ? 3 : 2
       ..strokeCap = StrokeCap.round;

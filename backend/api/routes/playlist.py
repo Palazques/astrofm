@@ -233,14 +233,13 @@ class BlendedPlaylistRequest(BaseModel):
 @router.post("/generate-blended")
 async def generate_blended_playlist_endpoint(request: BlendedPlaylistRequest):
     """
-    Generate a blended playlist from user library and app dataset.
+    Generate a cosmic playlist using the AI-powered CosmicPlaylistBuilder.
     
-    If user has connected a music service (Spotify, etc.), their library
-    tracks are matched against the day's astrology and blended with
-    tracks from the app's dataset.
+    Uses AI to curate track suggestions based on the user's birth chart
+    and current transits, then resolves them on Spotify.
     
-    Dynamic blending prioritizes high-scoring user library tracks.
-    Falls back to dataset-only if no user library exists.
+    Note: This endpoint now uses the same cosmic builder as /generate
+    for consistent AI-powered playlist generation.
     """
     try:
         # Parse birth datetime
@@ -262,19 +261,6 @@ async def generate_blended_playlist_endpoint(request: BlendedPlaylistRequest):
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Invalid timezone: {request.timezone}")
         
-        # Parse current datetime
-        if request.current_datetime:
-            current_dt = datetime.fromisoformat(request.current_datetime.replace('Z', '+00:00'))
-            if request.timezone != "UTC":
-                current_dt = current_dt.replace(tzinfo=local_tz)
-                current_dt = current_dt.astimezone(ZoneInfo("UTC"))
-                current_dt = current_dt.replace(tzinfo=None)
-        else:
-            current_dt = datetime.utcnow()
-        
-        current_lat = request.current_latitude or request.latitude
-        current_lon = request.current_longitude or request.longitude
-        
         # Calculate natal chart
         natal_chart = calculate_natal_chart(
             birth_datetime=birth_dt,
@@ -282,34 +268,76 @@ async def generate_blended_playlist_endpoint(request: BlendedPlaylistRequest):
             longitude=request.longitude
         )
         
-        # Calculate vibe parameters
-        vibe_params = calculate_vibe_parameters(
-            natal_chart=natal_chart,
-            current_datetime=current_dt,
-            latitude=current_lat,
-            longitude=current_lon
+        # Extract signs from chart
+        sun_sign = next((p["sign"] for p in natal_chart["planets"] if p["name"] == "Sun"), "Aries")
+        moon_sign = next((p["sign"] for p in natal_chart["planets"] if p["name"] == "Moon"), "Cancer")
+        rising_sign = natal_chart.get("ascendant_sign", "Aries")
+        
+        # Get current moon sign
+        from services.transits import get_current_moon_sign
+        current_moon_sign, _ = get_current_moon_sign()
+        
+        # Build genre list from preferences
+        genre_list = request.main_genres + request.subgenres if (request.main_genres or request.subgenres) else ["Pop", "Indie", "Electronic"]
+        
+        # Generate via AI pipeline (CosmicPlaylistBuilder)
+        from services.cosmic.playlist_builder import get_playlist_builder
+        builder = get_playlist_builder()
+        
+        cosmic_result = await builder.generate_playlist(
+            sun_sign=sun_sign,
+            moon_sign=moon_sign,
+            rising_sign=rising_sign,
+            current_moon_sign=current_moon_sign,
+            genre_preferences=genre_list,
+            target_tracks=request.playlist_size
         )
         
-        # Build genre preferences
-        genre_prefs = None
-        if request.main_genres or request.subgenres:
-            genre_prefs = GenrePreference(
-                main_genres=request.main_genres,
-                subgenres=request.subgenres,
-                include_related=request.include_related
-            )
+        if not cosmic_result.success:
+            raise HTTPException(status_code=500, detail=cosmic_result.error or "AI Generation failed")
         
-        # Generate blended playlist (parallel query to user library + dataset)
-        result = await generate_blended_playlist(
-            vibe_params=vibe_params,
-            genre_preferences=genre_prefs,
-            playlist_size=request.playlist_size
-        )
-        
-        return result
+        # Return cosmic result in blended format for backward compatibility
+        return {
+            "tracks": [
+                {
+                    "track_id": f"cosmic_{i}",
+                    "track_name": t["name"],
+                    "artists": t["artist"],
+                    "album_name": "Cosmic Selection",
+                    "duration_ms": 210000,
+                    "popularity": 80,
+                    "energy": 0.7,
+                    "valence": 0.6,
+                    "danceability": 0.65,
+                    "main_genre": genre_list[0] if genre_list else None,
+                    "subgenre": None,
+                    "element": cosmic_result.element,
+                    "source": "cosmic_ai",
+                    "match_score": 95.0,
+                    "spotify_url": t.get("url", ""),
+                    "album_art": t.get("album_art", ""),
+                }
+                for i, t in enumerate(cosmic_result.tracks)
+            ],
+            "total_duration_ms": len(cosmic_result.tracks) * 210000,
+            "vibe_match_score": 95.0,
+            "energy_arc": [0.7] * len(cosmic_result.tracks),
+            "element_distribution": {cosmic_result.element: len(cosmic_result.tracks)},
+            "genre_distribution": {genre_list[0]: len(cosmic_result.tracks)} if genre_list else {},
+            "generation_metadata": {
+                "source": "cosmic_ai",
+                "method": "SongToSpot (AI)",
+                "user_library_tracks": 0,
+                "dataset_tracks": 0,
+                "playlist_size_requested": request.playlist_size,
+                "tracks_selected": len(cosmic_result.tracks),
+                "vibe_summary": cosmic_result.vibe_summary,
+                "playlist_url": cosmic_result.playlist_url,
+            },
+        }
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating blended playlist: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating cosmic playlist: {str(e)}")
 

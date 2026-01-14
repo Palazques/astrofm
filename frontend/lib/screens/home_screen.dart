@@ -316,6 +316,7 @@ ${reading.horoscope}
                 }
               },
               onShare: _shareHoroscope,
+              backgroundImage: 'assets/images/card_backgrounds/daily_essence_bg.png',
             ),
             const SizedBox(height: 20),
 

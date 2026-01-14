@@ -39,7 +39,7 @@ class PlanetInfoCard extends StatelessWidget {
         border: Border.all(color: AppColors.glassBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withAlpha(38),
             blurRadius: 32,
             offset: const Offset(0, 8),
           ),
@@ -89,8 +89,8 @@ class PlanetInfoCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                planet.color.withOpacity(0.4),
-                planet.color.withOpacity(0.15),
+                planet.color.withAlpha(102),
+                planet.color.withAlpha(38),
               ],
             ),
             border: Border.all(color: planet.color, width: 2),
@@ -122,7 +122,7 @@ class PlanetInfoCard extends StatelessWidget {
                 'in ${planet.sign} • House ${planet.house}',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withAlpha(153),
                 ),
               ),
             ],
@@ -143,7 +143,7 @@ class PlanetInfoCard extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isPlaying ? planet.color : Colors.white.withOpacity(0.1),
+          color: isPlaying ? planet.color : Colors.white.withAlpha(26),
         ),
         child: Icon(
           isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -171,7 +171,7 @@ class PlanetInfoCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: Colors.white.withAlpha(10),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -181,7 +181,7 @@ class PlanetInfoCard extends StatelessWidget {
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withAlpha(128),
                 letterSpacing: 1,
               ),
             ),
@@ -209,7 +209,7 @@ class PlanetInfoCard extends StatelessWidget {
           style: GoogleFonts.spaceGrotesk(
             fontSize: 10,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withAlpha(128),
             letterSpacing: 1.5,
           ),
         ),
@@ -233,8 +233,8 @@ class PlanetInfoCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isAspectPlaying
-              ? aspect.color.withOpacity(0.2)
-              : Colors.white.withOpacity(0.03),
+              ? aspect.color.withAlpha(51)
+              : Colors.white.withAlpha(8),
           borderRadius: BorderRadius.circular(10),
           border: Border(
             left: BorderSide(color: aspect.color, width: 3),
@@ -267,7 +267,7 @@ class PlanetInfoCard extends StatelessWidget {
                     '${otherPlanet.frequency} Hz • ${aspect.harmony}',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 11,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withAlpha(128),
                     ),
                   ),
                 ],
@@ -282,7 +282,7 @@ class PlanetInfoCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: isAspectPlaying
                     ? aspect.color
-                    : Colors.white.withOpacity(0.1),
+                    : Colors.white.withAlpha(26),
               ),
               child: Icon(
                 isAspectPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,

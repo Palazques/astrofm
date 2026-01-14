@@ -54,7 +54,7 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: (widget.color ?? Colors.white).withOpacity(_animation.value),
+            color: (widget.color ?? Colors.white).withValues(alpha: _animation.value),
             borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
           ),
         );
@@ -92,7 +92,7 @@ class SkeletonText extends StatelessWidget {
                 : double.infinity,
             height: lineHeight,
             borderRadius: BorderRadius.circular(4),
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withAlpha(26),
           ),
         );
       }),
@@ -149,9 +149,9 @@ class _SkeletonOrbState extends State<SkeletonOrb>
           height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: (widget.color ?? Colors.white).withOpacity(_animation.value * 0.15),
+            color: (widget.color ?? Colors.white).withValues(alpha: _animation.value * 0.15),
             border: Border.all(
-              color: Colors.white.withOpacity(_animation.value * 0.2),
+              color: Colors.white.withValues(alpha: _animation.value * 0.2),
               width: 2,
             ),
           ),
@@ -188,7 +188,7 @@ class SkeletonCard extends StatelessWidget {
             width: 48,
             height: 48,
             borderRadius: BorderRadius.circular(12),
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withAlpha(26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -200,14 +200,14 @@ class SkeletonCard extends StatelessWidget {
                   width: 120,
                   height: 14,
                   borderRadius: BorderRadius.circular(4),
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withAlpha(26),
                 ),
                 const SizedBox(height: 8),
                 SkeletonLoader(
                   width: 80,
                   height: 12,
                   borderRadius: BorderRadius.circular(4),
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withAlpha(13),
                 ),
               ],
             ),

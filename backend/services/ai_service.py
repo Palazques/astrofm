@@ -1528,8 +1528,157 @@ FOCUS_AREAS: [area1], [area2], [area3]"""
         self._set_cached(cache_key, result, self.SEASONAL_INSIGHT_TTL)
         
         return result
+    
+    def generate_seasonal_theme_message(
+        self,
+        zodiac_sign: str,
+        element: str,
+        theme: str,
+        month_year: str,
+    ) -> dict:
+        """
+        Generate AI message for a specific seasonal theme.
+        
+        Used for global seasonal playlists to provide context on why
+        this theme matters during the current zodiac season.
+        
+        Args:
+            zodiac_sign: Current zodiac sign
+            element: Element of the sign (Fire/Earth/Air/Water)
+            theme: Life area theme (e.g., "Professional Legacy")
+            month_year: Current month and year (e.g., "January 2026")
+            
+        Returns:
+            Dict with 'message' key containing the AI-generated seasonal theme message
+        """
+        # Cache by sign, theme, and month (same for all users)
+        cache_key = self._generate_cache_key("seasonal_theme", {
+            "sign": zodiac_sign,
+            "theme": theme,
+            "month_year": month_year,
+        })
+        
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+        
+        element_vibes = {
+            "Fire": "bold, action-oriented, energetic",
+            "Earth": "grounded, structured, methodical",
+            "Air": "cerebral, social, communicative",
+            "Water": "emotional, intuitive, flowing",
+        }
+        
+        vibe_desc = element_vibes.get(element, "cosmically aligned")
+        
+        prompt = f"""Write a 2-3 sentence message about why "{theme}" is a collective focus during {zodiac_sign} season ({month_year}).
+
+{zodiac_sign} is a {element} sign with {vibe_desc} energy.
+
+Requirements:
+- Be direct and practical (Co-Star tone)
+- Reference the {element} element naturally
+- Make it feel collective ("we" not "you")
+- Keep it concise and grounded
+- No flowery language
+
+Format: Just the message, no labels or extra text."""
+        
+        response = self._generate_response(prompt)
+        message = response.strip()
+        
+        result = {"message": message}
+        
+        # Cache for entire season (~30 days)
+        self._set_cached(cache_key, result, timedelta(days=30))
+        
+        return result
+    
+    def generate_monthly_horoscope(
+        self,
+        zodiac_sign: str,
+        element: str,
+        date_range: str,
+        month_year: str,
+    ) -> dict:
+        """
+        Generate monthly horoscope for zodiac season.
+        
+        Args:
+            zodiac_sign: The zodiac sign
+            element: Element of the sign
+            date_range: Date range string (e.g., "Dec 22 - Jan 19")
+            month_year: Month and year (e.g., "December 2024")
+            
+        Returns:
+            Dict with 'horoscope' and 'vibe_summary' keys
+        """
+        # Cache by sign and month
+        cache_key = self._generate_cache_key("monthly_horoscope", {
+            "sign": zodiac_sign,
+            "month_year": month_year,
+        })
+        
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+        
+        element_themes = {
+            "Fire": "action, initiative, boldness",
+            "Earth": "structure, stability, material progress",
+            "Air": "ideas, communication, social connection",
+            "Water": "emotion, intuition, depth",
+        }
+        
+        theme = element_themes.get(element, "cosmic alignment")
+        
+        prompt = f"""Generate a monthly horoscope for {zodiac_sign} season ({month_year}, {date_range}).
+
+{zodiac_sign} brings {theme} energy.
+
+Provide:
+1. HOROSCOPE: A 3-4 sentence overview of this {zodiac_sign} season's collective energy (what everyone experiences, not personalized)
+2. VIBE_SUMMARY: A brief 1-sentence musical vibe description
+
+Keep it:
+- Direct and grounded (Co-Star style)
+- Focused on the collective archetype
+- Practical, not overly mystical
+
+Format:
+HOROSCOPE: [your horoscope]
+VIBE_SUMMARY: [your vibe summary]"""
+        
+        response = self._generate_response(prompt)
+        
+        # Parse response
+        horoscope = ""
+        vibe_summary = ""
+        
+        for line in response.strip().split("\n"):
+            if line.startswith("HOROSCOPE:"):
+                horoscope = line.replace("HOROSCOPE:", "").strip()
+            elif line.startswith("VIBE_SUMMARY:"):
+                vibe_summary = line.replace("VIBE_SUMMARY:", "").strip()
+        
+        # Fallbacks
+        if not horoscope:
+            horoscope = f"{zodiac_sign} season ({date_range}) emphasizes {theme}. This is a time for collective {element.lower()} energy to guide our path forward."
+        if not vibe_summary:
+            vibe_summary = f"{element} element sounds: grounded, intentional, resonant"
+        
+        result = {
+            "horoscope": horoscope,
+            "vibe_summary": vibe_summary,
+        }
+        
+        # Cache for entire season
+        self._set_cached(cache_key, result, timedelta(days=30))
+        
+        return result
 
     def _get_ordinal(self, n: int) -> str:
+
 
         """Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)"""
         if 11 <= (n % 100) <= 13:

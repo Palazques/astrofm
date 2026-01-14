@@ -106,9 +106,9 @@ class _SoundRecommendationCardState extends State<SoundRecommendationCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withAlpha(51),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withAlpha(102)),
       ),
       child: Text(
         label,
@@ -135,12 +135,12 @@ class _SoundRecommendationCardState extends State<SoundRecommendationCard> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              statusColor.withOpacity(0.15),
-              statusColor.withOpacity(0.05),
+              statusColor.withAlpha(38),
+              statusColor.withAlpha(13),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: statusColor.withOpacity(0.3)),
+          border: Border.all(color: statusColor.withAlpha(77)),
         ),
         child: Row(
           children: [
@@ -151,14 +151,14 @@ class _SoundRecommendationCardState extends State<SoundRecommendationCard> {
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
-                    statusColor.withOpacity(0.3),
-                    statusColor.withOpacity(0.1),
+                    statusColor.withAlpha(77),
+                    statusColor.withAlpha(26),
                   ],
                 ),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: statusColor.withOpacity(0.4),
+                    color: statusColor.withAlpha(102),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -185,7 +185,7 @@ class _SoundRecommendationCardState extends State<SoundRecommendationCard> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.3),
+                          color: statusColor.withAlpha(77),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -380,9 +380,9 @@ class _SoundRecommendationCardState extends State<SoundRecommendationCard> {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withAlpha(26),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withAlpha(51)),
         ),
         child: Column(
           children: [

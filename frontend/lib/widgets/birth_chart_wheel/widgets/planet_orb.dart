@@ -36,17 +36,17 @@ class PlanetOrb extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isPlaying
-                ? [planet.color, planet.color.withOpacity(0.8)]
-                : [planet.color.withOpacity(0.3), planet.color.withOpacity(0.1)],
+                ? [planet.color, planet.color.withAlpha(204)]
+                : [planet.color.withAlpha(77), planet.color.withAlpha(26)],
           ),
           border: Border.all(
-            color: isPlaying ? planet.color : planet.color.withOpacity(0.6),
+            color: isPlaying ? planet.color : planet.color.withAlpha(153),
             width: 2,
           ),
           boxShadow: isPlaying
               ? [
                   BoxShadow(
-                    color: planet.color.withOpacity(0.6),
+                    color: planet.color.withAlpha(153),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),

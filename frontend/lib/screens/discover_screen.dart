@@ -283,6 +283,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       guidance: _seasonalGuidance!,
                       selectedEventTypes: _selectedEventTypes,
                       onEventTypeToggle: _onEventTypeToggle,
+                      backgroundImage: 'assets/images/card_backgrounds/seasonal_guidance_bg.png',
                     ),
                   ),
                 

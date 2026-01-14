@@ -5,6 +5,7 @@ import '../../config/glyphs.dart';
 import '../../models/ai_responses.dart';
 import '../glass_card.dart';
 import '../shared/info_chip.dart';
+import '../background_image_card.dart';
 
 /// Compact daily horoscope card showing just the essence.
 /// Tapping expands to show the full reading.
@@ -15,6 +16,8 @@ class DailyEssenceCard extends StatelessWidget {
   final VoidCallback? onRetry;
   final VoidCallback? onExpand;
   final VoidCallback? onShare;
+  /// Optional background image asset path.
+  final String? backgroundImage;
 
   const DailyEssenceCard({
     super.key,
@@ -24,6 +27,7 @@ class DailyEssenceCard extends StatelessWidget {
     this.onRetry,
     this.onExpand,
     this.onShare,
+    this.backgroundImage,
   });
 
   String _formatCurrentDate() {
@@ -43,15 +47,10 @@ class DailyEssenceCard extends StatelessWidget {
       return _buildLoadingState();
     }
 
-    return GestureDetector(
-      onTap: onExpand,
-      child: GlassCard(
-        elevation: CardElevation.glowing,
-        glowColor: AppColors.electricYellow,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    // Build the card content
+    final cardContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
             // Header Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -154,7 +153,6 @@ class DailyEssenceCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Expand button
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -177,8 +175,31 @@ class DailyEssenceCard extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
+        );
+
+    // Wrap with appropriate card widget
+    Widget card;
+    if (backgroundImage != null) {
+      card = BackgroundImageCard(
+        imagePath: backgroundImage,
+        borderRadius: AppRadius.lg,
+        borderColor: AppColors.electricYellow.withAlpha(51),
+        padding: const EdgeInsets.all(20),
+        overlayOpacity: 0.5,
+        child: cardContent,
+      );
+    } else {
+      card = GlassCard(
+        elevation: CardElevation.glowing,
+        glowColor: AppColors.electricYellow,
+        padding: const EdgeInsets.all(20),
+        child: cardContent,
+      );
+    }
+
+    return GestureDetector(
+      onTap: onExpand,
+      child: card,
     );
   }
 

@@ -567,3 +567,186 @@ async def get_zodiac_season_card(request: ZodiacSeasonCardRequest):
             status_code=500,
             detail=f"Error generating zodiac season card: {str(e)}"
         )
+
+
+# =============================================================================
+# Seasonal Pulse Endpoint (Global Shared Playlists)
+# =============================================================================
+
+@router.get("/seasonal-pulse")
+async def get_seasonal_pulse():
+    """
+    Get the current zodiac season's collective focus playlists.
+    
+    Returns 1-3 globally shared themed playlists generated once per month.
+    All users receive the same playlists for collective seasonal alignment.
+    
+    Returns:
+        JSON with active sign info and themed playlists
+    """
+    from datetime import datetime
+    from services.cosmic.playlist_builder import get_playlist_builder
+    from services.transits import get_current_moon_sign
+    from services.zodiac_utils import (
+        get_current_zodiac,
+        get_next_zodiac_change_date,
+        ZODIAC_ELEMENTS,
+        ZODIAC_MODALITIES,
+        ZODIAC_RULERS,
+        ELEMENT_COLORS,
+    )
+    from services.seasonal_themes import (
+        get_current_seasonal_themes,
+        generate_theme_prompt,
+        get_theme_metadata,
+    )
+    from services.ai_service import get_ai_service
+    
+    service = get_app_spotify_service()
+    
+    if not service.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="App Spotify account not configured. Contact support."
+        )
+    
+    try:
+        # Get current zodiac info
+        zodiac_sign, element, date_range, symbol = get_current_zodiac()
+        modality = ZODIAC_MODALITIES.get(zodiac_sign, "Cardinal")
+        ruling_planet, ruling_symbol = ZODIAC_RULERS.get(zodiac_sign, ("Saturn", "♄"))
+        color1, color2 = ELEMENT_COLORS.get(element, ("#7D67FE", "#00D4AA"))
+        
+        # Get seasonal themes for this sign
+        themes_list = get_current_seasonal_themes(zodiac_sign)
+        print(f"[SeasonalPulse] Sign: {zodiac_sign}, Element: {element}, Themes: {themes_list}")
+        
+        # Generate cache key
+        today = datetime.now()
+        month_year = today.strftime("%b_%Y")
+        cached_until = get_next_zodiac_change_date()
+        
+        # Build themed playlists
+        builder = get_playlist_builder()
+        print(f"[SeasonalPulse] Builder ready: {builder}")
+        ai_service = get_ai_service()
+        themed_playlists = []
+        
+        for theme in themes_list:
+            print(f"[SeasonalPulse] Processing theme: {theme}")
+            # Generate cache-friendly ID
+            theme_id = f"{zodiac_sign.lower()}_{theme.lower().replace(' & ', '_').replace(' ', '_')}_{month_year}"
+            
+            # Get theme metadata
+            metadata = get_theme_metadata(zodiac_sign, theme)
+            
+            # Generate AI monthly message for this theme
+            try:
+                monthly_message_data = ai_service.generate_seasonal_theme_message(
+                    zodiac_sign=zodiac_sign,
+                    element=element,
+                    theme=theme,
+                    month_year=today.strftime("%B %Y"),
+                )
+                print(f"[SeasonalPulse] Monthly message for {theme}: {monthly_message_data.get('message')}")
+            except Exception as e:
+                print(f"[SeasonalPulse] Monthly message error for {theme}: {e}")
+                monthly_message_data = {"message": "Align with the collective energy of this season."}
+            
+            # Generate playlist using seasonal theme prompt
+            try:
+                # Use a basic genre set for global playlists
+                default_genres = ["indie rock", "electronic", "pop", "alternative"]
+                
+                print(f"[SeasonalPulse] Calling builder for {theme}...")
+                result = await builder.generate_seasonal_playlist(
+                    sign=zodiac_sign,
+                    element=element,
+                    theme=theme,
+                    month=month_year,
+                    genre_preferences=default_genres,
+                    target_tracks=12,
+                )
+                print(f"[SeasonalPulse] Builder result for {theme}: success={result.success}")
+                
+                if result.success:
+                    tracks = []
+                    total_seconds = 0
+                    for t in result.tracks[:12]:
+                        duration_str = t.get("duration", "3:30")
+                        tracks.append({
+                            "id": t.get("id", ""),
+                            "title": t["name"],
+                            "artist": t["artist"],
+                            "duration": duration_str,
+                            "energy": int(t.get("energy", 0.7) * 100) if isinstance(t.get("energy"), float) else 70,
+                            "url": t.get("url"),
+                        })
+                        try:
+                            parts = duration_str.split(":")
+                            total_seconds += int(parts[0]) * 60 + int(parts[1])
+                        except:
+                            total_seconds += 210
+                    
+                    themed_playlists.append({
+                        "id": theme_id,
+                        "title": theme,
+                        "glyph": metadata["glyph"],
+                        "vibe_description": result.vibe_summary,
+                        "monthly_message": monthly_message_data.get("message", ""),
+                        "playlist_url": result.playlist_url,
+                        "track_count": len(tracks),
+                        "total_duration": f"{total_seconds // 60} min",
+                        "tracks": tracks,
+                    })
+                else:
+                    print(f"Failed to generate playlist for theme '{theme}': {result.error}")
+            except Exception as e:
+                print(f"Error generating playlist for theme '{theme}': {e}")
+                import traceback
+                traceback.print_exc()
+        
+        if not themed_playlists:
+            print("[SeasonalPulse] No themes generated, adding dummy theme for debugging")
+            themed_playlists.append({
+                "id": "dummy_theme",
+                "title": "Cosmic Alignment (Test)",
+                "glyph": "✨",
+                "vibe_description": "A placeholder vibe since generation is taking long",
+                "monthly_message": "The universe is loading your seasonal focus. Please wait a moment and refresh.",
+                "playlist_url": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM3M",
+                "track_count": 1,
+                "total_duration": "3 min",
+                "tracks": [{
+                    "id": "test",
+                    "title": "Stardust",
+                    "artist": "The Universe",
+                    "duration": "3:00",
+                    "energy": 80,
+                    "url": "https://spotify.com"
+                }],
+            })
+        
+        return {
+            "active_sign": zodiac_sign,
+            "symbol": symbol,
+            "element": element,
+            "modality": modality,
+            "date_range": date_range,
+            "ruling_planet": ruling_planet,
+            "ruling_symbol": ruling_symbol,
+            "color1": color1,
+            "color2": color2,
+            "cached_until": cached_until.isoformat(),
+            "themes": themed_playlists,
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating seasonal pulse: {str(e)}"
+        )

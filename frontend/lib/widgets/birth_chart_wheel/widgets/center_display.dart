@@ -69,12 +69,12 @@ class _CenterDisplayState extends State<CenterDisplay>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            _displayColor.withOpacity(isPlaying ? 0.4 : 0.02),
-            _displayColor.withOpacity(isPlaying ? 0.1 : 0.02),
+            _displayColor.withAlpha(isPlaying ? 102 : 5),
+            _displayColor.withAlpha(isPlaying ? 26 : 5),
           ],
         ),
         border: Border.all(
-          color: _displayColor.withOpacity(isPlaying ? 0.5 : 0.08),
+          color: _displayColor.withAlpha(isPlaying ? 128 : 20),
           width: 1,
         ),
       ),
@@ -101,7 +101,7 @@ class _CenterDisplayState extends State<CenterDisplay>
         'Tap a planet to listen',
         style: GoogleFonts.spaceGrotesk(
           fontSize: 11,
-          color: Colors.white.withOpacity(0.4),
+          color: Colors.white.withAlpha(102),
         ),
         textAlign: TextAlign.center,
       ),
@@ -153,7 +153,7 @@ class _CenterDisplayState extends State<CenterDisplay>
               ' + ',
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 10,
-                color: aspect.color.withOpacity(0.5),
+                color: aspect.color.withAlpha(128),
               ),
             ),
             Text(
@@ -168,7 +168,7 @@ class _CenterDisplayState extends State<CenterDisplay>
               ' Hz',
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 10,
-                color: aspect.color.withOpacity(0.5),
+                color: aspect.color.withAlpha(128),
               ),
             ),
           ],
@@ -237,7 +237,7 @@ class SoundWaveRing extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: color.withOpacity(opacity),
+                color: color.withValues(alpha: opacity),
                 width: 2,
               ),
             ),

@@ -59,9 +59,9 @@ class InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: errorColor.withOpacity(0.1),
+        color: errorColor.withAlpha(26),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: errorColor.withOpacity(0.3)),
+        border: Border.all(color: errorColor.withAlpha(77)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -72,7 +72,7 @@ class InlineError extends StatelessWidget {
             message,
             style: GoogleFonts.spaceGrotesk(
               fontSize: 13,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withAlpha(204),
             ),
             textAlign: TextAlign.center,
           ),
@@ -116,7 +116,7 @@ class ErrorRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withAlpha(26),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -128,7 +128,7 @@ class ErrorRow extends StatelessWidget {
               message,
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 12,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withAlpha(179),
               ),
             ),
           ),
