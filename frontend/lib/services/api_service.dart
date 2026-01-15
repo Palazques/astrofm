@@ -847,7 +847,7 @@ class ApiService {
           Uri.parse('${ApiConfig.baseUrl}${ApiConfig.attunementSoundRecommendationsEndpoint}/by-life-area'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'datetime': datetime,
+            'datetime_str': datetime,
             'latitude': latitude,
             'longitude': longitude,
             'timezone': timezone,
