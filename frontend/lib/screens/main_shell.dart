@@ -5,7 +5,8 @@ import 'home_screen.dart';
 import 'soundscape_screen.dart';
 import 'align_screen.dart';
 import 'connections_screen.dart';
-import 'discover_screen.dart';
+// import 'discover_screen.dart'; // Temporarily disabled
+
 
 /// Controller to switch tabs from child screens.
 class MainShellController extends InheritedWidget {
@@ -49,17 +50,16 @@ class _MainShellState extends State<MainShell> {
     switch (tab) {
       case 'home':
         return 0;
-      case 'discover':
-        return 1;
       case 'soundscape':
-        return 2;
+        return 1;
       case 'align':
-        return 3;
+        return 2;
       case 'friends':
-        return 4;
+        return 3;
       default:
         return 0;
     }
+
   }
 
   @override
@@ -80,10 +80,11 @@ class _MainShellState extends State<MainShell> {
                   index: _getTabIndex(_activeTab),
                   children: const [
                     HomeScreen(),
-                    DiscoverScreen(), // New Discover Tab at index 1
+                    // DiscoverScreen(), // New Discover Tab hidden
                     SoundscapeScreen(),
                     AlignScreen(),
                     ConnectionsScreen(),
+
                   ],
                 ),
               ),

@@ -6,6 +6,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/inline_error.dart';
 import '../widgets/cosmic_wave_loader.dart';
 import '../widgets/focus_area_card.dart';
+import '../widgets/background_image_card.dart';
 import '../widgets/vibe_preview_sheet.dart';
 import '../services/api_service.dart';
 import '../services/spotify_service.dart';
@@ -47,6 +48,15 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
   SeasonalPulseResponse? _seasonalPulse;
   bool _isLoadingSeasonalPulse = false;
   String? _seasonalPulseError;
+
+  // Background images for rotation
+  final List<String> _cardBackgrounds = [
+    'assets/images/card_backgrounds/focus_area_bg.png',
+    'assets/images/card_backgrounds/daily_essence_bg.png',
+    'assets/images/card_backgrounds/alignment_dashboard_bg.png',
+    'assets/images/card_backgrounds/seasonal_guidance_bg.png',
+    'assets/images/card_backgrounds/weekly_digest_bg.png',
+  ];
 
   Map<String, dynamic> get _birthDataMap => _birthData != null 
     ? {
@@ -174,7 +184,7 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       final colorStr = _seasonalPulse!.color1;
       if (colorStr.startsWith('#')) {
         final hex = colorStr.substring(1);
-        return Color(int.parse('FF$hex', radix: 16));
+        return Color(int.parse('FF\$hex', radix: 16));
       }
     } catch (e) {
       // Fallback to default
@@ -205,7 +215,7 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
               title: 'Soundscape',
               showSettingsButton: true,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             // Your Cosmic Queue (Personal Daily Playlist)
             _buildCosmicQueue(),
@@ -223,118 +233,22 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Your Cosmic Queue',
-                  style: GoogleFonts.syne(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                if (playlistService.cosmicPlaylist != null)
-                  Text(
-                    '${playlistService.cosmicPlaylist!.trackCount} tracks • ${playlistService.cosmicPlaylist!.formattedDuration}',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      color: Colors.white.withAlpha(128),
-                    ),
-                  )
-                else if (playlistService.datasetPlaylist != null)
-                  Text(
-                    '${playlistService.datasetPlaylist!.trackCount} tracks • ${playlistService.datasetPlaylist!.formattedDuration}',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      color: Colors.white.withAlpha(128),
-                    ),
-                  )
-                else if (playlistService.generatedPlaylist != null)
-                  Text(
-                    '${playlistService.generatedPlaylist!.songCount} songs • ${playlistService.generatedPlaylist!.formattedDuration}',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      color: Colors.white.withAlpha(128),
-                    ),
-                  ),
-              ],
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            'Your Cosmic Queue',
+            style: GoogleFonts.syne(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
-            // Status + actions row
-            Row(
-              children: [
-                // Ready status badge
-                if (playlistService.hasPlaylist)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00D4AA).withAlpha(38),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFF00D4AA),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Ready',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF00D4AA),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                // Open in Spotify button
-                if (playlistService.spotifyPlaylistUrl != null)
-                  GestureDetector(
-                    onTap: _openSpotifyPlaylist,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1DB954),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.play_circle_fill, size: 16, color: Colors.white),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Open in Spotify',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 12),
         
         // Show cosmic wave loader while generating
         if (playlistService.isGenerating)
           const GlassCard(
-            padding: EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+            padding: EdgeInsets.symmetric(vertical: 40, horizontal: 20),
             child: CosmicWaveLoader(),
           )
         // Show error with retry
@@ -347,36 +261,64 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
           )
         // Show empty state
         else if (!playlistService.hasPlaylist)
-          GlassCard(
+          _buildEmptyState()
+        // Show playlist preview
+        else
+          _buildActivePlaylistCard(),
+      ],
+    );
+  }
+  
+  Widget _buildEmptyState() {
+    return BackgroundImageCard(
+      imagePath: 'assets/images/card_backgrounds/daily_essence_bg.png',
+      borderRadius: 24,
+      child: SizedBox(
+        height: 200,
+        child: Stack(
+        children: [
+          // Dark overlay for readability
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          
+          Center(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.queue_music_rounded,
-                  size: 48,
-                  color: Colors.white.withAlpha(51),
+                  Icons.auto_awesome,
+                  size: 40,
+                  color: Colors.white.withOpacity(0.9),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Text(
-                  'No playlists yet',
+                  'No playlist generated yet',
                   style: GoogleFonts.syne(
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white.withAlpha(179),
+                    color: Colors.white,
                   ),
                 ),
+                const SizedBox(height: 8),
                 Text(
-                  'Discover your cosmic signature in sound',
+                  'Align your vibe with the cosmos',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    color: Colors.white.withAlpha(128),
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 GestureDetector(
                   onTap: playlistService.isGenerating ? null : _generatePlaylist,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [AppColors.cosmicPurple, AppColors.hotPink],
@@ -384,50 +326,208 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.cosmicPurple.withAlpha(51),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          color: AppColors.cosmicPurple.withAlpha(80),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: playlistService.isGenerating
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text(
-                          'Generate My Soundtrack',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (playlistService.isGenerating)
+                          Container(
+                            width: 16,
+                            height: 16,
+                            margin: const EdgeInsets.only(right: 8),
+                            child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        else
+                          const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                        if (!playlistService.isGenerating)
+                          const SizedBox(width: 8),
+                        Text(
+                          playlistService.isGenerating ? 'Generating...' : 'Generate Soundtrack',
                           style: GoogleFonts.syne(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                         ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-          )
-        // Show playlist preview
-        else
-          _buildPlaylistPreview(),
-      ],
+          ),
+        ],
+      ),
+      ), // Close SizedBox
+    );
+  }
+  
+  Widget _buildActivePlaylistCard() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cosmicPurple.withAlpha(40),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: GlassCard(
+        padding: const EdgeInsets.all(0),
+        child: Column(
+          children: [
+            // Header with status
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00D4AA).withAlpha(38),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF00D4AA).withAlpha(80)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF00D4AA),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'READY',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF00D4AA),
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (playlistService.cosmicPlaylist != null)
+                            Text(
+                              '${playlistService.cosmicPlaylist!.trackCount} tracks • ${playlistService.cosmicPlaylist!.formattedDuration}',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 12,
+                                color: Colors.white.withAlpha(150),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: 250,
+                        child: Text(
+                          'Your Daily Cosmic\nSoundtrack',
+                          style: GoogleFonts.syne(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // Play button (Floating style)
+                  GestureDetector(
+                    onTap: _openSpotifyPlaylist,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF1DB954), Color(0xFF1ED760)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF1DB954).withAlpha(100),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded, 
+                        color: Colors.white, 
+                        size: 32
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Divider
+            Divider(color: Colors.white.withAlpha(25), height: 1),
+            
+            // Track list preview
+            _buildPlaylistPreview(),
+            
+            // Footer action
+             if (playlistService.spotifyPlaylistUrl != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(10),
+                  border: Border(top: BorderSide(color: Colors.white.withAlpha(20))),
+                ),
+                child: Center(
+                  child: Text(
+                    'Open in Spotify App',
+                    style: GoogleFonts.syne(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withAlpha(200),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
   
   Widget _buildPlaylistPreview() {
-    // Build track items based on available playlist type
     List<Widget> trackItems = [];
     
     // Handle CosmicPlaylist (has CosmicTrack with name/artist)
     if (playlistService.cosmicPlaylist != null) {
-      final tracks = playlistService.cosmicPlaylist!.tracks.take(5);
+      final tracks = playlistService.cosmicPlaylist!.tracks.take(4);
       trackItems = tracks.map((track) => _buildTrackRow(track.name, track.artist)).toList();
     }
     // Handle DatasetPlaylist (has DatasetTrack with trackName/artists)
     else if (playlistService.datasetPlaylist != null) {
-      final tracks = playlistService.datasetPlaylist!.tracks.take(5);
+      final tracks = playlistService.datasetPlaylist!.tracks.take(4);
       trackItems = tracks.map((track) => _buildTrackRow(track.trackName, track.artists)).toList();
     }
     
@@ -435,31 +535,31 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       return const SizedBox.shrink();
     }
     
-    return GlassCard(
-      padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(children: trackItems),
     );
   }
   
   Widget _buildTrackRow(String name, String artist) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           // Track artwork placeholder
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               gradient: LinearGradient(
                 colors: [
-                  AppColors.cosmicPurple.withAlpha(128),
-                  AppColors.hotPink.withAlpha(128),
+                  AppColors.cosmicPurple.withAlpha(100),
+                  AppColors.hotPink.withAlpha(100),
                 ],
               ),
             ),
-            child: const Icon(Icons.music_note, color: Colors.white54, size: 20),
+            child: const Icon(Icons.music_note, color: Colors.white54, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -469,8 +569,8 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
                 Text(
                   name,
                   style: GoogleFonts.syne(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                     color: Colors.white,
                   ),
                   maxLines: 1,
@@ -479,8 +579,8 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
                 Text(
                   artist,
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    color: Colors.white.withAlpha(128),
+                    fontSize: 12,
+                    color: Colors.white.withAlpha(150),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -499,15 +599,18 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Seasonal Focus',
-            style: GoogleFonts.syne(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              'Seasonal Focus',
+              style: GoogleFonts.syne(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           const GlassCard(
             padding: EdgeInsets.symmetric(vertical: 32, horizontal: 16),
             child: CosmicWaveLoader(),
@@ -516,21 +619,23 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       );
     }
     
-    // Error state (but don't block the page)
     // Error state
     if (_seasonalPulseError != null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Seasonal Focus',
-            style: GoogleFonts.syne(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              'Seasonal Focus',
+              style: GoogleFonts.syne(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           GlassCard(
             child: InlineError(
               message: _seasonalPulseError!,
@@ -548,17 +653,20 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
         children: [
           _seasonalPulse != null 
             ? _buildCompactSeasonHeader(_getElementColor())
-            : Text(
-                'Seasonal Focus',
-                style: GoogleFonts.syne(
-                  fontSize: 16,                                            
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+            : Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  'Seasonal Focus',
+                  style: GoogleFonts.syne(
+                    fontSize: 18,                                            
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           GlassCard(
-            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
             child: Column(
               children: [
                 Icon(Icons.auto_awesome_outlined, size: 32, color: Colors.white.withAlpha(50)),
@@ -582,7 +690,7 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
       children: [
         // Compact season header
         _buildCompactSeasonHeader(elementColor),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         
         // Focus area grid
         _buildFocusGrid(elementColor),
@@ -593,65 +701,80 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
   Widget _buildCompactSeasonHeader(Color elementColor) {
     final pulse = _seasonalPulse!;
     
-    return Row(
-      children: [
-        // Small orb with zodiac symbol
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                elementColor.withAlpha(80),
-                elementColor.withAlpha(40),
+    return BackgroundImageCard(
+      imagePath: 'assets/images/card_backgrounds/seasonal_guidance_bg.png',
+      padding: const EdgeInsets.all(16),
+      borderRadius: 20,
+      child: Row(
+        children: [
+          // Small orb with zodiac symbol
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  elementColor.withAlpha(150),
+                  elementColor.withAlpha(50),
+                ],
+              ),
+              border: Border.all(color: Colors.white.withAlpha(100), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: elementColor.withAlpha(80),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
               ],
             ),
-            border: Border.all(color: elementColor.withAlpha(128)),
-            boxShadow: [
-              BoxShadow(
-                color: elementColor.withAlpha(60),
-                blurRadius: 12,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              pulse.symbol,
-              style: TextStyle(
-                fontSize: 24,
-                color: Colors.white.withAlpha(230),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        
-        // Season info
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Seasonal Focus',
-                style: GoogleFonts.syne(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+            child: Center(
+              child: Text(
+                pulse.symbol,
+                style: const TextStyle(
+                  fontSize: 28,
                   color: Colors.white,
                 ),
               ),
-              Text(
-                '${pulse.activeSign} • ${pulse.dateRange}',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11,
-                  color: Colors.white.withAlpha(128),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          
+          // Season info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CURRENT SEASON',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withAlpha(180),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${pulse.activeSign} Season', // e.g. "Pisces Season"
+                  style: GoogleFonts.syne(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  pulse.dateRange,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 13,
+                    color: Colors.white.withAlpha(150),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
   
@@ -660,15 +783,20 @@ class _SoundscapeScreenState extends State<SoundscapeScreen> {
     
     return Wrap(
       spacing: 12,
-      runSpacing: 12,
-      children: themes.map((theme) {
+      runSpacing: 16,
+      children: themes.asMap().entries.map((entry) {
+        final index = entry.key;
+        final theme = entry.value;
+        // Cycle through backgrounds
+        final bgImage = _cardBackgrounds[index % _cardBackgrounds.length];
+
         return SizedBox(
           width: (MediaQuery.of(context).size.width - 52) / 2, // 2 columns with padding
           child: FocusAreaCard(
             theme: theme,
             elementColor: elementColor,
             onTap: () => _showVibePreview(theme, elementColor),
-            backgroundImage: 'assets/images/card_backgrounds/focus_area_bg.png',
+            backgroundImage: bgImage, // Dynamic background
           ),
         );
       }).toList(),
