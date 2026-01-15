@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../config/design_tokens.dart';
-import 'main_shell.dart';
 import '../widgets/app_header.dart';
 import '../widgets/daily_sound_wheel/daily_sound_wheel.dart';
 import '../widgets/birth_chart_wheel/birth_chart_wheel.dart';
@@ -22,7 +21,6 @@ import '../data/test_users.dart';
 import '../widgets/home/daily_essence_card.dart';
 import '../widgets/home/full_reading_modal.dart';
 import '../widgets/home/mode_toggle.dart';
-import '../widgets/home/cta_button_group.dart';
 
 /// Home screen with sound orbs, alignment score, and cosmic queue.
 class HomeScreen extends StatefulWidget {
@@ -319,13 +317,6 @@ ${reading.horoscope}
               backgroundImage: 'assets/images/card_backgrounds/daily_essence_bg.png',
             ),
             const SizedBox(height: 20),
-
-            // CTA Buttons (elevated position - above the fold)
-            CtaButtonGroup(
-              onAlignTap: () => MainShellController.of(context)?.switchTab('align'),
-              onDiscoverTap: () => MainShellController.of(context)?.switchTab('soundscape'),
-            ),
-            const SizedBox(height: 24),
 
             // Mode Toggle
             ChartModeToggle(
