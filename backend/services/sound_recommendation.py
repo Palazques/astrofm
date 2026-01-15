@@ -23,12 +23,75 @@ from services.attunement import (
     PLANET_ENERGIES,
     HOUSE_AREAS,
 )
-from services.sonification import PLANET_FREQUENCIES, ASPECT_INTERVALS
+from services.sonification import (
+    PLANET_FREQUENCIES,
+    ASPECT_INTERVALS,
+    SIGN_CHORDS,
+    note_to_frequency,
+)
+
+
+# House to natural ruling sign mapping
+HOUSE_SIGNS = {
+    1: "Aries", 2: "Taurus", 3: "Gemini", 4: "Cancer",
+    5: "Leo", 6: "Virgo", 7: "Libra", 8: "Scorpio",
+    9: "Sagittarius", 10: "Capricorn", 11: "Aquarius", 12: "Pisces"
+}
+
+# House to natural ruling planet mapping
+HOUSE_PLANETS = {
+    1: "Mars", 2: "Venus", 3: "Mercury", 4: "Moon",
+    5: "Sun", 6: "Mercury", 7: "Venus", 8: "Pluto",
+    9: "Jupiter", 10: "Saturn", 11: "Uranus", 12: "Neptune"
+}
+
+
+def _get_steiner_frequency(planet: str, sign: str) -> float:
+    """
+    Get frequency using Steiner Sign-based Tone Circle method.
+    
+    Args:
+        planet: Planet name
+        sign: Zodiac sign the planet is in
+        
+    Returns:
+        Frequency in Hz based on sign's chord root note
+    """
+    chord = SIGN_CHORDS.get(sign, ("C", "E", "G"))
+    root_note = chord[0]
+    
+    # Octave based on planet type (matching sonification.py)
+    if planet in ["Moon", "Mercury", "Venus"]:
+        octave = 5
+    elif planet in ["Sun", "Mars", "Jupiter"]:
+        octave = 4
+    else:  # Saturn, Uranus, Neptune, Pluto
+        octave = 3
+    
+    return note_to_frequency(root_note, octave)
+
+
+def _get_house_frequency(house_num: int) -> float:
+    """
+    Get a frequency for a house number using Steiner method.
+    Uses the house's natural ruling sign to determine the chord.
+    
+    Args:
+        house_num: House number (1-12)
+        
+    Returns:
+        Frequency in Hz
+    """
+    sign = HOUSE_SIGNS.get(house_num, "Aries")
+    chord = SIGN_CHORDS.get(sign, ("C", "E", "G"))
+    root_note = chord[0]
+    return note_to_frequency(root_note, 4)  # Mid octave
 
 
 def _get_aspect_blends(planet: str, natal_sign: str, transit_sign: str) -> list[AspectBlend]:
     """
     Get aspect blend frequencies for a planet based on its natal and transit positions.
+    Uses Steiner method for frequencies.
     
     Args:
         planet: Planet name
@@ -39,7 +102,8 @@ def _get_aspect_blends(planet: str, natal_sign: str, transit_sign: str) -> list[
         List of AspectBlend objects with frequencies
     """
     blends = []
-    base_freq = PLANET_FREQUENCIES.get(planet, 440.0)
+    # Use Steiner frequency from natal sign
+    base_freq = _get_steiner_frequency(planet, natal_sign)
     
     # Create a simple aspect blend based on natal/transit relationship
     # If same sign = conjunction (unison)
@@ -175,8 +239,8 @@ def get_sound_recommendations(
         life_area = LIFE_AREA_LABELS.get(target_house, "Life")
         life_area_key = LIFE_AREA_KEYS.get(target_house, "life")
         
-        # Get planetary frequency
-        frequency = PLANET_FREQUENCIES.get(planet, 440.0)
+        # Get planetary frequency using Steiner method (sign -> chord -> root note)
+        frequency = _get_steiner_frequency(planet, planet_attunement.natal_sign)
         
         # Get aspect blends
         aspect_blends = _get_aspect_blends(
@@ -290,19 +354,22 @@ def get_recommendations_by_life_area(
             house_num = h
             break
     
-    if house_num and response.all_recommendations:
-        # Return the first recommendation but adjust life area
-        first = response.all_recommendations[0]
+    if house_num:
+        # Return a house-specific recommendation with unique frequency
+        house_planet = HOUSE_PLANETS.get(house_num, "Sun")
+        house_sign = HOUSE_SIGNS.get(house_num, "Aries")
+        house_freq = _get_house_frequency(house_num)
+        
         return SoundRecommendation(
-            planet=first.planet,
+            planet=house_planet,
             life_area=LIFE_AREA_LABELS.get(house_num, "Life"),
             life_area_key=life_area_key,
             house=house_num,
-            sign=first.sign,
+            sign=house_sign,
             status="neutral",
-            explanation=f"Focus on {LIFE_AREA_LABELS.get(house_num, 'this area').lower()} by listening to {first.planet}'s frequency.",
-            frequency=first.frequency,
-            aspect_blends=first.aspect_blends,
+            explanation=f"Focus on {LIFE_AREA_LABELS.get(house_num, 'this area').lower()} through {house_planet}'s healing frequency.",
+            frequency=house_freq,
+            aspect_blends=[],
             intensity_gap=0.0,
             priority=0
         )
